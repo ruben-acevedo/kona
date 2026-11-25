@@ -88,7 +88,9 @@ const settingsPage = {
       stRow('Search suggestions', `As you type in the address bar, your text is sent to ${escapeHtml(engine().name)} to suggest searches.`,
         stSwitch('suggestions')) +
       stRow('Save browsing history', 'Visited sites and searches stay on this computer, in the current profile.',
-        stSwitch('saveHistory')));
+        stSwitch('saveHistory')) +
+      stRow('Import from another browser', 'Bring your favorites, history and extensions from Chrome, Edge or Brave.',
+        stButton('Import…', 'import')));
   },
 
   appearance() {
@@ -214,6 +216,7 @@ $('#st-main').addEventListener('click', async (e) => {
     case 'customize': newTab(START, false); requestAnimationFrame(() => toggleCustomize(true)); break;
     case 'clear-data': openClearSheet({ historyOnly: false }); break;
     case 'sites': openSitesSheet(); break;
+    case 'import': openImport(); break;
     case 'pick-folder': {
       const dir = await api?.pickFolder();
       if (dir) { settings.downloadDir = dir; afterSetting('downloadDir'); }

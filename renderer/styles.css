@@ -20,6 +20,8 @@
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.06), 0 18px 50px rgba(0, 0, 0, 0.16);
   --close: #e5484d;
   --toolbar-h: 52px;
+  --info-h: 0px; /* barra de aviso (navegador padrão), abaixo da barra de ferramentas */
+  --top-h: calc(var(--toolbar-h) + var(--info-h));
   --sidebar-w: 260px;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -196,7 +198,7 @@ body.blurred .wc { color: var(--text-3); }
 
 /* ───────────── Barra lateral ───────────── */
 #sidebar {
-  position: fixed; top: calc(var(--toolbar-h) + 2px); bottom: 10px; left: 10px; width: var(--sidebar-w);
+  position: fixed; top: calc(var(--top-h) + 2px); bottom: 10px; left: 10px; width: var(--sidebar-w);
   border-radius: 18px; padding: 10px 8px; z-index: 35; display: flex; flex-direction: column; gap: 2px;
   background: var(--glass-strong); backdrop-filter: blur(30px) saturate(180%);
   box-shadow: inset 0 0.5px 0 var(--rim), var(--shadow-lg);
@@ -242,7 +244,7 @@ body.sidebar-open #sidebar { transform: none; opacity: 1; }
 /* ───────────── Área principal ───────────── */
 #main { position: fixed; inset: 0; }
 #start, #overview { contain: layout paint; }
-#views { position: absolute; inset: var(--toolbar-h) 0 0 0; pointer-events: none; }
+#views { position: absolute; inset: var(--top-h) 0 0 0; pointer-events: none; }
 /* Todas as páginas continuam desenhadas, empilhadas; a ativa fica por cima.
    Trocar de aba vira um fade entre camadas prontas, sem redesenho. */
 #views webview { position: absolute; inset: 0; z-index: 0; background: #fff; }
@@ -264,7 +266,7 @@ body.sidebar-open #sidebar { transform: none; opacity: 1; }
 
 .start-scroll {
   position: absolute; inset: 0; overflow-y: auto; display: flex;
-  padding: calc(var(--toolbar-h) + 40px) 32px 12vh;
+  padding: calc(var(--top-h) + 40px) 32px 12vh;
 }
 .start-inner { width: min(760px, 100%); margin: auto; display: flex; flex-direction: column; gap: 36px; }
 .start-block h2 { font-size: 15px; font-weight: 650; margin: 0 0 14px 4px; letter-spacing: -0.01em; color: var(--text); }
@@ -373,7 +375,7 @@ body.sidebar-open #sidebar { transform: none; opacity: 1; }
 
 /* ───────────── Visão geral das abas ───────────── */
 #overview {
-  position: fixed; inset: var(--toolbar-h) 0 0 0; z-index: 40; display: flex; flex-direction: column;
+  position: fixed; inset: var(--top-h) 0 0 0; z-index: 40; display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(16px);
   opacity: 0; pointer-events: none; transition: opacity .25s var(--ease);
 }
@@ -740,7 +742,7 @@ body.private #private-note { display: flex; }
   opacity: 0; pointer-events: none; transition: opacity .25s var(--ease);
 }
 #settings.show { opacity: 1; pointer-events: auto; }
-.st-scroll { position: absolute; inset: 0; overflow-y: auto; padding: calc(var(--toolbar-h) + 24px) 28px 60px; scroll-behavior: smooth; }
+.st-scroll { position: absolute; inset: 0; overflow-y: auto; padding: calc(var(--top-h) + 24px) 28px 60px; scroll-behavior: smooth; }
 .st-layout { display: grid; grid-template-columns: 210px minmax(0, 680px); gap: 36px; justify-content: center; }
 .st-nav { position: sticky; top: 0; align-self: start; display: flex; flex-direction: column; gap: 2px; }
 .st-nav-item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 10px; text-align: left; color: var(--text-2); font-weight: 500; }
@@ -802,3 +804,98 @@ kbd { font: 600 11px var(--font); color: var(--text); background: var(--glass-pr
 #toast { display: flex; align-items: center; gap: 12px; }
 #toast.actionable { pointer-events: auto; padding-right: 8px; }
 .toast-act { height: 28px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; font-size: 12.5px; }
+
+/* ───────────── Favoritos em pastas (menu lateral) ───────────── */
+#sb-list .sb-row[style*="--depth"] { padding-left: calc(4px + var(--depth, 0) * 16px); gap: 8px; position: relative; }
+.sb-chev { width: 12px; height: 12px; flex: none; display: grid; place-items: center; color: var(--text-2); transition: transform 0.18s ease; }
+.sb-chev .ic { width: 11px; height: 11px; stroke-width: 2.2; }
+.bm-folder.open .sb-chev { transform: rotate(90deg); }
+.bm-folder { min-height: 34px; cursor: default; }
+.bm-folder .sb-fav .ic { width: 16px; height: 16px; color: var(--accent); }
+.bm-folder .sb-badge { margin-left: auto; }
+.bm-empty { min-height: 30px; font-size: 11.5px; color: var(--text-2); padding-left: calc(28px + var(--depth, 0) * 16px) !important; }
+.bm-empty:hover { background: none; }
+.sb-row.dragging { opacity: 0.35; }
+.sb-row.drop-before::before, .sb-row.drop-after::after, .bm-end.drop-end::before {
+  content: ''; position: absolute; left: calc(6px + var(--depth, 0) * 16px); right: 6px; height: 2px; border-radius: 2px;
+  background: var(--accent); pointer-events: none;
+}
+.sb-row.drop-before::before { top: -1px; }
+.sb-row.drop-after::after { bottom: -1px; }
+.sb-row.drop-inside, .bm-empty.drop-inside { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.bm-end { position: relative; min-height: 28px; }
+.bm-end.drop-end::before { top: 2px; left: 6px; }
+.sb-bm-tools { display: flex; justify-content: flex-end; }
+.sb-bm-tools .btn-link { display: inline-flex; align-items: center; gap: 4px; }
+.sb-bm-tools .btn-link .ic { width: 12px; height: 12px; stroke-width: 2.2; }
+
+/* ───────────── Pastas de favoritos na nova aba ───────────── */
+.fav-folder .tile .minis { display: grid; grid-template-columns: repeat(2, 18px); grid-auto-rows: 18px; gap: 5px; }
+.fav-folder .tile .mini { display: grid; place-items: center; }
+.fav-folder .tile .mini img { width: 18px; height: 18px; border-radius: 5px; }
+.fav-folder .tile .mini .mono { width: 18px; height: 18px; border-radius: 5px; font-size: 10px; }
+.fav-folder .tile > .ic { width: 26px; height: 26px; color: var(--text); opacity: .7; }
+#folder-pop {
+  position: fixed; z-index: 45; width: min(420px, calc(100vw - 32px)); max-height: min(440px, calc(100vh - 90px)); overflow: auto;
+  padding: 12px 14px 16px; border-radius: 22px;
+  background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 var(--rim), var(--shadow-lg);
+  opacity: 0; transform: translateY(-6px) scale(0.97); transform-origin: top center; pointer-events: none;
+  transition: opacity .18s, transform .3s var(--ease);
+}
+#folder-pop.show { opacity: 1; transform: none; pointer-events: auto; }
+.fp-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 12px; min-height: 30px; }
+.fp-head b { font-size: 14px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-head span { font-size: 12px; color: var(--text-2); }
+.fp-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 14px 6px; }
+#folder-pop .start-empty { grid-column: 1 / -1; text-align: center; margin: 8px 0; }
+.fav-folder .tile .mini.slot { border-radius: 5px; background: color-mix(in srgb, var(--text) 9%, transparent); }
+
+/* ───────────── Importar de outro navegador ───────────── */
+.imp-body { padding-top: 4px; max-height: min(520px, calc(100vh - 220px)); overflow: auto; }
+.imp-from { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
+.imp-from .st-select { flex: 1; }
+.imp-one { margin: 0 0 4px; font-size: 12.5px; color: var(--text-2); }
+.imp-one b { color: var(--text); }
+.imp-list label { align-items: flex-start; }
+.imp-list label > input { margin-top: 3px; }
+.imp-list label > span { display: flex; flex-direction: column; gap: 2px; }
+.imp-list label b, .imp-ext-head b { font-size: 13px; font-weight: 600; }
+.imp-list label.off { opacity: .5; }
+.imp-ext-head { display: flex; flex-direction: column; gap: 2px; padding: 10px 4px 4px 28px; }
+.imp-ext-head small { color: var(--text-2); font-size: 11.5px; }
+.imp-exts { display: flex; flex-direction: column; gap: 1px; padding-left: 22px; }
+.imp-list .imp-ext { align-items: center; padding: 5px 4px; }
+.imp-list .imp-ext > input { margin-top: 0; }
+.imp-eicon { width: 22px; height: 22px; display: grid; place-items: center; flex: none; }
+.imp-eicon img { width: 20px; height: 20px; border-radius: 5px; }
+.imp-eicon .ic { width: 16px; height: 16px; }
+.imp-ename { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.imp-ext small { color: var(--text-2); font-size: 11px; white-space: nowrap; }
+.imp-ext.have { opacity: .6; }
+.imp-warn { margin: 12px 4px 0; font-size: 12px; line-height: 1.45; color: var(--close, #ff5f57); }
+.imp-progress { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 46px 10px; font-size: 13px; color: var(--text-2); }
+.imp-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--text) 15%, transparent); border-top-color: var(--accent); animation: imp-spin .8s linear infinite; }
+@keyframes imp-spin { to { transform: rotate(360deg); } }
+.imp-done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 26px 16px 18px; }
+.imp-done b { font-size: 15px; }
+.imp-done p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.imp-check { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); margin-bottom: 4px; }
+.imp-check .ic { width: 22px; height: 22px; stroke-width: 2.4; }
+#import-sheet .sheet-foot .hint { font-size: 11.5px; }
+
+/* ───────────── Barra de aviso: navegador padrão ───────────── */
+body.infobar-on { --info-h: 42px; --top-h: calc(var(--toolbar-h) + 42px); }
+#infobar {
+  position: fixed; z-index: 30; top: var(--toolbar-h); left: 0; right: 0; height: 42px;
+  display: none; align-items: center; justify-content: center; gap: 12px; padding: 0 14px;
+  font-size: 12.5px; color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, var(--glass-strong));
+  backdrop-filter: blur(30px) saturate(160%);
+  border-bottom: 0.5px solid var(--stroke);
+}
+body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; }
+#infobar .ib-ic { width: 18px; height: 18px; display: grid; place-items: center; color: var(--accent); }
+#infobar .ib-ic .ic { width: 16px; height: 16px; }
+#infobar .btn-primary { height: 28px; padding: 0 14px; font-size: 12px; }
+#infobar #ib-close { position: absolute; right: 10px; }

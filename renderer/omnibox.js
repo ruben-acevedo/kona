@@ -53,6 +53,22 @@ const browseHistory = {
     this.save();
   },
   clear() { this.data = { searches: [], visits: [] }; this.save(); },
+  /** Junta um histórico importado (de outro navegador) ao atual, dentro dos mesmos limites. */
+  merge({ visits = [], searches = [] }) {
+    const join = (mine, theirs, key, max) => {
+      const by = new Map(mine.map((e) => [e[key], { ...e }]));
+      for (const e of theirs) {
+        const k = key === 'q' ? e.q.toLowerCase() : e.url;
+        const old = key === 'q' ? [...by.values()].find((x) => x.q.toLowerCase() === k) : by.get(k);
+        if (old) { old.n += e.n; old.t = Math.max(old.t, e.t); if (!old.title && e.title) old.title = e.title; }
+        else by.set(e[key], { ...e });
+      }
+      return [...by.values()].sort((a, b) => b.t - a.t).slice(0, max);
+    };
+    this.data.visits = join(this.data.visits, visits.filter((v) => !isSearchUrl(v.url)), 'url', 600);
+    this.data.searches = join(this.data.searches, searches, 'q', 300);
+    this.save();
+  },
   /** Apaga o que foi visitado/pesquisado a partir de um instante (0 = tudo). */
   clearSince(t) {
     this.data.searches = t ? this.data.searches.filter((x) => x.t < t) : [];

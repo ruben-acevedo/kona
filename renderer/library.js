@@ -32,25 +32,114 @@ const readJSON = (key) => { try { return JSON.parse(localStorage.getItem(key)); 
 const writeJSON = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch { return false; } };
 const sameUrl = (a, b) => a.replace(/\/$/, '') === b.replace(/\/$/, '');
 
-/* ───────────── Favoritos ───────────── */
+/* ───────────── Favoritos ─────────────
+   Árvore: cada item é um favorito { id, title, url } ou uma pasta { id, title, folder: true, children: [] }.
+   As listas antigas (sem pastas) já são uma árvore válida. */
 const bookmarks = {
   list: [],
   load() {
     let saved = readJSON(profileKey('bookmarks'));
-    if (Array.isArray(saved) && OLD_DEFAULT_URLS.includes(saved.map((b) => b.url).join(' '))) saved = null;
-    this.list = Array.isArray(saved) ? saved : DEFAULT_BOOKMARKS.map(([title, url]) => ({ id: uid(), title, url }));
+    if (Array.isArray(saved) && !saved.some((b) => b.folder) && OLD_DEFAULT_URLS.includes(saved.map((b) => b.url).join(' '))) saved = null;
+    this.list = Array.isArray(saved) ? saved : this.defaults();
     if (!saved) this.save();
   },
+  defaults() { return DEFAULT_BOOKMARKS.map(([title, url]) => ({ id: uid(), title, url })); },
+  /** Lista ainda intocada (a padrão atual ou uma das antigas)? */
+  isDefaultList(list = this.list) {
+    if (list.some((b) => b.folder)) return false;
+    const urls = list.map((b) => b.url).join(' ');
+    return OLD_DEFAULT_URLS.includes(urls) || urls === DEFAULT_BOOKMARKS.map(([, u]) => u).join(' ');
+  },
   save() { writeJSON(profileKey('bookmarks'), this.list); library.changed('bookmarks'); },
-  find(url) { return this.list.find((b) => sameUrl(b.url, url)); },
+
+  /** Percorre a árvore: fn(item, parentList, depth). */
+  walk(fn, list = this.list, depth = 0) {
+    for (const b of list) {
+      if (fn(b, list, depth) === false) return false;
+      if (b.folder && this.walk(fn, b.children, depth + 1) === false) return false;
+    }
+    return true;
+  },
+  /** { item, parent (lista que o contém) } pelo id. */
+  locate(id) {
+    let hit = null;
+    this.walk((b, parent) => { if (b.id === id) { hit = { item: b, parent }; return false; } return true; });
+    return hit;
+  },
+  get(id) { return this.locate(id)?.item || null; },
+  /** Todos os favoritos (sem as pastas), em ordem. */
+  all(list = this.list) { const out = []; this.walk((b) => { if (!b.folder) out.push(b); }, list); return out; },
+  count(list = this.list) { return this.all(list).length; },
+  find(url) { return this.all().find((b) => sameUrl(b.url, url)); },
+
   add(url, title) {
     if (this.find(url)) return false;
     this.list.push({ id: uid(), url, title: title || url });
     this.save();
     return true;
   },
-  remove(id) { this.list = this.list.filter((b) => b.id !== id); this.save(); },
-  rename(id, title) { const b = this.list.find((x) => x.id === id); if (b && title.trim()) { b.title = title.trim(); this.save(); } },
+  addFolder(title, parentId = null) {
+    const f = { id: uid(), title: (title || '').trim().slice(0, 60) || 'New folder', folder: true, children: [] };
+    const target = parentId ? this.get(parentId)?.children : this.list;
+    (target || this.list).push(f);
+    this.save();
+    return f;
+  },
+  remove(id) {
+    const hit = this.locate(id);
+    if (!hit) return;
+    hit.parent.splice(hit.parent.indexOf(hit.item), 1);
+    this.save();
+  },
+  rename(id, title) { const b = this.get(id); if (b && title.trim()) { b.title = title.trim(); this.save(); } },
+  /** Pasta `ancestorId` contém `id` (ou é o próprio)? Impede mover uma pasta para dentro dela mesma. */
+  contains(ancestorId, id) {
+    const a = this.get(ancestorId);
+    if (!a) return false;
+    if (a.id === id) return true;
+    let found = false;
+    if (a.folder) this.walk((b) => { if (b.id === id) { found = true; return false; } return true; }, a.children);
+    return found;
+  },
+  /**
+   * Move um item: para dentro de uma pasta (where = 'inside', no fim) ou antes/depois de outro
+   * item (where = 'before' | 'after'). targetId null = fim da lista principal.
+   */
+  move(id, targetId, where) {
+    if (id === targetId) return false;
+    const src = this.locate(id);
+    if (!src) return false;
+    if (targetId && src.item.folder && this.contains(id, targetId)) return false;
+    src.parent.splice(src.parent.indexOf(src.item), 1);
+    if (!targetId) this.list.push(src.item);
+    else {
+      const dst = this.locate(targetId);
+      if (!dst) { src.parent.push(src.item); return false; }
+      if (where === 'inside' && dst.item.folder) dst.item.children.push(src.item);
+      else dst.parent.splice(dst.parent.indexOf(dst.item) + (where === 'after' ? 1 : 0), 0, src.item);
+    }
+    this.save();
+    return true;
+  },
+  /** Troca a lista inteira (importação). */
+  replace(list) { this.list = list; this.save(); },
+  /**
+   * Favoritos importados: substituem a lista padrão do Kona; numa lista já personalizada, entram
+   * no fim, sem repetir endereços (pastas que ficariam vazias não entram). Retorna quantos entraram.
+   */
+  importTree(tree) {
+    if (this.isDefaultList()) { this.replace(tree); return this.count(tree); }
+    const have = new Set(this.all().map((b) => b.url.replace(/\/$/, '')));
+    const prune = (list) => list.map((b) => {
+      if (!b.folder) return have.has(b.url.replace(/\/$/, '')) ? null : (have.add(b.url.replace(/\/$/, '')), b);
+      const children = prune(b.children);
+      return children.length ? { ...b, children } : null;
+    }).filter(Boolean);
+    const fresh = prune(tree);
+    this.list.push(...fresh);
+    this.save();
+    return this.count(fresh);
+  },
   /** Liga/desliga o favorito do endereço. Retorna true se ficou favoritado. */
   toggle(url, title) {
     const b = this.find(url);

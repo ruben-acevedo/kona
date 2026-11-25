@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
-  'perm:ask', 'download:start', 'download:done', 'update:ready'];
+  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('kona', {
   privateClose: (partition) => ipcRenderer.invoke('private:close', partition),
   profileUse: (partition) => ipcRenderer.invoke('profile:use', partition),
   profileForget: (partition) => ipcRenderer.invoke('profile:forget', partition),
+  defaultStatus: () => ipcRenderer.invoke('default:status'),
+  defaultSet: () => ipcRenderer.invoke('default:set'),
+  importSources: () => ipcRenderer.invoke('import:sources'),
+  importRead: (id) => ipcRenderer.invoke('import:read', id),
+  importExtension: (id) => ipcRenderer.invoke('import:extension', id),
   on: (channel, fn) => {
     if (!CHANNELS.includes(channel)) return;
     ipcRenderer.on(channel, (_e, ...args) => fn(...args));

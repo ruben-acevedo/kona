@@ -49,7 +49,7 @@ const SKIP_MODULES = new Set(['electron', '@electron', '@electron-internal', '.b
 function syncApp() {
   fs.rmSync(appDir, { recursive: true, force: true });
   fs.mkdirSync(appDir, { recursive: true });
-  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
+  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'importer.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
   fs.cpSync(path.join(ROOT, 'renderer'), path.join(appDir, 'renderer'), { recursive: true });
   fs.cpSync(path.join(ROOT, 'assets'), path.join(appDir, 'assets'), { recursive: true });
   for (const m of fs.readdirSync(path.join(ROOT, 'node_modules'))) {

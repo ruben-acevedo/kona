@@ -46,6 +46,7 @@
       "ipc.js",
       "session-policy.js",
       "updater.js",
+      "importer.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

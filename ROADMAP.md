@@ -80,3 +80,24 @@ Ordem sugerida: **A → B → C → D → E**. Os números entre parênteses sã
   - Desinstalador renomeado para `Kona Uninstaller.exe` (o NSIS já usa "Uninstall Kona.exe"). Ao confirmar, roda uma cópia elevada de si mesmo (`--remove <pasta>`) que chama o NSIS e apaga a pasta; os dados pessoais (opção "Also delete my data") são apagados pela janela, como o usuário.
   - As atualizações automáticas de uma instalação em Program Files pedem permissão de administrador (o electron-updater cuida disso).
   - Testado: compilação e as duas janelas em modo de simulação. Falta o teste real do usuário (instalar, trocar a pasta, desinstalar).
+
+## G. Vindo de outro navegador
+
+Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas, sem buscador (ele escolhe nas configurações) e sem a opção de navegador padrão no instalador.
+
+- [x] **G1. Pastas nos favoritos (11).** Favoritos viram uma árvore (`renderer/library.js`: favorito `{ id, title, url }` ou pasta `{ id, title, folder: true, children }`; listas antigas continuam valendo).
+  - Menu lateral: pastas com setinha, fechadas por padrão, pastas dentro de pastas, contador; "New folder", renomear e apagar (pede confirmação se tiver conteúdo); arrastar para reordenar, para dentro de uma pasta (segurar sobre uma pasta fechada abre) e para o fim da lista; não deixa mover uma pasta para dentro dela mesma.
+  - Nova aba: a pasta aparece com 4 miniaturas (estilo iPhone; espaços vazios apagados) e abre um painel com os itens; subpastas abrem no mesmo painel com "voltar"; Esc ou clicar fora fecha.
+  - Teste: `tests/debug/folders.js`.
+
+- [x] **G2. Importar do Chrome, Edge e Brave (11).** Favoritos (com pastas), histórico e extensões. Settings → General → "Import from another browser", e oferecido no primeiro uso ("Welcome to Kona", só com o perfil ainda vazio e se houver navegador para importar).
+  - `importer.js` (processo principal) lê o perfil do navegador: `Bookmarks` (a barra vira o nível principal; "Outros" e "Celular" viram pastas), `History` (SQLite copiado antes de abrir, funciona com o navegador aberto; os 600 sites mais recentes/visitados e 300 buscas, os limites do Kona) e as extensões da Chrome Web Store (sem as internas do navegador e sem temas; desligadas vêm desmarcadas; as que saíram da loja aparecem como "No longer in the Web Store").
+  - Favoritos importados substituem os padrão do Kona; numa lista personalizada entram no fim, sem repetir endereços. Histórico é somado ao atual. Extensões são reinstaladas da loja no perfil em uso (as configurações internas delas não vêm).
+  - Senhas e logins não dá: o Chrome os criptografa de um jeito que só ele lê (avisado na janela).
+  - Testes automáticos (`KONA_USER_DATA`) não recebem a oferta do primeiro uso, a não ser com `KONA_WELCOME=1`. Teste: `tests/debug/import.js` (e `import-read.js`, só leitura).
+
+- [~] **G3. Navegador padrão (11).** O instalador registra o Kona como navegador (`installer/uninstall.nsh`: `KonaHTML` para http/https e .html/.htm/.xhtml/.svg/.pdf, `StartMenuInternet\Kona`, `RegisteredApplications`; a desinstalação remove). Uma instância só: links vindos de outros programas (e abrir o Kona de novo) viram abas na janela aberta.
+  - Barra abaixo da barra de ferramentas, enquanto o Kona instalado não for o padrão: "Kona isn’t your default browser · Make default · ×". O botão abre Configurações do Windows na página do Kona (o Windows não deixa app nenhum se tornar padrão sozinho); ao voltar para o Kona, confere de novo e a barra some com "Kona is now your default browser". O × vale até o Kona ser aberto de novo.
+  - No Kona de desenvolvimento (`npm run windows`, sem instalador) a barra não aparece.
+  - Testado: segunda instância com link vira aba; a barra empurra a página sem cobrir (`tests/debug/default-browser.js`).
+  - Corrigido (1º teste do usuário): no Windows 11 recente a escolha fica em `UserChoiceLatest\ProgId` e o `UserChoice` antigo fica desatualizado; a barra não sumia. Agora lê o novo primeiro e confirma com `app.getApplicationNameForProtocol` (`tests/debug/default-status.js`). Falta o reteste do usuário.

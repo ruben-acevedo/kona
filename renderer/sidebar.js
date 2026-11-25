@@ -4,7 +4,9 @@
 
 const sb = {
   view: null,            // subtela aberta: 'bookmarks' | 'reading' | 'history' | null
-  editing: null,         // { kind: 'group'|'bookmark'|'newgroup', id }
+  editing: null,         // { kind: 'group'|'bookmark'|'newgroup'|'newfolder', id }
+  openFolders: new Set(), // pastas de favoritos abertas (fechadas por padrão)
+  drag: null,            // id do favorito/pasta sendo arrastado
   readingFilter: 'unread',
   historyQuery: '',
   pending: false,
@@ -62,7 +64,7 @@ function renderMain() {
     ? `<div class="sb-item"><span data-icon="folder">${icon('folder')}</span><input class="sb-edit" data-edit="newgroup" placeholder="Group name" maxlength="40" spellcheck="false" /></div>`
     : `<button class="sb-item muted" data-act="new-group"><span data-icon="plus">${icon('plus')}</span><span class="sb-label">New Tab Group</span></button>`);
 
-  $('#sb-bm-count').textContent = bookmarks.list.length || '';
+  $('#sb-bm-count').textContent = bookmarks.count() || '';
   $('#sb-rl-count').textContent = readingList.unread() || '';
   focusEditor();
 }
@@ -87,7 +89,9 @@ function openSidebarView(view) {
   $('#sb-subtitle').textContent = v.title;
   $('#sb-subaction').hidden = !v.action;
   $('#sb-subaction').title = v.action || '';
-  $('#sb-tools').innerHTML = view === 'reading'
+  $('#sb-tools').innerHTML = view === 'bookmarks'
+    ? `<div class="sb-bm-tools"><button class="btn-link" data-act="new-folder">${icon('plus')}New folder</button></div>`
+    : view === 'reading'
     ? `<div class="seg mini" id="rl-filter"><button data-f="unread">Unread</button><button data-f="all">All</button></div>`
     : view === 'history'
       ? `<input class="sb-search" id="hist-q" placeholder="Search history" spellcheck="false" value="${escapeHtml(sb.historyQuery)}" />`
@@ -115,18 +119,13 @@ const siteRowIcon = (url) => `<span class="sb-fav"><span class="mono">${escapeHt
 function renderSub() {
   const list = $('#sb-list');
   if (sb.view === 'bookmarks') {
-    list.innerHTML = bookmarks.list.length ? bookmarks.list.map((b) => {
-      const editing = sb.editing?.kind === 'bookmark' && sb.editing.id === b.id;
-      return `<div class="sb-row" data-bm="${b.id}" data-url="${escapeHtml(b.url)}" title="${escapeHtml(b.url)}">
-        ${siteRowIcon(b.url)}
-        <div class="sb-row-text">${editing
-          ? `<input class="sb-edit" data-edit="bookmark" value="${escapeHtml(b.title)}" maxlength="80" spellcheck="false" />`
-          : `<b>${escapeHtml(b.title)}</b><span>${escapeHtml(hostOf(b.url))}</span>`}</div>
-        ${editing ? '' : `<span class="sb-acts">
-          <button class="sb-act" data-act="rename-bm" title="Rename">${icon('pencil')}</button>
-          <button class="sb-act" data-act="remove-bm" title="Remove from Favorites">${icon('x')}</button></span>`}
-      </div>`;
-    }).join('') : empty('star', 'No favorites yet', 'Use the star in the address bar, or press Ctrl+D on a page.');
+    const newFolder = sb.editing?.kind === 'newfolder'
+      ? `<div class="sb-row bm-folder" style="--depth:0"><span class="sb-chev"></span><span class="sb-fav">${icon('folder')}</span>
+          <div class="sb-row-text"><input class="sb-edit" data-edit="newfolder" placeholder="Folder name" maxlength="60" spellcheck="false" /></div></div>`
+      : '';
+    list.innerHTML = bookmarks.list.length || newFolder
+      ? bmRows(bookmarks.list, 0) + newFolder + '<div class="bm-end" data-bm-end="1"></div>'
+      : empty('star', 'No favorites yet', 'Use the star in the address bar, or press Ctrl+D on a page.');
   } else if (sb.view === 'reading') {
     $$('#rl-filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === sb.readingFilter));
     const items = sb.readingFilter === 'unread' ? readingList.items.filter((x) => !x.read) : readingList.items;
@@ -143,6 +142,39 @@ function renderSub() {
   } else if (sb.view === 'history') {
     renderHistory(list);
   }
+}
+
+/** Linhas da árvore de favoritos: pastas abrem e fecham; tudo pode ser arrastado. */
+function bmRows(items, depth) {
+  return items.map((b) => {
+    const editing = sb.editing?.kind === 'bookmark' && sb.editing.id === b.id;
+    const name = editing
+      ? `<input class="sb-edit" data-edit="bookmark" value="${escapeHtml(b.title)}" maxlength="80" spellcheck="false" />`
+      : null;
+    if (b.folder) {
+      const open = sb.openFolders.has(b.id);
+      const n = bookmarks.count(b.children);
+      const head = `<div class="sb-row bm-folder${open ? ' open' : ''}" data-bm="${b.id}" data-folder="1" draggable="${!editing}" style="--depth:${depth}" title="${escapeHtml(b.title)}">
+        <span class="sb-chev">${icon('forward')}</span><span class="sb-fav">${icon('folder')}</span>
+        <div class="sb-row-text">${name || `<b>${escapeHtml(b.title)}</b>`}</div>
+        ${editing ? '' : `${n ? `<span class="sb-badge">${n}</span>` : ''}<span class="sb-acts">
+          <button class="sb-act" data-act="rename-bm" title="Rename">${icon('pencil')}</button>
+          <button class="sb-act" data-act="remove-folder" title="Delete folder">${icon('x')}</button></span>`}
+      </div>`;
+      if (!open) return head;
+      const inner = b.children.length
+        ? bmRows(b.children, depth + 1)
+        : `<div class="sb-row bm-empty" data-bm-empty="${b.id}" style="--depth:${depth + 1}">Empty folder</div>`;
+      return head + inner;
+    }
+    return `<div class="sb-row" data-bm="${b.id}" data-url="${escapeHtml(b.url)}" draggable="${!editing}" style="--depth:${depth}" title="${escapeHtml(b.url)}">
+        <span class="sb-chev"></span>${siteRowIcon(b.url)}
+        <div class="sb-row-text">${name || `<b>${escapeHtml(b.title)}</b><span>${escapeHtml(hostOf(b.url))}</span>`}</div>
+        ${editing ? '' : `<span class="sb-acts">
+          <button class="sb-act" data-act="rename-bm" title="Rename">${icon('pencil')}</button>
+          <button class="sb-act" data-act="remove-bm" title="Remove from Favorites">${icon('x')}</button></span>`}
+      </div>`;
+  }).join('');
 }
 
 const empty = (ic, title, text) => `<div class="sb-empty"><span data-icon="${ic}">${icon(ic)}</span><b>${title}</b><p>${text}</p></div>`;
@@ -199,6 +231,15 @@ $('#sidebar').addEventListener('click', async (e) => {
   if (act === 'delete-group') { deleteGroup(setEl.dataset.set); return; }
   if (act === 'rename-bm') { sb.editing = { kind: 'bookmark', id: row.dataset.bm }; renderSub(); focusEditor(); return; }
   if (act === 'remove-bm') { bookmarks.remove(row.dataset.bm); toast('Removed from Favorites'); return; }
+  if (act === 'remove-folder') { deleteFolder(row.dataset.bm); return; }
+  if (act === 'new-folder') { sb.editing = { kind: 'newfolder' }; renderSub(); focusEditor(); return; }
+  if (row?.dataset.folder) {
+    const id = row.dataset.bm;
+    if (sb.openFolders.has(id)) sb.openFolders.delete(id); else sb.openFolders.add(id);
+    sfx.play('tick');
+    renderSub();
+    return;
+  }
   if (act === 'toggle-read') { const x = readingList.items.find((i) => i.id === row.dataset.rl); readingList.setRead(x.id, !x.read); return; }
   if (act === 'remove-rl') { readingList.remove(row.dataset.rl); return; }
   if (act === 'remove-hist') { browseHistory.remove('visit', row.dataset.hist); renderSub(); return; }
@@ -256,6 +297,8 @@ function commitEdit(input) {
     tabSets.renameGroup(ed.id, v);
   } else if (ed.kind === 'bookmark' && v) {
     bookmarks.rename(ed.id, v);
+  } else if (ed.kind === 'newfolder' && v) {
+    bookmarks.addFolder(v);
   }
   renderMain();
   if (sb.view) renderSub();
@@ -285,6 +328,90 @@ async function deleteGroup(id) {
   renderSidebar();
   toast(`Group “${g.name}” deleted`);
 }
+
+async function deleteFolder(id) {
+  const f = bookmarks.get(id);
+  if (!f) return;
+  const n = bookmarks.count(f.children);
+  if (f.children.length) {
+    const yes = await ask({
+      title: `Delete the folder “${f.title}”?`,
+      text: n ? `${n === 1 ? 'The favorite' : `All ${n} favorites`} inside it will be deleted too.` : 'The folders inside it will be deleted too.',
+      ok: 'Delete folder',
+      danger: true,
+    });
+    if (!yes) return;
+  }
+  sb.openFolders.delete(id);
+  bookmarks.remove(id);
+  toast(`Folder “${f.title}” deleted`);
+}
+
+/* ───────────── Arrastar favoritos (reordenar e mover entre pastas) ───────────── */
+function dropTarget(e) {
+  const end = e.target.closest('[data-bm-end]');
+  if (end) return { id: null, where: 'end', el: end };
+  const emptyRow = e.target.closest('[data-bm-empty]');
+  if (emptyRow) return { id: emptyRow.dataset.bmEmpty, where: 'inside', el: emptyRow };
+  const row = e.target.closest('.sb-row[data-bm]');
+  if (!row) return null;
+  const r = row.getBoundingClientRect();
+  const y = (e.clientY - r.top) / r.height;
+  const where = row.dataset.folder
+    ? (y < 0.28 ? 'before' : y > 0.72 && !row.classList.contains('open') ? 'after' : 'inside')
+    : (y < 0.5 ? 'before' : 'after');
+  return { id: row.dataset.bm, where, el: row };
+}
+function clearDropMarks() {
+  $$('#sb-list .drop-before, #sb-list .drop-after, #sb-list .drop-inside, #sb-list .drop-end')
+    .forEach((el) => el.classList.remove('drop-before', 'drop-after', 'drop-inside', 'drop-end'));
+}
+let hoverOpenTimer = null;
+const sbList = $('#sb-list');
+sbList.addEventListener('dragstart', (e) => {
+  const row = e.target.closest?.('.sb-row[data-bm]');
+  if (sb.view !== 'bookmarks' || !row) return;
+  sb.drag = row.dataset.bm;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', row.dataset.url || row.dataset.bm);
+  requestAnimationFrame(() => row.classList.add('dragging'));
+});
+sbList.addEventListener('dragover', (e) => {
+  if (!sb.drag) return;
+  const t = dropTarget(e);
+  clearDropMarks();
+  if (!t || (t.id && (t.id === sb.drag || bookmarks.contains(sb.drag, t.id)))) { clearTimeout(hoverOpenTimer); hoverOpenTimer = null; return; }
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  t.el.classList.add(t.where === 'end' ? 'drop-end' : `drop-${t.where}`);
+  // segurar sobre uma pasta fechada abre a pasta
+  if (t.where === 'inside' && t.el.dataset.folder && !sb.openFolders.has(t.id)) {
+    if (hoverOpenTimer?.id !== t.id) {
+      clearTimeout(hoverOpenTimer);
+      const timer = setTimeout(() => { sb.openFolders.add(t.id); renderSub(); }, 650);
+      hoverOpenTimer = timer; hoverOpenTimer.id = t.id;
+    }
+  } else { clearTimeout(hoverOpenTimer); hoverOpenTimer = null; }
+});
+sbList.addEventListener('dragleave', (e) => { if (!sbList.contains(e.relatedTarget)) clearDropMarks(); });
+sbList.addEventListener('drop', (e) => {
+  if (!sb.drag) return;
+  e.preventDefault();
+  const t = dropTarget(e);
+  const id = sb.drag;
+  sb.drag = null;
+  clearDropMarks();
+  clearTimeout(hoverOpenTimer); hoverOpenTimer = null;
+  if (!t) return;
+  if (t.where === 'inside') sb.openFolders.add(t.id);
+  if (bookmarks.move(id, t.id, t.where === 'end' ? null : t.where)) sfx.play('select');
+});
+sbList.addEventListener('dragend', () => {
+  sb.drag = null;
+  clearDropMarks();
+  clearTimeout(hoverOpenTimer); hoverOpenTimer = null;
+  $$('#sb-list .dragging').forEach((el) => el.classList.remove('dragging'));
+});
 
 /* ───────────── Limpar histórico / dados ───────────── */
 function openClearSheet({ historyOnly = false } = {}) {

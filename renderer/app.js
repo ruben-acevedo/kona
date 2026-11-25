@@ -743,7 +743,7 @@ function render() {
   library.onTabsChanged();
   syncTabStrip();
   document.body.classList.toggle('on-web', !onStart && !onSettings);
-  if (!onStart) toggleCustomize(false);
+  if (!onStart) { toggleCustomize(false); closeFolderPop(); }
   $('#back').disabled = !(a.canBack || (a.fromStart && !onStart));
   $('#fwd').disabled = !a.canFwd;
   document.title = onStart || !a.title ? 'Kona' : `${a.title} — Kona`;
@@ -846,11 +846,8 @@ function renderStartContent() {
   // "+" discreto depois do último favorito (some no fundo até o mouse passar)
   const add = `<button class="fav-item fav-add" id="fav-add" style="--i:${favs.length}" title="Add favorite">
         <span class="tile">${icon('plus')}</span><span class="label">Add</span></button>`;
-  $('#fav-grid').innerHTML = favs.map((f, i) => `
-      <button class="fav-item" data-url="${escapeHtml(f.url)}" style="--i:${i}" title="${escapeHtml(f.title)}">
-        <span class="tile glass">${siteIcon(f.url)}</span>
-        <span class="label">${escapeHtml(f.title)}</span>
-      </button>`).join('') + add;
+  $('#fav-grid').innerHTML = favs.map((f, i) => favTile(f, i)).join('') + add;
+  if (folderPop.id && !bookmarks.get(folderPop.id)) closeFolderPop();
   const visits = typeof browseHistory !== 'undefined' ? browseHistory.data.visits : [];
   const freq = [...visits].sort((a, b) => b.n - a.n || b.t - a.t).slice(0, 4);
   $('#freq-grid').innerHTML = freq.length
@@ -872,6 +869,79 @@ function renderStartContent() {
     ? unread.map((x) => `<li data-url="${escapeHtml(x.url)}" data-rid="${x.id}"><b>${escapeHtml(x.title)}</b><span>${escapeHtml(hostOf(x.url))}</span></li>`).join('')
     : '<li class="start-empty">Nothing to read right now. Press Ctrl+Shift+D to save a page.</li>';
 }
+/** Um item da grade de favoritos: site ou pasta (ícone com até 4 miniaturas, como no iPhone). */
+function favTile(f, i) {
+  if (f.folder) {
+    const sites = bookmarks.all(f.children).slice(0, 4);
+    const minis = sites.length ? [0, 1, 2, 3].map((k) => (sites[k] ? `<span class="mini">${siteIcon(sites[k].url)}</span>` : '<span class="mini slot"></span>')).join('') : '';
+    return `<button class="fav-item fav-folder" data-folder="${f.id}" style="--i:${i}" title="${escapeHtml(f.title)}">
+        <span class="tile glass">${minis ? `<span class="minis">${minis}</span>` : icon('folder')}</span>
+        <span class="label">${escapeHtml(f.title)}</span>
+      </button>`;
+  }
+  return `<button class="fav-item" data-url="${escapeHtml(f.url)}" style="--i:${i}" title="${escapeHtml(f.title)}">
+        <span class="tile glass">${siteIcon(f.url)}</span>
+        <span class="label">${escapeHtml(f.title)}</span>
+      </button>`;
+}
+
+/* Pasta de favoritos aberta na nova aba: painel com os itens dela (subpastas abrem no mesmo painel) */
+const folderPop = { id: null, trail: [], anchor: null };
+function openFolderPop(id, anchor) {
+  const f = bookmarks.get(id);
+  if (!f) return;
+  if (anchor) { folderPop.trail = []; folderPop.anchor = anchor; }
+  else if (folderPop.id) folderPop.trail.push(folderPop.id);
+  folderPop.id = id;
+  const pop = $('#folder-pop');
+  pop.innerHTML = `<div class="fp-head">
+      ${folderPop.trail.length ? `<button class="tb small" data-fp-back title="Back">${icon('back')}</button>` : ''}
+      <b>${escapeHtml(f.title)}</b><span>${bookmarks.count(f.children)}</span></div>
+    <div class="fav-grid fp-grid">${f.children.length ? f.children.map((c, i) => favTile(c, i)).join('') : '<p class="start-empty">This folder is empty.</p>'}</div>`;
+  hydrateIcons(pop);
+  placeFolderPop();
+  if (!pop.classList.contains('show')) { pop.classList.add('show'); sfx.play('open'); }
+}
+function placeFolderPop() {
+  const pop = $('#folder-pop');
+  const a = folderPop.anchor?.isConnected ? folderPop.anchor.getBoundingClientRect() : null;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  const vw = innerWidth, vh = innerHeight;
+  let x = a ? a.left + a.width / 2 - w / 2 : (vw - w) / 2;
+  let y = a ? a.bottom + 10 : (vh - h) / 2;
+  if (a && y + h > vh - 16) y = Math.max(60, a.top - h - 10);
+  x = Math.min(Math.max(16, x), vw - w - 16);
+  pop.style.left = `${x}px`; pop.style.top = `${y}px`;
+}
+function closeFolderPop() {
+  const pop = $('#folder-pop');
+  if (!pop.classList.contains('show')) { folderPop.id = null; return false; }
+  pop.classList.remove('show');
+  folderPop.id = null; folderPop.trail = [];
+  sfx.play('close');
+  return true;
+}
+$('#folder-pop').addEventListener('click', (e) => {
+  if (e.target.closest('[data-fp-back]')) {
+    const prev = folderPop.trail.pop();
+    folderPop.id = null;
+    if (prev) { const t = folderPop.trail; openFolderPop(prev); folderPop.trail = t; }
+    return;
+  }
+  const sub = e.target.closest('[data-folder]');
+  if (sub) { sfx.play('select'); openFolderPop(sub.dataset.folder); return; }
+  const el = e.target.closest('[data-url]');
+  if (el) { closeFolderPop(); navigate(active(), el.dataset.url); }
+});
+$('#folder-pop').addEventListener('auxclick', (e) => {
+  const el = e.target.closest('[data-url]');
+  if (e.button === 1 && el) { e.preventDefault(); newTab(el.dataset.url, false); }
+});
+document.addEventListener('mousedown', (e) => {
+  if (folderPop.id && !e.target.closest('#folder-pop, .fav-folder')) closeFolderPop();
+}, true);
+addEventListener('resize', () => { if (folderPop.id) placeFolderPop(); });
+
 /* Adicionar favorito pelo "+" da nova aba */
 function openFavSheet() {
   $('#fav-url').value = '';
@@ -902,6 +972,12 @@ $('#fav-url').addEventListener('input', () => { $('#fav-error').hidden = true; }
 
 $('#start').addEventListener('click', (e) => {
   if (e.target.closest('#fav-add')) { openFavSheet(); return; }
+  const folder = e.target.closest('.fav-folder');
+  if (folder) {
+    if (folderPop.id === folder.dataset.folder) closeFolderPop();
+    else { sfx.play('select'); openFolderPop(folder.dataset.folder, folder); }
+    return;
+  }
   const el = e.target.closest('[data-url]');
   if (!el) return;
   if (el.dataset.rid) readingList.setRead(el.dataset.rid, true);
@@ -947,7 +1023,7 @@ function toggleSidebar(force) {
 }
 
 // Clicar fora do menu lateral fecha o menu. Painéis abertos a partir dele não contam como "fora".
-const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #scrim, #toast';
+const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #import-sheet, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #scrim, #toast';
 document.addEventListener('mousedown', (e) => {
   if (document.body.classList.contains('sidebar-open') && !e.target.closest(SIDEBAR_INSIDE)) toggleSidebar(false);
 }, true);
@@ -1013,7 +1089,9 @@ function shortcut(key, shift) {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
+    if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
     for (const id of ['#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    if (closeFolderPop()) return;
     if (closeProfileLayers()) return;
     if ($('#confirm-sheet').classList.contains('show')) answerConfirm(false);
     else if ($('#ext-sheet').classList.contains('show')) closeSheet('#ext-sheet');
@@ -1144,6 +1222,7 @@ $('#scrim').addEventListener('click', () => {
   if ($('#confirm-sheet').classList.contains('show')) answerConfirm(false);
   closeSheet('#ext-sheet');
   closeSheet('#fav-sheet');
+  if ($('#import-sheet').classList.contains('show')) closeImport();
 });
 api?.on('ext:changed', () => {
   const before = extensions.length;

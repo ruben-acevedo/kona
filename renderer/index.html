@@ -38,6 +38,14 @@
     </div>
   </header>
 
+  <!-- Aviso: o Kona não é o navegador padrão -->
+  <div id="infobar" role="status">
+    <span class="ib-ic" data-icon="compass"></span>
+    <span id="ib-text">Kona isn’t your default browser.</span>
+    <button class="btn-primary" id="ib-yes">Make default</button>
+    <button class="tb small" id="ib-close" data-icon="x" title="Close"></button>
+  </div>
+
   <!-- Barra lateral flutuante -->
   <aside id="sidebar" class="glass panel" tabindex="-1">
     <div class="sb-views">
@@ -147,6 +155,9 @@
     <div class="pp-label">Sounds</div>
     <div class="toggles"><button class="toggle" id="tg-sounds"><span>Interface sounds</span><span class="switch"></span></button></div>
   </div>
+
+  <!-- Pasta de favoritos aberta na nova aba -->
+  <div id="folder-pop" class="glass" role="dialog" aria-label="Folder"></div>
 
   <!-- Visão geral das abas -->
   <section id="overview">
@@ -290,6 +301,21 @@
     </footer>
   </section>
 
+  <!-- Importar de outro navegador -->
+  <section id="import-sheet" class="sheet" role="dialog" aria-labelledby="imp-title">
+    <header class="sheet-head">
+      <div><h2 id="imp-title">Import from another browser</h2><p id="imp-sub">Bring your favorites, history and extensions to Kona.</p></div>
+      <button class="tb small" id="imp-close" data-icon="x" title="Close"></button>
+    </header>
+    <div class="pf-body imp-body" id="imp-body"></div>
+    <footer class="sheet-foot">
+      <span class="hint" id="imp-hint"></span>
+      <span class="spacer"></span>
+      <button class="btn-secondary" id="imp-cancel">Cancel</button>
+      <button class="btn-primary" id="imp-go">Import</button>
+    </footer>
+  </section>
+
   <!-- Pedido de permissão de um site -->
   <section id="perm-sheet" class="sheet small" role="alertdialog">
     <div class="confirm-body">
@@ -313,5 +339,7 @@
   <script src="profiles-ui.js"></script>
   <script src="sidebar.js"></script>
   <script src="settings.js"></script>
+  <script src="import.js"></script>
+  <script src="default-browser.js"></script>
 </body>
 </html>

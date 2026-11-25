@@ -1,10 +1,13 @@
-const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session } = require('electron');
+const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { installChromeWebStore, uninstallExtension } = require('electron-chrome-web-store');
 const { createPolicy } = require('./session-policy');
 const { onUi, handleUi } = require('./ipc');
 const { startUpdater } = require('./updater');
+const { registerImporter } = require('./importer');
+const { execFile } = require('child_process');
+const { pathToFileURL } = require('url');
 
 // Todos os processos de página e da interface rodam na sandbox do Chromium, como no Chrome
 app.enableSandbox();
@@ -16,6 +19,35 @@ if (process.platform === 'win32') app.setAppUserModelId('com.ruben-acevedo.kona'
 
 // Pasta de dados alternativa (útil para testes sem mexer no perfil real)
 if (process.env.KONA_USER_DATA) app.setPath('userData', process.env.KONA_USER_DATA);
+
+// Uma instância só: abrir o Kona de novo (ou um link vindo de outro programa, quando ele é o
+// navegador padrão) abre uma aba na janela que já existe. O bloqueio é por pasta de dados, então
+// os testes (KONA_USER_DATA) não esbarram no Kona aberto.
+if (!app.requestSingleInstanceLock()) app.exit(0);
+
+/** Endereços e arquivos passados na linha de comando ("Kona.exe -- <link>", como o Windows chama). */
+function targetsFrom(argv) {
+  const sep = argv.indexOf('--');
+  const args = sep >= 0 ? argv.slice(sep + 1) : argv.slice(1).filter((a) => !a.startsWith('-'));
+  const out = [];
+  for (const a of args) {
+    if (/^https?:\/\//i.test(a)) out.push(a);
+    else if (/\.(html?|xhtml|svg|pdf)$/i.test(a) && fs.existsSync(a)) out.push(pathToFileURL(path.resolve(a)).href);
+  }
+  return out;
+}
+const pendingTargets = targetsFrom(process.argv);
+function openTargets(list) {
+  if (!mainWin) { pendingTargets.push(...list); return; }
+  for (const url of list) mainWin.webContents.send('tab:external', url);
+}
+app.on('second-instance', (_e, argv) => {
+  if (!mainWin) return;
+  if (mainWin.isMinimized()) mainWin.restore();
+  mainWin.show();
+  mainWin.focus();
+  openTargets(targetsFrom(argv));
+});
 
 // Rolagem suave nas páginas, como no macOS
 app.commandLine.appendSwitch('enable-smooth-scrolling');
@@ -67,6 +99,8 @@ function createWindow() {
   const query = { state: process.env.KONA_STATE || '' };
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
   if (process.env.KONA_WALLPAPER) query.wallpaper = process.env.KONA_WALLPAPER;
+  // testes automáticos (pasta de dados própria) não recebem as ofertas do primeiro uso, a não ser que peçam
+  if (process.env.KONA_USER_DATA && !process.env.KONA_WELCOME) query.nowelcome = '1';
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query });
   win.once('ready-to-show', () => {
     win.maximize(); // sempre abre maximizado (restaurar volta a 1360×860)
@@ -79,6 +113,7 @@ function createWindow() {
   ['maximize', 'unmaximize', 'focus', 'blur'].forEach((ev) => win.on(ev, sendState));
   win.webContents.on('did-finish-load', sendState);
   win.webContents.once('did-finish-load', () => captureUaHints(win.webContents));
+  win.webContents.once('did-finish-load', () => setTimeout(() => openTargets(pendingTargets.splice(0)), 400));
 
   // KONA_SCREENSHOT=arquivo.png salva uma captura da janela e encerra (útil para revisar o design)
   const shot = process.env.KONA_SCREENSHOT;
@@ -225,6 +260,42 @@ function prepareSession(partition) {
 }
 
 const setupExtensions = () => prepareSession(DEFAULT_PARTITION);
+
+/* ───────────── Navegador padrão (Windows) ─────────────
+   O instalador registra o Kona como navegador (installer/uninstall.nsh). O Windows não deixa
+   nenhum app se tornar padrão sozinho: o Kona abre Configurações já na página dele, e a pessoa
+   confirma lá. "registered" é falso no Kona de desenvolvimento (sem instalador): sem aviso. */
+const regValue = (key, name) => new Promise((resolve) => {
+  execFile('reg.exe', ['query', key, '/v', name], { windowsHide: true }, (err, out) => {
+    if (err) return resolve(null);
+    const m = new RegExp(`${name}\\s+REG_\\w+\\s+(.*)`, 'i').exec(out);
+    resolve(m ? m[1].trim() : null);
+  });
+});
+handleUi('default:status', async () => {
+  if (process.platform !== 'win32') return { registered: false, isDefault: false };
+  const registered = !!(await regValue('HKLM\\Software\\RegisteredApplications', 'Kona')
+    || await regValue('HKCU\\Software\\RegisteredApplications', 'Kona'));
+  // O Windows 11 recente grava a escolha em UserChoiceLatest\ProgId e deixa o UserChoice antigo
+  // desatualizado; versões anteriores usam só o UserChoice. Vale a primeira que existir.
+  const base = 'HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https';
+  const progId = (await regValue(`${base}\\UserChoiceLatest\\ProgId`, 'ProgId'))
+    || (await regValue(`${base}\\UserChoiceLatest`, 'ProgId'))
+    || (await regValue(`${base}\\UserChoice`, 'ProgId'));
+  // confirmação pela API do próprio Windows (AssocQueryString): o app que abre links https
+  const handler = app.getApplicationNameForProtocol('https://');
+  return { registered, isDefault: progId === 'KonaHTML' || /^kona$/i.test(handler), progId, handler };
+});
+handleUi('default:set', async () => {
+  await shell.openExternal('ms-settings:defaultapps?registeredAppMachine=Kona').catch(() => shell.openExternal('ms-settings:defaultapps'));
+  return true;
+});
+
+// Importar de outro navegador: tudo entra no perfil em uso
+registerImporter(handleUi, {
+  currentSession: () => browserSession(),
+  currentExtensionsPath: () => extensionsPathFor(currentPartition),
+});
 
 /* ───────────── Perfis ───────────── */
 handleUi('profile:use', async (_e, partition) => {
