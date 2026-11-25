@@ -1,0 +1,34 @@
+// Fumaça: menu lateral (abas, grupos, privado, favoritos, leitura, histórico). Capturas em tests/output/sb-*.png.
+const path = require('path'); const fs = require('fs');
+const OUT = path.join(__dirname, '..', 'output'); fs.mkdirSync(OUT, { recursive: true });
+process.env.KONA_USER_DATA = path.join(OUT, 'sb-profile');
+fs.rmSync(process.env.KONA_USER_DATA, { recursive: true, force: true });
+require('../../main.js');
+const { app, BrowserWindow } = require('electron');
+const startServer = require('../fixtures/server');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+app.whenReady().then(async () => {
+  const { base } = await startServer();
+  let wc; while (!(wc = BrowserWindow.getAllWindows()[0]?.webContents)) await sleep(50);
+  const errors = [];
+  wc.on('console-message', (e, l, m) => { const lv = e?.level ?? l; const msg = e?.message ?? m; if ((lv === 'error' || lv === 3) && !/Failed to load resource/.test(msg)) errors.push(msg); });
+  await sleep(3500);
+  const js = (c) => wc.executeJavaScript(c, true);
+  const shot = async (n) => fs.writeFileSync(path.join(OUT, `sb-${n}.png`), (await wc.capturePage()).toPNG());
+  await js(`navigate(active(), ${JSON.stringify(base + '/text')}); newTab(${JSON.stringify(base + '/heavy')}, false); 0`); await sleep(1500);
+  await js(`toggleSidebar(true); 0`); await sleep(700); await shot('principal');
+  await js(`toggleBookmark(); addToReadingList(); 0`); await sleep(300);
+  await js(`openSidebarView('bookmarks'); 0`); await sleep(600); await shot('favoritos');
+  await js(`openSidebarView('reading'); 0`); await sleep(600); await shot('leitura');
+  await js(`openSidebarView('history'); 0`); await sleep(600); await shot('historico');
+  await js(`closeSidebarView(); sb.editing = { kind: 'newgroup' }; renderMain(); 0`); await sleep(300);
+  await js(`const i = document.querySelector('.sb-edit'); i.value = 'Viagem'; commitEdit(i); 0`); await sleep(1200);
+  await shot('grupo');
+  console.log('R grupo atual:', await js(`library.currentKey() + ' · abas ' + tabs.length + ' · grupos ' + tabSets.data.groups.map(g => g.name)`));
+  await js(`library.switchTo('default'); 0`); await sleep(1200);
+  console.log('R de volta:', await js(`library.currentKey() + ' · ' + tabs.map(t => t.url.split('/').pop() || t.url).join(', ')`));
+  await js(`library.switchTo('private'); 0`); await sleep(1200); await shot('privado');
+  console.log('R privado:', await js(`library.currentKey() + ' · ' + active().partition`));
+  console.log('R erros:', errors.length ? errors.join(' | ') : 'nenhum');
+  app.exit(0);
+});

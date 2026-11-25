@@ -1,0 +1,6 @@
+node_modules/
+/*.png
+tests/output/
+tests/output-windows/
+dist/
+build-extra/

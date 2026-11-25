@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# "wine" falso para o electron-builder no WSL.
+# O build só chama o wine para um passo: rodar o "gerador" (um instalador compilado só para
+# escrever o desinstalador). Em vez de rodar o .exe, extraímos o desinstalador de dentro dele com o
+# leitor do próprio electron-builder (o mesmo usado no macOS) e o gravamos onde o build espera:
+# <pasta>/<nome>.__uninstaller.exe
+exe="$1"
+case "$exe" in
+  *.exe) ;;
+  *) echo "wine-shim: chamada inesperada: $*" >&2; exit 1 ;;
+esac
+out="$(dirname "$exe")/$(basename "$exe" .exe).__uninstaller.exe"
+exec node -e '
+  const { UninstallerReader } = require(process.argv[1]);
+  UninstallerReader.exec(process.argv[2], process.argv[3]).catch((e) => { console.error(e); process.exit(1); });
+' "$(dirname "$0")/../../node_modules/app-builder-lib/out/targets/nsis/nsisUtil.js" "$exe" "$out"
