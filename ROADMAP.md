@@ -64,5 +64,19 @@ Ordem sugerida: **A → B → C → D → E**. Os números entre parênteses sã
 
 - [x] **E2. README para o GitHub (9).** README "perfeito" e bonito, com o logo no título e o subtítulo "design inteligente, alta performance". Deve explicar o que é, recursos, como instalar, autoria e licença. Sem passos de desenvolvimento ou testes e sem menção à ajuda de IA.
   - Decidido: autor Rubén Acevedo, licença MIT, repositório criado pelo GitHub CLI na conta ruben-acevedo.
-  - Feito: README com ícone, título, subtítulo, selos (versão, Windows, licença), botão de download, capturas reais (`assets/screenshots/`, perfil limpo), o que é, recursos, instalar (com o aviso do SmartScreen), atalhos, seus dados, autoria e licença. `LICENSE` (MIT) criado. O conteúdo técnico do README antigo foi para `docs/DESENVOLVIMENTO.md`.
-  - Falta para o download funcionar: primeiro commit/push e publicar o primeiro Release (`npm run dist -- --publish`).
+  - Feito: README com ícone, título, subtítulo, selos (versão, Windows, licença), botão de download, capturas reais (`assets/screenshots/`, perfil limpo), o que é, recursos, instalar (com o aviso do SmartScreen), atalhos, seus dados, autoria e licença. `LICENSE` (MIT) criado. O conteúdo técnico do README antigo foi para `docs/DESENVOLVIMENTO.md` (hoje `docs/DEVELOPMENT.md`, ver F1).
+  - Primeiro commit e push feitos em 2026-11-25. Falta publicar o primeiro Release (`npm run dist -- --publish`) para o download funcionar.
+
+## F. Internacionalização
+
+- [x] **F1. Tradução para o inglês (10).** Tudo o que a pessoa vê passa para o inglês: o Kona, o instalador, o desinstalador, o README e a documentação. Só inglês (decidido: sem português nem seletor de idioma).
+  - Feito: textos da interface (`renderer/*.js`, `index.html`, `lang="en"`), datas do histórico em `en-US`, nomes de fundos e avatares, perfil padrão "Personal". Endereços internos agora são `kona://start` e `kona://settings` (sessões salvas com `kona://inicio` / `kona://configuracoes` são convertidas ao abrir; digitar `kona://configuracoes` ainda funciona).
+  - Favoritos padrão nas versões internacionais: amazon.com, Reddit (no lugar do Mercado Livre, ícone em `renderer/sites/reddit.png`) e en.wikipedia.org. Perfis com qualquer uma das listas padrão antigas intocada recebem a nova.
+  - README em inglês com capturas novas (`assets/screenshots/new-tab.png`, `overview.png`, `sidebar.png`, `new-tab-light.png`); `docs/DESENVOLVIMENTO.md` virou `docs/DEVELOPMENT.md`. Os comentários do código continuam em português.
+  - Rótulos do relatório de testes continuam em português (só para desenvolvimento); as checagens de texto da suíte foram atualizadas.
+
+- [x] **F2. Instalador com escolha de pasta (10).** O instalador não começa sozinho: mostra a pasta de instalação (padrão `C:\Program Files\Kona`), o botão "Change…" (seletor de pastas moderno do Windows; se a pasta escolhida não se chama Kona, instala numa `Kona` dentro dela), o tamanho, e os botões Cancel / Install.
+  - Instala para todos os usuários (`nsis.perMachine: true`). A janela roda sem elevação; ao clicar em Install, o motor NSIS roda como administrador (pedido do Windows) com `/S /D=<pasta>`. Recusar o pedido mostra "Kona needs administrator permission…" e "Try again". O "Open Kona" do fim abre o navegador como usuário comum.
+  - Desinstalador renomeado para `Kona Uninstaller.exe` (o NSIS já usa "Uninstall Kona.exe"). Ao confirmar, roda uma cópia elevada de si mesmo (`--remove <pasta>`) que chama o NSIS e apaga a pasta; os dados pessoais (opção "Also delete my data") são apagados pela janela, como o usuário.
+  - As atualizações automáticas de uma instalação em Program Files pedem permissão de administrador (o electron-updater cuida disso).
+  - Testado: compilação e as duas janelas em modo de simulação. Falta o teste real do usuário (instalar, trocar a pasta, desinstalar).

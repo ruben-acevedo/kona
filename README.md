@@ -1,118 +1,118 @@
 <p align="center">
-  <img src="assets/icon.svg" width="128" height="128" alt="Ícone do Kona: um abacaxi dourado" />
+  <img src="assets/icon.svg" width="128" height="128" alt="Kona icon: a golden pineapple" />
 </p>
 
 <h1 align="center">Kona</h1>
 
-<p align="center"><b>design inteligente, alta performance</b></p>
+<p align="center"><b>smart design, high performance</b></p>
 
 <p align="center">
-  Um navegador leve e bonito para Windows, com a calma de uma interface bem desenhada<br />
-  e a velocidade e a compatibilidade do Chromium por baixo.
+  A light, beautiful browser for Windows, with the calm of a well-designed interface<br />
+  and the speed and compatibility of Chromium underneath.
 </p>
 
 <p align="center">
-  <a href="https://github.com/ruben-acevedo/kona/releases/latest"><img src="https://img.shields.io/github/v/release/ruben-acevedo/kona?label=vers%C3%A3o&color=f7a823" alt="Versão mais recente" /></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-3b82ff" alt="Windows 10 e 11" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-8b5cf6" alt="Licença MIT" /></a>
+  <a href="https://github.com/ruben-acevedo/kona/releases/latest"><img src="https://img.shields.io/github/v/release/ruben-acevedo/kona?label=version&color=f7a823" alt="Latest version" /></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-3b82ff" alt="Windows 10 and 11" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b5cf6" alt="MIT license" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ruben-acevedo/kona/releases/latest"><b>Baixar o Kona para Windows</b></a>
+  <a href="https://github.com/ruben-acevedo/kona/releases/latest"><b>Download Kona for Windows</b></a>
 </p>
 
 <br />
 
 <p align="center">
-  <img src="assets/screenshots/nova-aba.png" alt="A nova aba do Kona: fundo Aurora em tons de azul, violeta e laranja, com os favoritos no centro" />
+  <img src="assets/screenshots/new-tab.png" alt="Kona’s new tab: the Aurora background in shades of blue, violet and orange, with favorites in the center" />
 </p>
 
-## O que é
+## What it is
 
-O Kona é um navegador para quem gosta de coisas bem feitas. Abas e endereço dividem uma única barra compacta, os painéis deslizam sem pressa e a nova aba é um lugar bonito de se abrir. Por baixo, é o mesmo motor do Google Chrome: os sites funcionam como você espera, o login do Google funciona, e as extensões vêm da Chrome Web Store.
+Kona is a browser for people who like things done well. Tabs and the address share a single compact bar, panels glide in without hurry, and the new tab is a nice place to land. Underneath, it runs the same engine as Google Chrome: sites work the way you expect, Google sign-in works, and extensions come from the Chrome Web Store.
 
-O nome vem do abacaxi Kona, uma variedade doce cultivada na costa de Kona, no Havaí.
+The name comes from the Kona pineapple, a sweet variety grown on the Kona coast of Hawaii.
 
-## Recursos
+## Features
 
 **Design**
-- Barra única com abas e endereço, em vidro fosco.
-- Nova aba com fundos para escolher (Aurora, cores sólidas ou uma foto sua), favoritos e seções que você liga e desliga.
-- Tema claro, escuro ou o do sistema.
-- Visão geral de todas as abas em miniaturas, também pelo teclado.
-- Sons discretos ao navegar pela interface, que podem ser desligados.
+- One frosted-glass bar for tabs and the address.
+- A new tab with backgrounds to choose from (Aurora, solid colors or your own photo), favorites, and sections you can turn on and off.
+- Light, dark or system theme.
+- An overview of all your tabs as thumbnails, keyboard friendly too.
+- Subtle interface sounds, which you can turn off.
 
-**Navegação**
-- Barra de endereço com sugestões do buscador, do histórico e das buscas recentes.
-- Buscador à sua escolha: Google, DuckDuckGo, Bing, Ecosia ou Brave Search.
-- Menu lateral com abas, grupos de abas, favoritos, lista de leitura e histórico.
-- Perfis separados de verdade, cada um com os próprios logins, extensões, histórico e ajustes.
-- Modo privado que não grava nada e apaga tudo ao sair.
-- Extensões da Chrome Web Store, como bloqueadores de anúncio.
+**Browsing**
+- An address bar with suggestions from your search engine, your history and recent searches.
+- Your choice of search engine: Google, DuckDuckGo, Bing, Ecosia or Brave Search.
+- A sidebar with tabs, tab groups, favorites, reading list and history.
+- Truly separate profiles, each with its own sign-ins, extensions, history and settings.
+- Private browsing that saves nothing and deletes everything when you leave.
+- Extensions from the Chrome Web Store, such as ad blockers.
 
-**Privacidade e segurança**
-- Cookies de terceiros bloqueados por padrão.
-- Sempre tenta HTTPS antes de HTTP.
-- DNS seguro e criptografado, que também bloqueia sites conhecidos de golpes e malware.
-- Sinal Global Privacy Control, que pede aos sites para não vender seus dados.
-- Câmera, microfone, localização e notificações só com a sua permissão, guardada por site.
-- WebRTC sem expor os endereços da sua rede local.
-- Páginas isoladas na sandbox do Chromium e cookies criptografados no disco.
+**Privacy and security**
+- Third-party cookies blocked by default.
+- Always tries HTTPS before HTTP.
+- Secure, encrypted DNS that also blocks known scam and malware sites.
+- The Global Privacy Control signal, which asks sites not to sell your data.
+- Camera, microphone, location and notifications only with your permission, remembered per site.
+- WebRTC without exposing your local network addresses.
+- Pages isolated in Chromium’s sandbox, and cookies encrypted on disk.
 
-**Sempre atualizado**
-- O Kona procura versões novas sozinho, baixa em segundo plano e instala quando você fecha o navegador.
+**Always up to date**
+- Kona checks for new versions on its own, downloads them in the background and installs them when you close the browser.
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/screenshots/visao-geral.png" alt="Visão geral das abas em miniaturas" /></td>
-    <td width="50%"><img src="assets/screenshots/menu-lateral.png" alt="Menu lateral com abas, grupos, favoritos, lista de leitura e histórico" /></td>
+    <td width="50%"><img src="assets/screenshots/overview.png" alt="Tab overview with thumbnails" /></td>
+    <td width="50%"><img src="assets/screenshots/sidebar.png" alt="Sidebar with tabs, groups, favorites, reading list and history" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Visão geral das abas (Alt+V)</sub></td>
-    <td align="center"><sub>Menu lateral (Alt+Z)</sub></td>
+    <td align="center"><sub>Tab overview (Alt+V)</sub></td>
+    <td align="center"><sub>Sidebar (Alt+Z)</sub></td>
   </tr>
 </table>
 
 <p align="center">
-  <img src="assets/screenshots/nova-aba-clara.png" width="80%" alt="A nova aba no tema claro" /><br />
-  <sub>Tema claro</sub>
+  <img src="assets/screenshots/new-tab-light.png" width="80%" alt="The new tab in the light theme" /><br />
+  <sub>Light theme</sub>
 </p>
 
-## Instalar
+## Install
 
-1. Baixe o **Kona-Setup** na página da [versão mais recente](https://github.com/ruben-acevedo/kona/releases/latest).
-2. Abra o arquivo. A instalação leva poucos segundos, não pede senha de administrador e abre o Kona no final.
+1. Download **Kona-Setup** from the [latest release](https://github.com/ruben-acevedo/kona/releases/latest).
+2. Open it, check the install location (by default `C:\Program Files\Kona`) and click **Install**. Windows asks for administrator permission; the installation takes a few seconds and opens Kona at the end.
 
-O Kona fica no Menu Iniciar e na área de trabalho. As atualizações chegam sozinhas.
+Kona shows up in the Start menu and on the desktop. Updates arrive on their own.
 
-> **Se o Windows mostrar "O Windows protegeu o computador":** clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece porque o instalador ainda não tem assinatura digital. Ele não indica nenhum problema com o arquivo.
+> **If Windows shows "Windows protected your PC":** click **More info**, then **Run anyway**. The warning appears because the installer isn’t digitally signed yet. It doesn’t mean anything is wrong with the file.
 
-**Requisitos:** Windows 10 ou 11, 64 bits.
+**Requirements:** Windows 10 or 11, 64-bit.
 
-**Desinstalar:** Configurações → Aplicativos → Aplicativos instalados → Kona → Desinstalar. Você escolhe se quer apagar também seus dados (favoritos, histórico, perfis e logins).
+**Uninstall:** Settings → Apps → Installed apps → Kona → Uninstall. You choose whether to also delete your data (favorites, history, profiles and sign-ins).
 
-## Atalhos
+## Shortcuts
 
-| Atalho | O que faz |
+| Shortcut | What it does |
 | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>T</kbd> | Nova aba |
-| <kbd>Ctrl</kbd>+<kbd>W</kbd> | Fechar aba |
-| <kbd>Ctrl</kbd>+<kbd>Tab</kbd> | Próxima aba |
-| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Ir para a barra de endereço |
-| <kbd>Alt</kbd>+<kbd>V</kbd> | Visão geral das abas (setas para escolher, Enter para abrir) |
-| <kbd>Alt</kbd>+<kbd>Z</kbd> | Menu lateral |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Favoritar a página |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Guardar na lista de leitura |
-| <kbd>Ctrl</kbd>+<kbd>H</kbd> | Histórico |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Modo privado |
-| <kbd>Ctrl</kbd>+<kbd>,</kbd> | Configurações |
+| <kbd>Ctrl</kbd>+<kbd>T</kbd> | New tab |
+| <kbd>Ctrl</kbd>+<kbd>W</kbd> | Close tab |
+| <kbd>Ctrl</kbd>+<kbd>Tab</kbd> | Next tab |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Go to the address bar |
+| <kbd>Alt</kbd>+<kbd>V</kbd> | Tab overview (arrows to choose, Enter to open) |
+| <kbd>Alt</kbd>+<kbd>Z</kbd> | Sidebar |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Add the page to Favorites |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Save to Reading List |
+| <kbd>Ctrl</kbd>+<kbd>H</kbd> | History |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Private browsing |
+| <kbd>Ctrl</kbd>+<kbd>,</kbd> | Settings |
 
-## Seus dados
+## Your data
 
-Tudo o que o Kona guarda (favoritos, histórico, perfis, ajustes e logins) fica só no seu computador. O Kona não tem conta, não envia estatísticas e não coleta nada sobre você. Além dos sites que você abre, ele só se conecta ao buscador escolhido (para as sugestões de busca), aos sites dos seus favoritos (para mostrar os ícones), ao DNS seguro da Quad9 (desligável em Configurações), à Chrome Web Store (quando você instala extensões) e ao GitHub (para buscar atualizações).
+Everything Kona stores (favorites, history, profiles, settings and sign-ins) stays on your computer. Kona has no account, sends no statistics and collects nothing about you. Besides the sites you open, it only connects to your chosen search engine (for search suggestions), to the sites in your favorites (to show their icons), to Quad9’s secure DNS (can be turned off in Settings), to the Chrome Web Store (when you install extensions) and to GitHub (to check for updates).
 
-## Autoria e licença
+## Author and license
 
-Criado por **Rubén Acevedo**.
+Created by **Rubén Acevedo**.
 
-Código aberto sob a [licença MIT](LICENSE). O Kona usa o [Electron](https://www.electronjs.org) e o [Chromium](https://www.chromium.org), cada um com a própria licença.
+Open source under the [MIT license](LICENSE). Kona uses [Electron](https://www.electronjs.org) and [Chromium](https://www.chromium.org), each under its own license.

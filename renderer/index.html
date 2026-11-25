@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy"
@@ -12,27 +12,27 @@
   <!-- Barra de ferramentas compacta: abas + endereço na mesma linha -->
   <header id="toolbar">
     <div class="glass group">
-      <button class="tb" id="btn-sidebar" data-icon="sidebar" title="Barra lateral (Alt+Z)"></button>
+      <button class="tb" id="btn-sidebar" data-icon="sidebar" title="Sidebar (Alt+Z)"></button>
     </div>
 
     <div class="glass group">
-      <button class="tb" id="back" data-icon="back" title="Voltar"></button>
-      <button class="tb" id="fwd" data-icon="forward" title="Avançar"></button>
+      <button class="tb" id="back" data-icon="back" title="Back"></button>
+      <button class="tb" id="fwd" data-icon="forward" title="Forward"></button>
     </div>
 
     <div id="tabs"></div>
 
     <div class="glass group">
-      <button class="tb" id="btn-new" data-icon="plus" title="Nova aba (Ctrl+T)"></button>
-      <button class="tb" id="btn-overview" data-icon="grid" title="Todas as abas (Alt+V)"></button>
+      <button class="tb" id="btn-new" data-icon="plus" title="New tab (Ctrl+T)"></button>
+      <button class="tb" id="btn-overview" data-icon="grid" title="All tabs (Alt+V)"></button>
     </div>
 
     <div class="winctl" id="winctl">
-      <button class="wc" data-act="minimize" title="Minimizar">
+      <button class="wc" data-act="minimize" title="Minimize">
         <svg viewBox="0 0 16 16"><path d="M3.5 8h9"/></svg>
       </button>
-      <button class="wc" data-act="maximize" id="btn-max" title="Maximizar"></button>
-      <button class="wc close" data-act="close" title="Fechar">
+      <button class="wc" data-act="maximize" id="btn-max" title="Maximize"></button>
+      <button class="wc close" data-act="close" title="Close">
         <svg viewBox="0 0 16 16"><path d="M4.2 4.2l7.6 7.6M11.8 4.2l-7.6 7.6"/></svg>
       </button>
     </div>
@@ -45,21 +45,21 @@
       <div class="sb-view" id="sbv-main">
         <div class="sb-scroll">
           <div class="sb-section" id="sb-sets"></div>
-          <div class="sb-heading">Grupos de Abas</div>
+          <div class="sb-heading">Tab Groups</div>
           <div class="sb-section" id="sb-groups"></div>
-          <div class="sb-heading">Biblioteca</div>
+          <div class="sb-heading">Library</div>
           <div class="sb-section">
-            <button class="sb-item" data-view="bookmarks"><span data-icon="star"></span><span class="sb-label">Favoritos</span><span class="sb-badge" id="sb-bm-count"></span><span class="sb-go" data-icon="forward"></span></button>
-            <button class="sb-item" data-view="reading"><span data-icon="glasses"></span><span class="sb-label">Lista de Leitura</span><span class="sb-badge" id="sb-rl-count"></span><span class="sb-go" data-icon="forward"></span></button>
-            <button class="sb-item" data-view="history"><span data-icon="clock"></span><span class="sb-label">Histórico</span><span class="sb-go" data-icon="forward"></span></button>
-            <button class="sb-item" id="sb-extensions"><span data-icon="puzzle"></span><span class="sb-label">Extensões</span><span class="sb-badge" id="sb-ext-count"></span></button>
+            <button class="sb-item" data-view="bookmarks"><span data-icon="star"></span><span class="sb-label">Favorites</span><span class="sb-badge" id="sb-bm-count"></span><span class="sb-go" data-icon="forward"></span></button>
+            <button class="sb-item" data-view="reading"><span data-icon="glasses"></span><span class="sb-label">Reading List</span><span class="sb-badge" id="sb-rl-count"></span><span class="sb-go" data-icon="forward"></span></button>
+            <button class="sb-item" data-view="history"><span data-icon="clock"></span><span class="sb-label">History</span><span class="sb-go" data-icon="forward"></span></button>
+            <button class="sb-item" id="sb-extensions"><span data-icon="puzzle"></span><span class="sb-label">Extensions</span><span class="sb-badge" id="sb-ext-count"></span></button>
           </div>
         </div>
       </div>
       <!-- Subtela: favoritos, lista de leitura ou histórico -->
       <div class="sb-view sub" id="sbv-sub">
         <header class="sb-subhead">
-          <button class="tb small" id="sb-back" data-icon="back" title="Voltar"></button>
+          <button class="tb small" id="sb-back" data-icon="back" title="Back"></button>
           <h3 id="sb-subtitle"></h3>
           <button class="tb small" id="sb-subaction" data-icon="plus"></button>
         </header>
@@ -69,8 +69,8 @@
       </div>
     </div>
     <div class="sb-footer">
-      <button class="profile" id="sb-profile" title="Perfis"></button>
-      <button class="tb small" id="sb-settings" data-icon="gear" title="Configurações"></button>
+      <button class="profile" id="sb-profile" title="Profiles"></button>
+      <button class="tb small" id="sb-settings" data-icon="gear" title="Settings"></button>
     </div>
   </aside>
 
@@ -83,41 +83,41 @@
           <section class="glass card" id="private-note">
             <span data-icon="hand"></span>
             <div>
-              <b>Navegação privada</b>
-              <p>O Kona não guarda o histórico nem as buscas desta sessão. Os cookies e dados de sites ficam só na memória e são apagados quando você sai do modo privado.</p>
+              <b>Private browsing</b>
+              <p>Kona doesn’t save your history or searches from this session. Cookies and site data stay in memory only and are deleted when you leave private browsing.</p>
             </div>
           </section>
           <section class="start-block" id="sec-favorites">
-            <h2>Favoritos</h2>
+            <h2>Favorites</h2>
             <div class="fav-grid" id="fav-grid"></div>
           </section>
 
           <section class="start-block" id="sec-frequent">
-            <h2>Visitados com Frequência</h2>
+            <h2>Frequently Visited</h2>
             <div class="freq-grid" id="freq-grid"></div>
           </section>
 
           <div class="start-row">
             <section class="start-block glass card" id="sec-privacy">
-              <div class="card-head"><span data-icon="shield"></span><h3>Relatório de Privacidade</h3></div>
+              <div class="card-head"><span data-icon="shield"></span><h3>Privacy Report</h3></div>
               <div class="privacy-body" id="privacy-body"></div>
             </section>
 
             <section class="start-block glass card" id="sec-reading">
-              <div class="card-head"><span data-icon="glasses"></span><h3>Lista de Leitura</h3></div>
+              <div class="card-head"><span data-icon="glasses"></span><h3>Reading List</h3></div>
               <ul class="reading-list" id="reading-list"></ul>
             </section>
           </div>
         </div>
       </div>
-      <button class="glass customize" id="btn-customize" data-icon="sliders" title="Personalizar (Ctrl+,)"></button>
+      <button class="glass customize" id="btn-customize" data-icon="sliders" title="Customize (Ctrl+,)"></button>
     </section>
 
-    <!-- Configurações (kona://configuracoes) -->
+    <!-- Configurações (kona://settings) -->
     <section id="settings">
       <div class="st-scroll" id="st-scroll">
         <div class="st-layout">
-          <nav class="st-nav" id="st-nav" aria-label="Seções"></nav>
+          <nav class="st-nav" id="st-nav" aria-label="Sections"></nav>
           <div class="st-main" id="st-main"></div>
         </div>
       </div>
@@ -128,24 +128,24 @@
 
   <!-- Painel Personalizar -->
   <div id="custom-pop" class="glass panel-pop">
-    <div class="pp-head">Personalizar</div>
+    <div class="pp-head">Customize</div>
 
-    <div class="pp-label">Aparência</div>
+    <div class="pp-label">Appearance</div>
     <div class="seg" id="seg-theme">
-      <button data-theme="light">Claro</button>
-      <button data-theme="dark">Escuro</button>
-      <button data-theme="system">Sistema</button>
+      <button data-theme="light">Light</button>
+      <button data-theme="dark">Dark</button>
+      <button data-theme="system">System</button>
     </div>
 
-    <div class="pp-label">Fundo da nova aba</div>
+    <div class="pp-label">New tab background</div>
     <div class="wp-grid" id="wp-grid"></div>
     <input type="file" id="wp-file" accept="image/*" hidden />
 
-    <div class="pp-label">Mostrar na nova aba</div>
+    <div class="pp-label">Show on new tab</div>
     <div class="toggles" id="toggles"></div>
 
-    <div class="pp-label">Sons</div>
-    <div class="toggles"><button class="toggle" id="tg-sounds"><span>Sons da interface</span><span class="switch"></span></button></div>
+    <div class="pp-label">Sounds</div>
+    <div class="toggles"><button class="toggle" id="tg-sounds"><span>Interface sounds</span><span class="switch"></span></button></div>
   </div>
 
   <!-- Visão geral das abas -->
@@ -153,8 +153,8 @@
     <div class="ov-top">
       <div class="ov-title" id="ov-count"></div>
       <div class="glass group">
-        <button class="tb" id="ov-new" data-icon="plus" title="Nova aba"></button>
-        <button class="tb text" id="ov-done">Concluído</button>
+        <button class="tb" id="ov-new" data-icon="plus" title="New tab"></button>
+        <button class="tb text" id="ov-done">Done</button>
       </div>
     </div>
     <div class="ov-grid" id="ov-grid" tabindex="-1"></div>
@@ -162,66 +162,66 @@
 
   <!-- Extensões -->
   <div id="scrim" class="scrim"></div>
-  <section id="ext-sheet" class="sheet" role="dialog" aria-label="Extensões">
+  <section id="ext-sheet" class="sheet" role="dialog" aria-label="Extensions">
     <header class="sheet-head">
       <div>
-        <h2>Extensões</h2>
-        <p>Extensões da Chrome Web Store</p>
+        <h2>Extensions</h2>
+        <p>Extensions from the Chrome Web Store</p>
       </div>
-      <button class="tb small" id="ext-close" data-icon="x" title="Fechar"></button>
+      <button class="tb small" id="ext-close" data-icon="x" title="Close"></button>
     </header>
     <div class="ext-list" id="ext-list"></div>
     <footer class="sheet-foot">
-      <span class="hint">A compatibilidade pode variar.</span>
+      <span class="hint">Compatibility may vary.</span>
       <button class="btn-primary" id="ext-store"><span data-icon="store"></span>Chrome Web Store</button>
     </footer>
   </section>
 
-  <section id="confirm-sheet" class="sheet small" role="dialog" aria-label="Adicionar extensão">
+  <section id="confirm-sheet" class="sheet small" role="dialog" aria-label="Add extension">
     <div class="confirm-body">
       <div class="confirm-icon" id="confirm-icon"></div>
       <h2 id="confirm-title"></h2>
       <ul class="confirm-perms" id="confirm-perms"></ul>
     </div>
     <footer class="confirm-actions">
-      <button class="btn-secondary" id="confirm-no">Cancelar</button>
-      <button class="btn-primary" id="confirm-yes">Adicionar extensão</button>
+      <button class="btn-secondary" id="confirm-no">Cancel</button>
+      <button class="btn-primary" id="confirm-yes">Add extension</button>
     </footer>
   </section>
 
   <!-- Sugestões da barra de endereço -->
-  <div id="omnibox" role="listbox" aria-label="Sugestões"></div>
+  <div id="omnibox" role="listbox" aria-label="Suggestions"></div>
 
   <!-- Perfis -->
   <div id="profile-pop" class="glass popover-pf">
-    <div class="pp-head">Perfis</div>
+    <div class="pp-head">Profiles</div>
     <div id="pf-list"></div>
     <div class="pop-sep"></div>
-    <button class="pop-item" id="pf-edit"><span data-icon="pencil"></span><span id="pf-edit-label">Editar perfil</span></button>
-    <button class="pop-item" id="pf-new"><span data-icon="plus"></span>Novo perfil</button>
+    <button class="pop-item" id="pf-edit"><span data-icon="pencil"></span><span id="pf-edit-label">Edit profile</span></button>
+    <button class="pop-item" id="pf-new"><span data-icon="plus"></span>New profile</button>
   </div>
 
-  <section id="profile-sheet" class="sheet" role="dialog" aria-label="Perfil">
+  <section id="profile-sheet" class="sheet" role="dialog" aria-label="Profile">
     <header class="sheet-head">
       <div>
-        <h2 id="pf-title">Editar perfil</h2>
-        <p>Cada perfil tem histórico, ajustes, logins e extensões próprios.</p>
+        <h2 id="pf-title">Edit profile</h2>
+        <p>Each profile has its own history, settings, sign-ins and extensions.</p>
       </div>
-      <button class="tb small" id="pf-close" data-icon="x" title="Fechar"></button>
+      <button class="tb small" id="pf-close" data-icon="x" title="Close"></button>
     </header>
     <div class="pf-body">
       <div class="pf-preview" id="pf-preview"></div>
-      <label class="pf-label" for="pf-name">Nome</label>
+      <label class="pf-label" for="pf-name">Name</label>
       <input id="pf-name" class="pf-input" maxlength="32" spellcheck="false" autocomplete="off" />
-      <div class="pf-label">Imagem</div>
+      <div class="pf-label">Picture</div>
       <div class="pf-grid" id="pf-grid"></div>
       <input type="file" id="avatar-file" accept="image/*" hidden />
     </div>
     <footer class="sheet-foot">
-      <button class="btn-danger" id="pf-delete">Apagar perfil</button>
+      <button class="btn-danger" id="pf-delete">Delete profile</button>
       <span class="spacer"></span>
-      <button class="btn-secondary" id="pf-cancel">Cancelar</button>
-      <button class="btn-primary" id="pf-save">Salvar</button>
+      <button class="btn-secondary" id="pf-cancel">Cancel</button>
+      <button class="btn-primary" id="pf-save">Save</button>
     </footer>
   </section>
 
@@ -231,62 +231,62 @@
       <p id="ask-text" class="ask-text"></p>
     </div>
     <footer class="confirm-actions">
-      <button class="btn-secondary" id="ask-no">Cancelar</button>
-      <button class="btn-primary" id="ask-yes">Confirmar</button>
+      <button class="btn-secondary" id="ask-no">Cancel</button>
+      <button class="btn-primary" id="ask-yes">Confirm</button>
     </footer>
   </section>
 
   <!-- Adicionar favorito (botão "+" da nova aba) -->
   <section id="fav-sheet" class="sheet small" role="dialog" aria-labelledby="fav-title">
     <div class="confirm-body left">
-      <h2 id="fav-title">Adicionar favorito</h2>
-      <label class="pf-label" for="fav-url">Endereço</label>
-      <input id="fav-url" class="pf-input" placeholder="exemplo.com" spellcheck="false" autocomplete="off" />
-      <p id="fav-error" class="fav-error" hidden>Digite um endereço de site, como exemplo.com.</p>
-      <label class="pf-label" for="fav-name">Nome <small>(opcional)</small></label>
+      <h2 id="fav-title">Add favorite</h2>
+      <label class="pf-label" for="fav-url">Address</label>
+      <input id="fav-url" class="pf-input" placeholder="example.com" spellcheck="false" autocomplete="off" />
+      <p id="fav-error" class="fav-error" hidden>Enter a website address, like example.com.</p>
+      <label class="pf-label" for="fav-name">Name <small>(optional)</small></label>
       <input id="fav-name" class="pf-input" maxlength="40" spellcheck="false" autocomplete="off" />
     </div>
     <footer class="confirm-actions">
-      <button class="btn-secondary" id="fav-cancel">Cancelar</button>
-      <button class="btn-primary" id="fav-save">Adicionar</button>
+      <button class="btn-secondary" id="fav-cancel">Cancel</button>
+      <button class="btn-primary" id="fav-save">Add</button>
     </footer>
   </section>
 
   <!-- Limpar histórico / dados de navegação -->
-  <section id="clear-sheet" class="sheet small" role="dialog" aria-label="Limpar">
+  <section id="clear-sheet" class="sheet small" role="dialog" aria-label="Clear">
     <div class="confirm-body left">
-      <h2 id="clear-title">Limpar histórico</h2>
+      <h2 id="clear-title">Clear history</h2>
       <div class="radio-list" id="clear-period">
-        <label><input type="radio" name="period" value="hour" /> Última hora</label>
-        <label><input type="radio" name="period" value="today" checked /> Hoje</label>
-        <label><input type="radio" name="period" value="2days" /> Hoje e ontem</label>
-        <label><input type="radio" name="period" value="all" /> Todo o histórico</label>
+        <label><input type="radio" name="period" value="hour" /> Last hour</label>
+        <label><input type="radio" name="period" value="today" checked /> Today</label>
+        <label><input type="radio" name="period" value="2days" /> Today and yesterday</label>
+        <label><input type="radio" name="period" value="all" /> All time</label>
       </div>
       <div class="check-list" id="clear-data">
-        <label><input type="checkbox" value="history" checked /> Histórico de navegação e buscas</label>
-        <label><input type="checkbox" value="cookies" /> Cookies e dados de sites <small>(todo o período)</small></label>
-        <label><input type="checkbox" value="cache" /> Imagens e arquivos em cache <small>(todo o período)</small></label>
+        <label><input type="checkbox" value="history" checked /> Browsing and search history</label>
+        <label><input type="checkbox" value="cookies" /> Cookies and site data <small>(all time)</small></label>
+        <label><input type="checkbox" value="cache" /> Cached images and files <small>(all time)</small></label>
       </div>
     </div>
     <footer class="confirm-actions">
-      <button class="btn-secondary" id="clear-no">Cancelar</button>
-      <button class="btn-primary danger" id="clear-yes">Limpar</button>
+      <button class="btn-secondary" id="clear-no">Cancel</button>
+      <button class="btn-primary danger" id="clear-yes">Clear</button>
     </footer>
   </section>
 
   <!-- Dados de sites -->
-  <section id="sites-sheet" class="sheet" role="dialog" aria-label="Dados de sites">
+  <section id="sites-sheet" class="sheet" role="dialog" aria-label="Site data">
     <header class="sheet-head">
-      <div><h2>Dados de sites</h2><p id="sites-count"></p></div>
-      <button class="tb small" id="sites-close" data-icon="x" title="Fechar"></button>
+      <div><h2>Site data</h2><p id="sites-count"></p></div>
+      <button class="tb small" id="sites-close" data-icon="x" title="Close"></button>
     </header>
     <div class="pf-body">
-      <input class="sb-search" id="sites-q" placeholder="Pesquisar sites" spellcheck="false" />
+      <input class="sb-search" id="sites-q" placeholder="Search sites" spellcheck="false" />
       <div class="sites-list" id="sites-list"></div>
     </div>
     <footer class="sheet-foot">
-      <span class="hint">Remover os dados de um site encerra o login nele.</span>
-      <button class="btn-danger" id="sites-all">Remover tudo</button>
+      <span class="hint">Removing a site’s data signs you out of it.</span>
+      <button class="btn-danger" id="sites-all">Remove all</button>
     </footer>
   </section>
 
@@ -298,8 +298,8 @@
       <p id="perm-text" class="ask-text"></p>
     </div>
     <footer class="confirm-actions">
-      <button class="btn-secondary" id="perm-no">Bloquear</button>
-      <button class="btn-primary" id="perm-yes">Permitir</button>
+      <button class="btn-secondary" id="perm-no">Block</button>
+      <button class="btn-primary" id="perm-yes">Allow</button>
     </footer>
   </section>
 

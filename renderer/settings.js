@@ -1,25 +1,25 @@
 'use strict';
-// Configurações (kona://configuracoes), pedido de permissão dos sites e avisos de download.
+// Configurações (kona://settings), pedido de permissão dos sites e avisos de download.
 
 const PERMS = [
-  ['camera', 'Câmera', 'camera', 'usar sua câmera'],
-  ['microphone', 'Microfone', 'mic', 'usar seu microfone'],
-  ['location', 'Localização', 'pin', 'saber sua localização'],
-  ['notifications', 'Notificações', 'bell', 'mostrar notificações'],
-  ['clipboard', 'Ler a área de transferência', 'clipboard', 'ler sua área de transferência'],
-  ['apps', 'Abrir aplicativos externos', 'external', 'abrir um aplicativo no seu computador'],
+  ['camera', 'Camera', 'camera', 'use your camera'],
+  ['microphone', 'Microphone', 'mic', 'use your microphone'],
+  ['location', 'Location', 'pin', 'know your location'],
+  ['notifications', 'Notifications', 'bell', 'show notifications'],
+  ['clipboard', 'Read the clipboard', 'clipboard', 'read your clipboard'],
+  ['apps', 'Open external apps', 'external', 'open an app on your computer'],
 ];
 const PERM_INFO = Object.fromEntries(PERMS.map(([k, label, ic, verb]) => [k, { label, ic, verb }]));
 
 const ST_SECTIONS = [
-  ['geral', 'Geral', 'gear'],
-  ['aparencia', 'Aparência', 'palette'],
-  ['privacidade', 'Privacidade e segurança', 'shield'],
-  ['permissoes', 'Permissões de sites', 'hand'],
+  ['geral', 'General', 'gear'],
+  ['aparencia', 'Appearance', 'palette'],
+  ['privacidade', 'Privacy and security', 'shield'],
+  ['permissoes', 'Site permissions', 'hand'],
   ['downloads', 'Downloads', 'download'],
-  ['perfis', 'Perfis', 'user'],
-  ['extensoes', 'Extensões', 'puzzle'],
-  ['sobre', 'Sobre o Kona', 'info'],
+  ['perfis', 'Profiles', 'user'],
+  ['extensoes', 'Extensions', 'puzzle'],
+  ['sobre', 'About Kona', 'info'],
 ];
 
 /* ───────────── Controles ───────────── */
@@ -80,102 +80,102 @@ const settingsPage = {
   },
 
   general() {
-    return this.section('geral', 'Geral',
-      stRow('Ao abrir o Kona', 'As abas dos grupos são sempre mantidas.',
-        stSelect('startup', [['newtab', 'Abrir uma nova aba'], ['restore', 'Restaurar as abas da última sessão']])) +
-      stRow('Mecanismo de pesquisa', 'Usado na barra de endereço.',
+    return this.section('geral', 'General',
+      stRow('When Kona starts', 'Tabs in groups are always kept.',
+        stSelect('startup', [['newtab', 'Open a new tab'], ['restore', 'Restore tabs from last session']])) +
+      stRow('Search engine', 'Used in the address bar.',
         stSelect('searchEngine', Object.entries(ENGINES).map(([k, e]) => [k, e.name]))) +
-      stRow('Sugestões de pesquisa', `Enquanto você digita na barra, o texto é enviado ao ${escapeHtml(engine().name)} para sugerir buscas.`,
+      stRow('Search suggestions', `As you type in the address bar, your text is sent to ${escapeHtml(engine().name)} to suggest searches.`,
         stSwitch('suggestions')) +
-      stRow('Guardar histórico de navegação', 'Sites visitados e buscas ficam neste computador, no perfil atual.',
+      stRow('Save browsing history', 'Visited sites and searches stay on this computer, in the current profile.',
         stSwitch('saveHistory')));
   },
 
   appearance() {
     const theme = settings.theme;
     const seg = ['light', 'dark', 'system'].map((t) =>
-      `<button class="${t === theme ? 'on' : ''}" data-theme-set="${t}">${{ light: 'Claro', dark: 'Escuro', system: 'Sistema' }[t]}</button>`).join('');
-    return this.section('aparencia', 'Aparência',
-      stRow('Tema', 'Vale para a interface e para as páginas que seguem o tema do sistema.', `<div class="seg st-seg">${seg}</div>`) +
-      stRow('Fundo e seções da nova aba', 'Escolha o fundo, uma cor ou uma foto sua, e o que aparece na nova aba.',
-        stButton('Personalizar…', 'customize')) +
-      stRow('Sons da interface', 'Sons curtos ao abrir menus, navegar pelas abas e passar pelos favoritos.', stSwitch('sounds')) +
-      stRow('Zoom padrão das páginas', null,
+      `<button class="${t === theme ? 'on' : ''}" data-theme-set="${t}">${{ light: 'Light', dark: 'Dark', system: 'System' }[t]}</button>`).join('');
+    return this.section('aparencia', 'Appearance',
+      stRow('Theme', 'Applies to Kona and to pages that follow the system theme.', `<div class="seg st-seg">${seg}</div>`) +
+      stRow('New tab background and sections', 'Pick a background, a color or your own photo, and choose what appears on the new tab.',
+        stButton('Customize…', 'customize')) +
+      stRow('Interface sounds', 'Short sounds when you open menus, move between tabs and hover over favorites.', stSwitch('sounds')) +
+      stRow('Default page zoom', null,
         stSelect('zoom', [[0.75, '75%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.25, '125%'], [1.5, '150%']])));
   },
 
   privacy() {
-    return this.section('privacidade', 'Privacidade e segurança',
+    return this.section('privacidade', 'Privacy and security',
       stRow('Cookies', {
-        allow: 'Todos os sites podem guardar e ler cookies.',
-        'block-third-party': 'Recomendado. Bloqueia os cookies que outros sites (anúncios, rastreadores) usam dentro da página que você está vendo.',
-        'block-all': 'Nenhum site guarda cookies enviados pela rede. Logins e carrinhos de compra deixam de funcionar.',
-      }[settings.cookies], stSelect('cookies', [['allow', 'Permitir todos'], ['block-third-party', 'Bloquear de terceiros'], ['block-all', 'Bloquear todos']])) +
-      stRow('Apagar cookies e dados de sites ao fechar o Kona', 'Você sai de todas as contas a cada vez que fecha o Kona.', stSwitch('clearOnExit')) +
-      stRow('Pedir aos sites para não vender nem compartilhar seus dados', 'Envia o sinal Global Privacy Control (GPC). Respeitá-lo é obrigatório por lei em alguns lugares.', stSwitch('gpc')) +
-      stRow('Sempre usar conexões seguras', 'Abre os sites por HTTPS. Se um site não tiver HTTPS, ele carrega normalmente sem criptografia.', stSwitch('httpsFirst')) +
-      stRow('DNS seguro', 'Criptografa as consultas de DNS (Quad9) e bloqueia sites conhecidos de golpes e malware. Desligue se algum endereço da rede da sua empresa não abrir.', stSwitch('secureDns')) +
-      stRow('Dados de sites', 'Veja quais sites guardam cookies neste perfil e apague os que quiser.', stButton('Ver dados de sites…', 'sites')) +
-      stRow('Limpar dados de navegação', 'Histórico, cookies e arquivos em cache.', stButton('Limpar…', 'clear-data')),
-      'As opções valem para o perfil atual. O modo privado segue as mesmas regras e ainda apaga tudo ao sair.');
+        allow: 'All sites can save and read cookies.',
+        'block-third-party': 'Recommended. Blocks cookies that other sites (ads, trackers) use inside the page you’re viewing.',
+        'block-all': 'No site can save cookies sent over the network. Sign-ins and shopping carts will stop working.',
+      }[settings.cookies], stSelect('cookies', [['allow', 'Allow all'], ['block-third-party', 'Block third-party'], ['block-all', 'Block all']])) +
+      stRow('Delete cookies and site data when Kona closes', 'You’ll be signed out of every account each time you close Kona.', stSwitch('clearOnExit')) +
+      stRow('Ask sites not to sell or share your data', 'Sends the Global Privacy Control (GPC) signal. Some places require sites by law to honor it.', stSwitch('gpc')) +
+      stRow('Always use secure connections', 'Opens sites over HTTPS. If a site doesn’t support HTTPS, it loads normally without encryption.', stSwitch('httpsFirst')) +
+      stRow('Secure DNS', 'Encrypts DNS lookups (Quad9) and blocks known scam and malware sites. Turn it off if an address on your company network won’t open.', stSwitch('secureDns')) +
+      stRow('Site data', 'See which sites store cookies in this profile and delete the ones you want.', stButton('View site data…', 'sites')) +
+      stRow('Clear browsing data', 'History, cookies and cached files.', stButton('Clear…', 'clear-data')),
+      'These options apply to the current profile. Private browsing follows the same rules and also deletes everything when you leave it.');
   },
 
   permissions() {
     const rows = PERMS.map(([k, label, ic]) => stRow(
       `<span class="st-ic">${icon(ic)}</span>${label}`, null,
-      stSelect(null, [['ask', 'Perguntar'], ['allow', 'Permitir'], ['block', 'Bloquear']], settings.permissions[k], `data-perm="${k}"`),
+      stSelect(null, [['ask', 'Ask'], ['allow', 'Allow'], ['block', 'Block']], settings.permissions[k], `data-perm="${k}"`),
     )).join('');
     const sites = Object.entries(settings.sites).filter(([, d]) => Object.keys(d).length);
     const list = sites.length
       ? sites.map(([origin, d]) => `
         <div class="st-site">
-          <div class="st-site-head"><b>${escapeHtml(origin.replace(/^https?:\/\//, ''))}</b>${stButton('Esquecer', 'site-forget', 'btn-link', `data-origin="${escapeHtml(origin)}"`)}</div>
+          <div class="st-site-head"><b>${escapeHtml(origin.replace(/^https?:\/\//, ''))}</b>${stButton('Forget', 'site-forget', 'btn-link', `data-origin="${escapeHtml(origin)}"`)}</div>
           <div class="st-site-perms">${Object.entries(d).map(([k, v]) => `
             <label class="st-chip"><span>${icon(PERM_INFO[k]?.ic || 'info')}${PERM_INFO[k]?.label || k}</span>
-              ${stSelect(null, [['allow', 'Permitir'], ['block', 'Bloquear']], v, `data-site="${escapeHtml(origin)}" data-kind="${k}"`)}</label>`).join('')}
+              ${stSelect(null, [['allow', 'Allow'], ['block', 'Block']], v, `data-site="${escapeHtml(origin)}" data-kind="${k}"`)}</label>`).join('')}
           </div>
         </div>`).join('')
-      : '<p class="st-empty">Nenhuma decisão salva ainda. Quando um site pedir uma permissão, sua resposta aparece aqui.</p>';
-    return this.section('permissoes', 'Permissões de sites', rows,
-      'O que os sites podem fazer sem perguntar. Compartilhar a tela fica bloqueado nesta versão.') +
-      `<div class="st-card st-sites"><h3>Decisões por site</h3>${list}</div>`;
+      : '<p class="st-empty">No saved choices yet. When a site asks for a permission, your answer will show up here.</p>';
+    return this.section('permissoes', 'Site permissions', rows,
+      'What sites can do without asking. Screen sharing is blocked in this version.') +
+      `<div class="st-card st-sites"><h3>Choices by site</h3>${list}</div>`;
   },
 
   downloads() {
-    const dir = settings.downloadDir || appInfo?.downloads || 'Pasta Downloads do sistema';
+    const dir = settings.downloadDir || appInfo?.downloads || 'System Downloads folder';
     return this.section('downloads', 'Downloads',
-      stRow('Salvar arquivos em', `<span class="st-path">${escapeHtml(dir)}</span>`,
-        stButton('Alterar…', 'pick-folder') + (settings.downloadDir ? stButton('Padrão', 'reset-folder', 'btn-link') : '')) +
-      stRow('Perguntar onde salvar cada arquivo', null, stSwitch('downloadAsk')));
+      stRow('Save files to', `<span class="st-path">${escapeHtml(dir)}</span>`,
+        stButton('Change…', 'pick-folder') + (settings.downloadDir ? stButton('Default', 'reset-folder', 'btn-link') : '')) +
+      stRow('Ask where to save each file', null, stSwitch('downloadAsk')));
   },
 
   profiles() {
     const rows = PROFILES.list.map((p) => `
       <div class="st-row">
-        <div class="st-text st-profile">${avatarHtml(p.avatar, p.name, 'md')}<b>${escapeHtml(p.name)}</b>${p.id === PROFILES.current ? '<span class="st-tag">em uso</span>' : ''}</div>
-        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton('Usar', 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton('Editar…', 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
+        <div class="st-text st-profile">${avatarHtml(p.avatar, p.name, 'md')}<b>${escapeHtml(p.name)}</b>${p.id === PROFILES.current ? '<span class="st-tag">in use</span>' : ''}</div>
+        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton('Use', 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton('Edit…', 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
       </div>`).join('');
-    return this.section('perfis', 'Perfis', rows + `<div class="st-row"><div class="st-text"></div><div class="st-ctrl">${stButton('Novo perfil', 'profile-new', 'btn-primary')}</div></div>`,
-      'Cada perfil tem histórico, favoritos, ajustes, logins e extensões próprios.');
+    return this.section('perfis', 'Profiles', rows + `<div class="st-row"><div class="st-text"></div><div class="st-ctrl">${stButton('New profile', 'profile-new', 'btn-primary')}</div></div>`,
+      'Each profile has its own history, favorites, settings, sign-ins and extensions.');
   },
 
   extensions() {
     const n = typeof extensions !== 'undefined' ? extensions.length : 0;
-    return this.section('extensoes', 'Extensões',
-      stRow(n ? `${n} ${n === 1 ? 'extensão instalada' : 'extensões instaladas'}` : 'Nenhuma extensão instalada',
-        'Extensões da Chrome Web Store, por perfil. A compatibilidade pode variar.',
-        stButton('Gerenciar…', 'extensions') + stButton('Chrome Web Store', 'store', 'btn-primary')));
+    return this.section('extensoes', 'Extensions',
+      stRow(n ? `${n} ${n === 1 ? 'extension installed' : 'extensions installed'}` : 'No extensions installed',
+        'Extensions from the Chrome Web Store, per profile. Compatibility may vary.',
+        stButton('Manage…', 'extensions') + stButton('Chrome Web Store', 'store', 'btn-primary')));
   },
 
   about() {
     const v = appInfo || {};
     const keys = [
-      ['Ctrl+T', 'Nova aba'], ['Ctrl+W', 'Fechar aba'], ['Ctrl+L', 'Barra de endereço'], ['Ctrl+Tab', 'Próxima aba'],
-      ['Alt+Z', 'Menu lateral'], ['Ctrl+D', 'Favoritar página'], ['Ctrl+Shift+D', 'Guardar na Lista de Leitura'],
-      ['Ctrl+H', 'Histórico'], ['Ctrl+Shift+N', 'Modo privado'], ['Ctrl+,', 'Configurações'], ['Alt+V', 'Todas as abas'],
+      ['Ctrl+T', 'New tab'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'],
+      ['Alt+Z', 'Sidebar'], ['Ctrl+D', 'Add page to Favorites'], ['Ctrl+Shift+D', 'Save to Reading List'],
+      ['Ctrl+H', 'History'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
     ];
-    return this.section('sobre', 'Sobre o Kona',
-      stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `Versão ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
+    return this.section('sobre', 'About Kona',
+      stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `Version ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
       `<div class="st-keys">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`);
   },
 };
@@ -240,7 +240,7 @@ let siteData = [];
 async function openSitesSheet() {
   openSheet('#sites-sheet');
   $('#sites-q').value = '';
-  $('#sites-list').innerHTML = '<p class="st-empty">Carregando…</p>';
+  $('#sites-list').innerHTML = '<p class="st-empty">Loading…</p>';
   siteData = (await api?.sitesList(PROFILES.currentProfile().partition)) || [];
   renderSites();
 }
@@ -252,9 +252,9 @@ function renderSites() {
     <div class="sb-row" data-site="${escapeHtml(s.site)}">
       <span class="sb-fav"><span class="mono">${escapeHtml(s.site[0].toUpperCase())}</span></span>
       <div class="sb-row-text"><b>${escapeHtml(s.site)}</b><span>${s.count} ${s.count === 1 ? 'cookie' : 'cookies'}</span></div>
-      <button class="btn-link" data-remove-site="${escapeHtml(s.site)}">Remover</button>
+      <button class="btn-link" data-remove-site="${escapeHtml(s.site)}">Remove</button>
     </div>`).join('')
-    : `<p class="st-empty">${siteData.length ? 'Nenhum site combina com a busca.' : 'Nenhum site guarda cookies neste perfil.'}</p>`;
+    : `<p class="st-empty">${siteData.length ? 'No sites match your search.' : 'No sites store cookies in this profile.'}</p>`;
 }
 $('#sites-q').addEventListener('input', renderSites);
 $('#sites-list').addEventListener('click', async (e) => {
@@ -265,7 +265,7 @@ $('#sites-list').addEventListener('click', async (e) => {
   renderSites();
 });
 $('#sites-all').addEventListener('click', async () => {
-  const yes = await ask({ title: 'Remover os dados de todos os sites?', text: 'Você sairá das contas em que está conectado neste perfil.', ok: 'Remover tudo', danger: true });
+  const yes = await ask({ title: 'Remove data for all sites?', text: 'You’ll be signed out of the accounts you’re signed in to in this profile.', ok: 'Remove all', danger: true });
   if (!yes) return;
   await api?.clearBrowsingData(PROFILES.currentProfile().partition, { cookies: true });
   siteData = [];
@@ -283,10 +283,10 @@ function nextPerm() {
   const { origin, kinds } = permCurrent;
   const host = origin.replace(/^https?:\/\//, '');
   $('#perm-icon').innerHTML = icon(PERM_INFO[kinds[0]]?.ic || 'info');
-  $('#perm-title').textContent = `“${host}” quer ${kinds.map((k) => PERM_INFO[k]?.verb || k).join(' e ')}`;
+  $('#perm-title').textContent = `“${host}” wants to ${kinds.map((k) => PERM_INFO[k]?.verb || k).join(' and ')}`;
   $('#perm-text').textContent = permCurrent.private
-    ? 'No modo privado, a resposta vale só para esta sessão.'
-    : 'O Kona lembra a sua resposta. Dá para mudar depois em Configurações › Permissões de sites.';
+    ? 'In private browsing, your answer only applies to this session.'
+    : 'Kona remembers your answer. You can change it later in Settings › Site permissions.';
   openSheet('#perm-sheet');
 }
 function answerPerm(allow) {
@@ -308,11 +308,11 @@ $('#perm-yes').addEventListener('click', () => answerPerm(true));
 $('#perm-no').addEventListener('click', () => answerPerm(false));
 
 /* ───────────── Downloads ───────────── */
-api?.on('download:start', ({ name }) => toast(`Baixando “${name}”…`));
+api?.on('download:start', ({ name }) => toast(`Downloading “${name}”…`));
 api?.on('download:done', ({ name, path, state }) => {
-  if (state === 'completed') toast(`“${name}” baixado`, { label: 'Mostrar na pasta', run: () => api.showDownload(path) });
-  else if (state === 'cancelled') toast('Download cancelado');
-  else toast(`Não foi possível baixar “${name}”`);
+  if (state === 'completed') toast(`“${name}” downloaded`, { label: 'Show in folder', run: () => api.showDownload(path) });
+  else if (state === 'cancelled') toast('Download canceled');
+  else toast(`Couldn’t download “${name}”`);
 });
 
 hydrateIcons($('#perm-sheet'));

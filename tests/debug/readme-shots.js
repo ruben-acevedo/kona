@@ -14,27 +14,27 @@ app.whenReady().then(async () => {
   const js = (c) => wc.executeJavaScript(c);
   const shot = async (name) => { await sleep(900); fs.writeFileSync(path.join(OUT, name), (await wc.capturePage()).toPNG()); console.log('R', name); };
   await js(`settings.sounds = false; 0`);
-  await shot('nova-aba.png');
+  await shot('new-tab.png');
 
-  for (const u of ['https://pt.wikipedia.org/wiki/Abacaxi', 'https://pt.wikipedia.org/wiki/Kona_(Hava%C3%AD)', 'https://www.openstreetmap.org/#map=12/19.64/-155.99', 'https://news.ycombinator.com/']) {
+  for (const u of ['https://en.wikipedia.org/wiki/Pineapple', 'https://en.wikipedia.org/wiki/Kona_District,_Hawaii', 'https://www.openstreetmap.org/#map=12/19.64/-155.99', 'https://news.ycombinator.com/']) {
     await js(`newTab(${JSON.stringify(u)}); 0`);
     await sleep(3500);
   }
   await js(`activate(tabs[1].id); 0`);
   await sleep(2500);
-  await shot('pagina.png');
+  await shot('page.png');
   await js(`activate(tabs[0].id); 0`);
   await sleep(1200);
   await js(`openOverview(); 0`);
   await sleep(1500);
-  await shot('visao-geral.png');
+  await shot('overview.png');
   await js(`closeOverview(); activate(tabs[1].id); 0`);
   await sleep(1500);
   await js(`toggleSidebar(true); 0`);
   await sleep(1000);
-  await shot('menu-lateral.png');
+  await shot('sidebar.png');
   await js(`toggleSidebar(false); activate(tabs[0].id); settings.theme = 'light'; applyTheme(true); 0`);
   await sleep(1200);
-  await shot('nova-aba-clara.png');
+  await shot('new-tab-light.png');
   app.exit(0);
 });

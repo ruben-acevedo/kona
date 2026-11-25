@@ -3,7 +3,7 @@
 
 /* ───────────── Pergunta de confirmação (genérica) ───────────── */
 let askResolve = null;
-function ask({ title, text = '', ok = 'Confirmar', danger = false }) {
+function ask({ title, text = '', ok = 'Confirm', danger = false }) {
   if (askResolve) askResolve(false);
   $('#ask-title').textContent = title;
   $('#ask-text').textContent = text;
@@ -27,7 +27,7 @@ $('#ask-no').addEventListener('click', () => answerAsk(false));
 function renderProfileUI() {
   const p = PROFILES.currentProfile();
   $('#sb-profile').innerHTML = `${avatarHtml(p.avatar, p.name)}<span class="pf-name">${escapeHtml(p.name)}</span>${icon('chevron')}`;
-  $('#sb-profile').title = `Perfil: ${p.name}`;
+  $('#sb-profile').title = `Profile: ${p.name}`;
 }
 
 function buildProfilePop() {
@@ -37,7 +37,7 @@ function buildProfilePop() {
       <span class="pf-row-name">${escapeHtml(p.name)}</span>
       ${p.id === PROFILES.current ? `<span class="pf-check">${icon('check')}</span>` : ''}
     </button>`).join('');
-  $('#pf-edit-label').textContent = `Editar “${PROFILES.currentProfile().name}”`;
+  $('#pf-edit-label').textContent = `Edit “${PROFILES.currentProfile().name}”`;
 }
 
 function toggleProfilePop(force) {
@@ -79,7 +79,7 @@ async function switchProfile(id) {
   const p = PROFILES.byId(id);
   if (!p || id === PROFILES.current) return;
   const ok = await (api?.profileUse(p.partition) ?? Promise.resolve(true));
-  if (ok === false) { toast('Não foi possível abrir esse perfil'); return; }
+  if (ok === false) { toast('Couldn’t open that profile'); return; }
   // As abas do perfil anterior ficam guardadas nele; o novo perfil reabre as dele
   await library.beforeProfileSwitch();
   PROFILES.setCurrent(id);
@@ -91,7 +91,7 @@ async function switchProfile(id) {
   buildCustomize();
   refreshExtensions();
   renderProfileUI();
-  toast(`Perfil “${p.name}”`);
+  toast(`Switched to “${p.name}”`);
 }
 
 /* ───────────── Criar / editar ───────────── */
@@ -104,12 +104,12 @@ function openProfileSheet(mode, id) {
   draft = {
     mode,
     id: p?.id,
-    name: p?.name || `Perfil ${PROFILES.list.length + 1}`,
+    name: p?.name || `Profile ${PROFILES.list.length + 1}`,
     avatar: p ? { ...p.avatar } : { type: 'preset', id: fresh.id },
     photo: p?.photo || (p?.avatar?.type === 'image' ? p.avatar.data : null), // a foto enviada (só uma)
   };
-  $('#pf-title').textContent = mode === 'edit' ? 'Editar perfil' : 'Novo perfil';
-  $('#pf-save').textContent = mode === 'edit' ? 'Salvar' : 'Criar perfil';
+  $('#pf-title').textContent = mode === 'edit' ? 'Edit profile' : 'New profile';
+  $('#pf-save').textContent = mode === 'edit' ? 'Save' : 'Create profile';
   $('#pf-delete').hidden = mode !== 'edit' || PROFILES.list.length < 2;
   $('#pf-name').value = draft.name;
   renderProfileSheet();
@@ -123,8 +123,8 @@ function renderProfileSheet() {
   const isSel = (a) => draft.avatar.type === 'preset' && draft.avatar.id === a.id;
   const photoSel = draft.avatar.type === 'image';
   $('#pf-grid').innerHTML =
-    `<button class="pf-tile upload" id="pf-upload" title="Enviar foto">${icon('camera')}<span>Foto</span></button>` +
-    (draft.photo ? `<button class="pf-tile${photoSel ? ' sel' : ''}" data-photo="1" title="Sua foto">${avatarHtml({ type: 'image', data: draft.photo }, name, 'tile')}</button>` : '') +
+    `<button class="pf-tile upload" id="pf-upload" title="Upload photo">${icon('camera')}<span>Photo</span></button>` +
+    (draft.photo ? `<button class="pf-tile${photoSel ? ' sel' : ''}" data-photo="1" title="Your photo">${avatarHtml({ type: 'image', data: draft.photo }, name, 'tile')}</button>` : '') +
     AVATARS.map((a) => `<button class="pf-tile${isSel(a) ? ' sel' : ''}" data-av="${a.id}" title="${a.name}">${avatarHtml({ type: 'preset', id: a.id }, name, 'tile')}</button>`).join('');
 }
 
@@ -159,7 +159,7 @@ $('#avatar-file').addEventListener('change', async (e) => {
     draft.avatar = { type: 'image', data: draft.photo };
     renderProfileSheet();
   } catch {
-    toast('Não foi possível abrir essa imagem');
+    toast('Couldn’t open that image');
   }
 });
 
@@ -167,13 +167,13 @@ async function saveProfile() {
   if (!draft) return;
   const name = $('#pf-name').value.trim().slice(0, 32) || draft.name;
   if (draft.mode === 'edit') {
-    if (!PROFILES.update(draft.id, { name, avatar: draft.avatar, photo: draft.photo })) { toast('Não foi possível salvar: imagem grande demais'); return; }
+    if (!PROFILES.update(draft.id, { name, avatar: draft.avatar, photo: draft.photo })) { toast('Couldn’t save: the image is too large'); return; }
     closeSheet('#profile-sheet');
     renderProfileUI();
-    toast('Perfil atualizado');
+    toast('Profile updated');
   } else {
     const p = PROFILES.create({ name, avatar: draft.avatar, photo: draft.photo });
-    if (!p) { toast('Não foi possível criar o perfil: imagem grande demais'); return; }
+    if (!p) { toast('Couldn’t create the profile: the image is too large'); return; }
     closeSheet('#profile-sheet');
     await switchProfile(p.id);
   }
@@ -184,9 +184,9 @@ async function deleteProfile(id) {
   const p = PROFILES.byId(id);
   if (!p || PROFILES.list.length < 2) return;
   const yes = await ask({
-    title: `Apagar o perfil “${p.name}”?`,
-    text: 'O histórico, os ajustes, os logins e as extensões deste perfil serão apagados deste computador. Isso não pode ser desfeito.',
-    ok: 'Apagar perfil',
+    title: `Delete the profile “${p.name}”?`,
+    text: 'This profile’s history, settings, sign-ins and extensions will be deleted from this computer. This can’t be undone.',
+    ok: 'Delete profile',
     danger: true,
   });
   if (!yes) return;
@@ -195,7 +195,7 @@ async function deleteProfile(id) {
   await api?.profileForget(p.partition);
   PROFILES.remove(id);
   renderProfileUI();
-  toast(`Perfil “${p.name}” apagado`);
+  toast(`Profile “${p.name}” deleted`);
 }
 
 $('#pf-save').addEventListener('click', saveProfile);

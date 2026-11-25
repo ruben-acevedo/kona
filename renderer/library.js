@@ -2,22 +2,30 @@
 // Biblioteca (por perfil): favoritos, lista de leitura, grupos de abas/sessão e modo privado.
 // Carrega antes do app.js: aqui só há dados e funções; nada roda que dependa do app.js.
 
-// Os sites que mais aparecem nas barras de favoritos dos outros navegadores (versões do Brasil)
+// Os sites que mais aparecem nas barras de favoritos dos outros navegadores (versões internacionais)
 const DEFAULT_BOOKMARKS = [
   ['YouTube', 'https://www.youtube.com'],
   ['Gmail', 'https://mail.google.com'],
-  ['Amazon', 'https://www.amazon.com.br'],
-  ['Mercado Livre', 'https://www.mercadolivre.com.br'],
+  ['Amazon', 'https://www.amazon.com'],
+  ['Reddit', 'https://www.reddit.com'],
   ['Netflix', 'https://www.netflix.com'],
   ['Instagram', 'https://www.instagram.com'],
   ['WhatsApp', 'https://web.whatsapp.com'],
-  ['Wikipédia', 'https://pt.wikipedia.org'],
+  ['Wikipedia', 'https://en.wikipedia.org'],
   ['ChatGPT', 'https://chatgpt.com'],
   ['Spotify', 'https://open.spotify.com'],
 ];
-// Lista padrão antiga: perfis que nunca mexeram nela recebem a nova
-const OLD_DEFAULT_URLS = ['https://pt.wikipedia.org', 'https://github.com', 'https://www.youtube.com', 'https://developer.mozilla.org',
-  'https://www.figma.com', 'https://news.ycombinator.com', 'https://www.electronjs.org', 'https://www.openstreetmap.org'].join(' ');
+// Listas padrão antigas: perfis que nunca mexeram nelas recebem a nova
+const OLD_DEFAULT_URLS = [
+  ['https://pt.wikipedia.org', 'https://github.com', 'https://www.youtube.com', 'https://developer.mozilla.org',
+    'https://www.figma.com', 'https://news.ycombinator.com', 'https://www.electronjs.org', 'https://www.openstreetmap.org'],
+  ['https://www.youtube.com', 'https://mail.google.com', 'https://www.amazon.com.br', 'https://www.mercadolivre.com.br',
+    'https://www.netflix.com', 'https://www.instagram.com', 'https://web.whatsapp.com', 'https://pt.wikipedia.org',
+    'https://chatgpt.com', 'https://open.spotify.com'],
+].map((l) => l.join(' '));
+
+// Endereços internos antigos (antes da tradução) que ainda podem estar em sessões salvas
+const LEGACY_URLS = { 'kona://inicio': 'kona://start', 'kona://configuracoes': 'kona://settings' };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const readJSON = (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
@@ -29,7 +37,7 @@ const bookmarks = {
   list: [],
   load() {
     let saved = readJSON(profileKey('bookmarks'));
-    if (Array.isArray(saved) && saved.map((b) => b.url).join(' ') === OLD_DEFAULT_URLS) saved = null;
+    if (Array.isArray(saved) && OLD_DEFAULT_URLS.includes(saved.map((b) => b.url).join(' '))) saved = null;
     this.list = Array.isArray(saved) ? saved : DEFAULT_BOOKMARKS.map(([title, url]) => ({ id: uid(), title, url }));
     if (!saved) this.save();
   },
@@ -83,7 +91,7 @@ const tabSets = {
   group(id) { return this.data.groups.find((g) => g.id === id); },
   snapshotOf(id) { return id === 'default' ? this.data.default : this.group(id); },
   createGroup(name) {
-    const g = { id: uid(), name: name.trim().slice(0, 40) || 'Grupo sem nome', tabs: [], active: 0 };
+    const g = { id: uid(), name: name.trim().slice(0, 40) || 'Untitled group', tabs: [], active: 0 };
     this.data.groups.push(g);
     this.save();
     return g;
@@ -139,7 +147,7 @@ const library = {
   openSnapshot(snap) {
     this.closeAllLive();
     const list = snap?.tabs?.length ? snap.tabs : [{ url: START }];
-    for (const s of list) makeTab(s.url, { title: s.title });
+    for (const s of list) makeTab(LEGACY_URLS[s.url] || s.url, { title: LEGACY_URLS[s.url] ? '' : s.title });
     activate(tabs[Math.min(snap?.active || 0, tabs.length - 1)].id);
     prewarmTabs();
   },

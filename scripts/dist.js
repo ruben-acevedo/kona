@@ -1,8 +1,8 @@
 // Gera o instalador do Windows a partir do WSL:
-//   0. installer/KonaSetup.cs (/define:UNINSTALL) → build-extra/Desinstalar Kona.exe: a janela de
+//   0. installer/KonaSetup.cs (/define:UNINSTALL) → build-extra/Kona Uninstaller.exe: a janela de
 //      desinstalação, que vai dentro do app (package.json → build.extraFiles) e o Windows chama.
-//   1. electron-builder → dist/Kona-<versão>-update.exe: o instalador NSIS (motor). Instala por
-//      usuário, cria atalhos, registra a desinstalação e é o que as atualizações automáticas baixam.
+//   1. electron-builder → dist/Kona-<versão>-update.exe: o instalador NSIS (motor). Instala para
+//      todos os usuários (Program Files, pede administrador), cria atalhos, registra a desinstalação e é o que as atualizações automáticas baixam.
 //   2. installer/KonaSetup.cs → dist/Kona-Setup-<versão>.exe: a janela de instalação do Kona
 //      (WPF, compilada com o csc.exe que vem no Windows), com o motor embutido rodando em silêncio.
 //      É o arquivo que as pessoas baixam.
@@ -18,7 +18,7 @@
 //
 // Assinatura de código: com um certificado, defina CSC_LINK (arquivo .pfx) e CSC_KEY_PASSWORD antes
 // de rodar; o electron-builder assina o Kona.exe e o motor. As duas janelas (Kona-Setup e
-// Desinstalar Kona) ainda precisam ser assinadas com o mesmo certificado — ver ROADMAP (E1).
+// Kona Uninstaller) ainda precisam ser assinadas com o mesmo certificado — ver ROADMAP (E1).
 // Sem certificado tudo sai sem assinatura (o Windows SmartScreen avisa na 1ª instalação).
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -59,7 +59,7 @@ function compile({ outFile, uninstall = false, engine = null, estimatedBytes = 0
   const info = path.join(work, uninstall ? 'BuildInfoUninstall.cs' : 'BuildInfo.cs');
   fs.writeFileSync(info, `using System.Reflection;
 [assembly: AssemblyTitle("Kona")]
-[assembly: AssemblyDescription(${JSON.stringify(uninstall ? 'Desinstalador do Kona' : 'Instalador do Kona')})]
+[assembly: AssemblyDescription(${JSON.stringify(uninstall ? 'Kona Uninstaller' : 'Kona Setup')})]
 [assembly: AssemblyProduct("Kona")]
 [assembly: AssemblyCompany(${JSON.stringify(pkg.author.name)})]
 [assembly: AssemblyCopyright(${JSON.stringify(pkg.build.copyright)})]
@@ -92,7 +92,8 @@ const dirSize = (d) => fs.readdirSync(d, { withFileTypes: true })
 
 /* ── 0 e 1. Desinstalador + motor NSIS ── */
 if (!installerOnly) {
-  compile({ outFile: path.join(ROOT, 'build-extra', 'Desinstalar Kona.exe'), uninstall: true });
+  fs.rmSync(path.join(ROOT, 'build-extra'), { recursive: true, force: true });
+  compile({ outFile: path.join(ROOT, 'build-extra', 'Kona Uninstaller.exe'), uninstall: true });
   const r = spawnSync('npx', ['electron-builder', '--win', '--x64', '--publish', publish ? 'always' : 'never',
     `-c.electronDist=${electronDist}`, `-c.directories.output=${out}`], { cwd: ROOT, env, stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status ?? 1);

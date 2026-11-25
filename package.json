@@ -2,7 +2,7 @@
   "name": "kona",
   "productName": "Kona",
   "version": "0.1.0",
-  "description": "Navegador com design inteligente e alta performance",
+  "description": "A web browser with smart design and high performance",
   "main": "main.js",
   "scripts": {
     "start": "node scripts/start.js",
@@ -79,7 +79,7 @@
     },
     "nsis": {
       "oneClick": true,
-      "perMachine": false,
+      "perMachine": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "Kona",
@@ -99,8 +99,8 @@
     ],
     "extraFiles": [
       {
-        "from": "build-extra/Desinstalar Kona.exe",
-        "to": "Desinstalar Kona.exe"
+        "from": "build-extra/Kona Uninstaller.exe",
+        "to": "Kona Uninstaller.exe"
       }
     ]
   }

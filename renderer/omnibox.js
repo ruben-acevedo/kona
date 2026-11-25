@@ -135,7 +135,7 @@ const omnibox = {
     clearTimeout(this.timer);
     if (!q) {
       const recent = browseHistory.recentSearches(6).map((e) => ({ kind: 'search', from: 'history', text: e.q, query: e.q }));
-      this.render(recent, -1, 'Pesquisas recentes');
+      this.render(recent, -1, 'Recent searches');
       return;
     }
     this.render(this.compose(q, this.cache.get(q.toLowerCase()) || []), 0);
@@ -157,8 +157,8 @@ const omnibox = {
   compose(q, suggestions) {
     const url = toUrl(q);
     const items = [];
-    if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: 'Ir para o site' });
-    else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: `Pesquisa ${engine().name}` });
+    if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: 'Go to site' });
+    else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: `${engine().name} Search` });
     const seen = new Set([q.toLowerCase()]);
     for (const v of browseHistory.matchVisits(q, 3)) {
       items.push({ kind: 'visit', text: v.title || hostOf(v.url), url: v.url, sub: v.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') });
@@ -196,7 +196,7 @@ const omnibox = {
       return `<div class="om-row${i === sel ? ' sel' : ''}" data-i="${i}" role="option">
         <span class="om-ic">${icon(ic)}</span>
         <span class="om-text">${this.highlight(it.text)}${sub}</span>
-        ${removable ? `<button class="om-x" title="Remover do histórico" tabindex="-1">${icon('x')}</button>` : ''}
+        ${removable ? `<button class="om-x" title="Remove from history" tabindex="-1">${icon('x')}</button>` : ''}
       </div>`;
     }).join('');
     this.el.innerHTML = (heading ? `<div class="om-head">${heading}</div>` : '') + rows;

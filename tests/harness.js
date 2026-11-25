@@ -24,7 +24,7 @@ const startServer = require('./fixtures/server');
 require('../main.js');
 
 const SCREENS = path.join(OUT, 'screens');
-const SETTINGS_URL = 'kona://configuracoes';
+const SETTINGS_URL = 'kona://settings';
 const BASELINE = path.join(__dirname, 'baseline', process.platform); // fontes e suavização mudam por sistema
 fs.mkdirSync(SCREENS, { recursive: true });
 
@@ -820,7 +820,7 @@ async function suiteLibrary() {
   await perf(S, 'entrar no modo privado', () => click('#sb-sets [data-set="private"]'), { ms: 900 });
   await sleep(400);
   const pv = await js(`({ priv: document.body.classList.contains('private'), part: active().partition, ph: document.querySelector('#tabs .tab.active input').placeholder })`);
-  record(S, 'modo privado: sessão em memória e barra indicando', pv.priv && /^kona-private-/.test(pv.part) && pv.ph.startsWith('Navegação privada') ? 'PASS' : 'FAIL', JSON.stringify(pv));
+  record(S, 'modo privado: sessão em memória e barra indicando', pv.priv && /^kona-private-/.test(pv.part) && pv.ph.startsWith('Private browsing') ? 'PASS' : 'FAIL', JSON.stringify(pv));
   await js('toggleSidebar(false); 0'); await sleep(300);
   await openUrlInActiveTab(T('/text')); await sleep(300);
   await (await guestOf()).executeJavaScript(`document.cookie = 'privado=1; max-age=3600'; 0`);
@@ -954,7 +954,7 @@ async function suiteSettings() {
   const got = await until(() => fs.existsSync(path.join(dlDir, 'kona-teste.txt')), 8000);
   await sleep(300);
   const toastTxt = await js(`document.getElementById('toast').textContent`);
-  record(S, 'download vai para a pasta escolhida e avisa', got && toastTxt.includes('baixado') ? 'PASS' : 'FAIL', `arquivo: ${got} · aviso: “${toastTxt}”`);
+  record(S, 'download vai para a pasta escolhida e avisa', got && toastTxt.includes('downloaded') ? 'PASS' : 'FAIL', `arquivo: ${got} · aviso: “${toastTxt}”`);
   await js(`settings.downloadDir = null; saveSettings(); while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id); 0`); await sleep(300);
 
   // aparência da página nos dois temas
@@ -964,7 +964,7 @@ async function suiteSettings() {
     await contrast('visual', `configurações ${theme}`, ['.st-text b', '.st-text p', '.st-nav-item', '.st-intro', '.st-sec h2'], img);
   }
   await js(`settings.theme = 'dark'; applyTheme(); 0`);
-  await js(`while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id); if (active().url !== START) { active().url = START; active().title = 'Nova Aba'; render(); } 0`); await sleep(400);
+  await js(`while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id); if (active().url !== START) { active().url = START; active().title = 'New Tab'; render(); } 0`); await sleep(400);
 }
 
 async function suiteOmnibox() {

@@ -1,14 +1,20 @@
 // Instalador e desinstalador do Kona: as janelas que a pessoa vê.
 //
-// Instalar (Kona-Setup-<versão>.exe): por baixo roda o instalador NSIS gerado pelo electron-builder
-// (embutido como recurso "payload.exe") em modo silencioso. Ele cuida do que importa no Windows:
-// arquivos em %LOCALAPPDATA%\Programs\Kona, atalhos, entrada em "Adicionar ou remover programas"
-// e as atualizações automáticas (que usam o NSIS direto, sem esta janela).
+// Instalar (Kona-Setup-<versão>.exe): mostra a pasta de instalação (padrão C:\Program Files\Kona,
+// dá para trocar) e o botão Install. Por baixo roda o instalador NSIS gerado pelo electron-builder
+// (embutido como recurso "payload.exe") em modo silencioso e elevado (o Windows pede permissão de
+// administrador ao clicar em Install). O NSIS cuida do que importa no Windows: arquivos, atalhos
+// para todos os usuários, entrada em "Adicionar ou remover programas" e as atualizações automáticas
+// (que usam o NSIS direto, sem esta janela). Esta janela continua sem elevação, para o "Open Kona"
+// abrir o navegador como usuário comum.
 //
-// Desinstalar ("Desinstalar Kona.exe", compilado com /define:UNINSTALL e instalado junto com o app):
-// o Windows o chama pelo "Desinstalar" das Configurações. Ele pergunta, roda o desinstalador NSIS
-// em silêncio e mostra o progresso. Chamado com argumentos do NSIS (/S, _?=…), como acontece numa
-// atualização, só repassa tudo ao desinstalador NSIS, sem janela.
+// Desinstalar ("Kona Uninstaller.exe", compilado com /define:UNINSTALL e instalado junto com o app):
+// o Windows o chama pelo "Desinstalar" das Configurações. Ele pergunta e, ao confirmar, roda uma
+// cópia elevada de si mesmo (--remove) que chama o desinstalador NSIS em silêncio; a janela mostra
+// o progresso. Chamado com argumentos do NSIS (/S, _?=…), como acontece numa atualização, só repassa
+// tudo ao desinstalador NSIS, sem janela.
+//
+// Todo o texto que aparece na tela está em inglês.
 //
 // Compilado pelo scripts/dist.js com o csc.exe do .NET Framework 4.8 (já vem no Windows 10/11):
 // por isso é C# 5 (sem interpolação de strings nem operador ?.).
@@ -16,11 +22,13 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -47,6 +55,8 @@ static class Program
             }
         }
 #if UNINSTALL
+        // Parte elevada da remoção: "--remove <pasta>" (chamada pela janela, com permissão de administrador)
+        if (args.Length >= 2 && args[0] == "--remove") return Engine.RemoveElevated(args[1]);
         string instDir = IOPath.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         // Atualizações e desinstalação silenciosa: repassa ao desinstalador NSIS
         foreach (string a in args) if (a == "/S" || a.StartsWith("_?=")) return Engine.ProxyUninstall(args);
@@ -72,10 +82,17 @@ enum Mode { Install, Uninstall }
 static class Engine
 {
     public const string UninstallerName = "Uninstall Kona.exe";
+    public const int ErrorCancelled = 1223; // a pessoa recusou o pedido de administrador do Windows
 
+    /// <summary>C:\Program Files\Kona (a pasta de 64 bits, mesmo que este processo rode em 32).</summary>
     public static string DefaultInstallDir
     {
-        get { return IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Kona"); }
+        get
+        {
+            string pf = Environment.GetEnvironmentVariable("ProgramW6432");
+            if (string.IsNullOrEmpty(pf)) pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            return IOPath.Combine(pf, "Kona");
+        }
     }
 
     public static string DataDir
@@ -96,11 +113,57 @@ static class Engine
         return Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, CreateNoWindow = true });
     }
 
+    /// <summary>
+    /// Roda como administrador (o Windows mostra o pedido de permissão; se o processo já é elevado,
+    /// não pergunta). Devolve null se a pessoa recusar.
+    /// </summary>
+    public static Process RunElevated(string exe, string args)
+    {
+        try
+        {
+            return Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden });
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            if (e.NativeErrorCode == ErrorCancelled) return null;
+            throw;
+        }
+    }
+
+    /// <summary>Argumentos do NSIS: /D= define a pasta e precisa vir por último, sem aspas.</summary>
+    public static string InstallArgs(string dir) { return "/S /D=" + dir.TrimEnd('\\'); }
+
     public static int InstallSilently()
     {
         string payload = ExtractPayload();
-        try { Process p = Run(payload, "/S"); p.WaitForExit(); return p.ExitCode; }
+        try
+        {
+            Process p = RunElevated(payload, InstallArgs(DefaultInstallDir));
+            if (p == null) return ErrorCancelled;
+            p.WaitForExit();
+            return p.ExitCode;
+        }
         finally { TryDelete(payload); }
+    }
+
+    /// <summary>
+    /// Parte elevada da desinstalação: roda o desinstalador NSIS no lugar ("_?=", para poder esperar
+    /// por ele) e apaga o que sobra da pasta. Os dados pessoais (/KEEP_APP_DATA) ficam a cargo da
+    /// janela, que roda como o usuário.
+    /// </summary>
+    public static int RemoveElevated(string dir)
+    {
+        dir = dir.TrimEnd('\\');
+        string nsis = IOPath.Combine(dir, UninstallerName);
+        int code = 0;
+        if (File.Exists(nsis))
+        {
+            Process p = Run(nsis, "/S /allusers /KEEP_APP_DATA _?=" + dir);
+            p.WaitForExit();
+            code = p.ExitCode;
+        }
+        if (code == 0) TryDeleteDir(dir); // o que o "_?=" deixa para trás (o próprio desinstalador)
+        return code;
     }
 
     /// <summary>Repassa a linha de comando, como veio, ao desinstalador NSIS da pasta do Kona.</summary>
@@ -206,7 +269,7 @@ class KonaWindow : Window
     const double CardW = 480;
 
     readonly Mode mode;
-    readonly string instDir;
+    string instDir;
     readonly bool preview;
     readonly double cardH;
 
@@ -224,6 +287,8 @@ class KonaWindow : Window
     readonly TextBlock primaryText;
     readonly Border secondary;
     readonly StackPanel confirm;
+    readonly StackPanel location;
+    readonly TextBlock locationPath;
     readonly Border toggle;
     readonly Border close;
 
@@ -241,9 +306,9 @@ class KonaWindow : Window
         this.mode = mode;
         this.instDir = instDir;
         this.preview = preview;
-        cardH = mode == Mode.Install ? 324 : 372;
+        cardH = mode == Mode.Install ? 420 : 372;
 
-        Title = mode == Mode.Install ? "Instalar o Kona" : "Desinstalar o Kona";
+        Title = mode == Mode.Install ? "Install Kona" : "Uninstall Kona";
         Width = CardW + 60; Height = cardH + 60;
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
@@ -306,7 +371,7 @@ class KonaWindow : Window
         });
         subtitle = new TextBlock
         {
-            Text = mode == Mode.Install ? "design inteligente, alta performance" : "Remover o Kona deste computador?",
+            Text = mode == Mode.Install ? "smart design, high performance" : "Remove Kona from this computer?",
             FontFamily = Text, FontSize = 13.5, Foreground = new SolidColorBrush(Muted),
             HorizontalAlignment = HorizontalAlignment.Center, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 2, 0, 0),
         };
@@ -360,8 +425,8 @@ class KonaWindow : Window
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var texts = new StackPanel();
-        texts.Children.Add(new TextBlock { Text = "Apagar também meus dados", FontFamily = Text, FontSize = 13.5, Foreground = new SolidColorBrush(Ink) });
-        texts.Children.Add(new TextBlock { Text = "Favoritos, histórico, perfis e logins salvos neste computador.", FontFamily = Text, FontSize = 12, Foreground = new SolidColorBrush(Muted), Margin = new Thickness(0, 2, 0, 0) });
+        texts.Children.Add(new TextBlock { Text = "Also delete my data", FontFamily = Text, FontSize = 13.5, Foreground = new SolidColorBrush(Ink) });
+        texts.Children.Add(new TextBlock { Text = "Favorites, history, profiles and sign-ins saved on this computer.", FontFamily = Text, FontSize = 12, Foreground = new SolidColorBrush(Muted), Margin = new Thickness(0, 2, 0, 0) });
         row.Children.Add(texts);
         var knob = new Ellipse { Width = 16, Height = 16, Fill = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(2, 0, 0, 0), RenderTransform = new TranslateTransform(0, 0) };
         toggle = new Border { Width = 38, Height = 22, CornerRadius = new CornerRadius(11), Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), VerticalAlignment = VerticalAlignment.Center, Child = knob };
@@ -377,10 +442,63 @@ class KonaWindow : Window
         Grid.SetRow(confirm, 0);
         footer.Children.Add(confirm);
 
-        // Botões (pílulas): principal claro e, na confirmação, "Cancelar" discreto ao lado
+        // Antes de instalar: a pasta de instalação (clicar abre o seletor de pastas do Windows)
+        location = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 0, 0, 18) };
+        var locHead = new Grid { Margin = new Thickness(2, 0, 2, 7) };
+        locHead.Children.Add(new TextBlock { Text = "Install location", FontFamily = Text, FontSize = 12, Foreground = new SolidColorBrush(Muted) });
+        if (BuildInfo.EstimatedBytes > 0)
+            locHead.Children.Add(new TextBlock
+            {
+                Text = Math.Round(BuildInfo.EstimatedBytes / 1048576.0) + " MB", FontFamily = Text, FontSize = 12,
+                Foreground = new SolidColorBrush(Muted), HorizontalAlignment = HorizontalAlignment.Right,
+            });
+        location.Children.Add(locHead);
+        Brush boxRest = new SolidColorBrush(Color.FromArgb(0x16, 0xFF, 0xFF, 0xFF));
+        Brush boxHover = new SolidColorBrush(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
+        var box = new Border
+        {
+            Height = 42, CornerRadius = new CornerRadius(12), Padding = new Thickness(14, 0, 6, 0), Cursor = Cursors.Hand,
+            Background = boxRest, BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF)),
+        };
+        var boxGrid = new Grid();
+        boxGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        boxGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        boxGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var folderIcon = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M0.5,2.5 A1.5,1.5 0 0 1 2,1 L5.2,1 L6.7,2.6 L12,2.6 A1.5,1.5 0 0 1 13.5,4.1 L13.5,10 A1.5,1.5 0 0 1 12,11.5 L2,11.5 A1.5,1.5 0 0 1 0.5,10 Z"),
+            Stroke = new SolidColorBrush(Muted), StrokeThickness = 1.3, StrokeLineJoin = PenLineJoin.Round,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0),
+        };
+        boxGrid.Children.Add(folderIcon);
+        locationPath = new TextBlock
+        {
+            FontFamily = Text, FontSize = 13, Foreground = new SolidColorBrush(Ink), VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        Grid.SetColumn(locationPath, 1);
+        boxGrid.Children.Add(locationPath);
+        var change = new Border
+        {
+            CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(8, 0, 0, 0),
+            Background = new SolidColorBrush(Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF)), VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock { Text = "Change…", FontFamily = Text, FontSize = 12.5, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Ink) },
+        };
+        Grid.SetColumn(change, 2);
+        boxGrid.Children.Add(change);
+        box.Child = boxGrid;
+        box.MouseEnter += delegate { box.Background = boxHover; };
+        box.MouseLeave += delegate { box.Background = boxRest; };
+        OnClick(box, ChooseFolder);
+        location.Children.Add(box);
+        Grid.SetRow(location, 0);
+        footer.Children.Add(location);
+        ShowLocation();
+
+        // Botões (pílulas): principal claro e, antes de começar, "Cancel" discreto ao lado
         buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Visibility = Visibility.Collapsed, Opacity = 0, RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = new ScaleTransform(0.94, 0.94) };
         Grid.SetRow(buttons, 1);
-        secondary = Pill("Cancelar", false);
+        secondary = Pill("Cancel", false);
         secondary.Margin = new Thickness(0, 0, 10, 0);
         OnClick(secondary, delegate { if (!working) FadeOutAndClose(); });
         primaryText = new TextBlock();
@@ -397,7 +515,7 @@ class KonaWindow : Window
         {
             Width = 30, Height = 30, CornerRadius = new CornerRadius(15), Margin = new Thickness(0, 14, 14, 0),
             HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-            Background = Brushes.Transparent, Cursor = Cursors.Hand, ToolTip = "Fechar",
+            Background = Brushes.Transparent, Cursor = Cursors.Hand, ToolTip = "Close",
             Child = new System.Windows.Shapes.Path
             {
                 Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = new SolidColorBrush(Muted), StrokeThickness = 1.6,
@@ -519,23 +637,43 @@ class KonaWindow : Window
         AnimateTransform((TranslateTransform)heading.RenderTransform, TranslateTransform.YProperty, 0, 520, 260);
         Animate(footer, OpacityProperty, 1, 380, 420);
 
-        if (mode == Mode.Install) After(500, StartWork);
-        else ShowConfirm();
+        ShowConfirm();
     }
 
+    /// <summary>A tela inicial: a pasta (instalar) ou a opção de apagar os dados (desinstalar) e os botões.</summary>
     void ShowConfirm()
     {
-        confirm.Visibility = Visibility.Visible;
+        (mode == Mode.Install ? location : confirm).Visibility = Visibility.Visible;
         secondary.Visibility = Visibility.Visible;
-        primaryText.Text = "Desinstalar";
+        primaryText.Text = mode == Mode.Install ? "Install" : "Uninstall";
         ShowButtons(false);
+    }
+
+    void ShowLocation()
+    {
+        locationPath.Text = instDir;
+        locationPath.ToolTip = instDir;
+    }
+
+    /// <summary>Seletor de pastas do Windows. Se a pasta escolhida não for "Kona", instala numa "Kona" dentro dela.</summary>
+    void ChooseFolder()
+    {
+        if (working) return;
+        string start = Directory.Exists(instDir) ? instDir : IOPath.GetDirectoryName(instDir);
+        string picked = FolderPicker.Pick(new WindowInteropHelper(this).Handle, "Choose where to install Kona", start);
+        if (picked == null) return;
+        picked = picked.TrimEnd('\\');
+        if (picked.Length <= 2) picked += "\\"; // raiz de um disco: "D:" vira "D:\"
+        string dir = string.Equals(IOPath.GetFileName(picked), "Kona", StringComparison.OrdinalIgnoreCase) ? picked : IOPath.Combine(picked, "Kona");
+        instDir = dir;
+        ShowLocation();
     }
 
     void StartWork()
     {
         if (!preview && Engine.KonaRunning(instDir))
         {
-            Fail("Feche o Kona para " + (mode == Mode.Install ? "continuar a instalação." : "continuar."));
+            Fail(mode == Mode.Install ? "Close Kona to continue installing." : "Close Kona to continue.");
             return;
         }
         working = true;
@@ -545,8 +683,9 @@ class KonaWindow : Window
         shown = 0;
         started = DateTime.Now;
         confirm.Visibility = Visibility.Collapsed;
-        status.Text = mode == Mode.Install ? "Instalando o Kona…" : "Removendo o Kona…";
-        if (mode == Mode.Uninstall) subtitle.Text = "Isso leva só alguns segundos.";
+        location.Visibility = Visibility.Collapsed;
+        status.Text = mode == Mode.Install ? "Installing Kona…" : "Removing Kona…";
+        if (mode == Mode.Uninstall) subtitle.Text = "This only takes a few seconds.";
         status.Foreground = new SolidColorBrush(Muted);
         status.HorizontalAlignment = HorizontalAlignment.Left;
         status.TextAlignment = TextAlignment.Left;
@@ -575,7 +714,8 @@ class KonaWindow : Window
         {
             payload = Engine.ExtractPayload();
             Progress(0.08);
-            Process p = Engine.Run(payload, "/S");
+            Process p = Engine.RunElevated(payload, Engine.InstallArgs(instDir));
+            if (p == null) throw new OperationCanceledException();
             long expected = BuildInfo.EstimatedBytes;
             while (!p.WaitForExit(250))
             {
@@ -586,6 +726,7 @@ class KonaWindow : Window
             }
             code = p.ExitCode;
         }
+        catch (OperationCanceledException) { code = Engine.ErrorCancelled; }
         catch (Exception) { code = -2; }
         finally { if (payload != null) Engine.TryDelete(payload); }
         int result = code;
@@ -597,29 +738,26 @@ class KonaWindow : Window
         int code = -1;
         try
         {
-            string nsis = IOPath.Combine(instDir, Engine.UninstallerName);
             long initial = Math.Max(1, Engine.DirSize(instDir));
-            if (File.Exists(nsis))
+            // a remoção da pasta (em Program Files) roda numa cópia elevada deste .exe (--remove);
+            // os dados pessoais só saem se a pessoa marcou a opção (feito aqui, como o usuário)
+            string self = Assembly.GetExecutingAssembly().Location;
+            Process p = Engine.RunElevated(self, "--remove \"" + instDir.TrimEnd('\\') + "\"");
+            if (p == null) throw new OperationCanceledException();
+            while (!p.WaitForExit(200))
             {
-                // "_?=" roda o desinstalador no lugar (e espera por ele); /KEEP_APP_DATA: os dados
-                // pessoais só saem se a pessoa marcou a opção (feito abaixo)
-                Process p = Engine.Run(nsis, "/S /currentuser /KEEP_APP_DATA _?=" + instDir);
-                while (!p.WaitForExit(200))
-                {
-                    double removed = 1 - Engine.DirSize(instDir) / (double)initial;
-                    double byTime = 1 - Math.Exp(-(DateTime.Now - started).TotalSeconds / 4.0);
-                    Progress(0.05 + 0.85 * Math.Max(removed, byTime * 0.9));
-                }
-                code = p.ExitCode;
+                double removed = 1 - Engine.DirSize(instDir) / (double)initial;
+                double byTime = 1 - Math.Exp(-(DateTime.Now - started).TotalSeconds / 4.0);
+                Progress(0.05 + 0.85 * Math.Max(removed, byTime * 0.9));
             }
-            else code = 0; // já não havia o desinstalador: só limpa o que sobrou
+            code = p.ExitCode;
             if (code == 0)
             {
-                Engine.TryDeleteDir(instDir); // o que o "_?=" deixa para trás (o próprio desinstalador)
                 Engine.TryDeleteDir(IOPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "kona-updater"));
                 if (deleteData) Engine.TryDeleteDir(Engine.DataDir);
             }
         }
+        catch (OperationCanceledException) { code = Engine.ErrorCancelled; }
         catch (Exception) { code = -2; }
         int result = code;
         Dispatcher.BeginInvoke(new Action(delegate { Finished(result); }));
@@ -649,9 +787,14 @@ class KonaWindow : Window
         working = false;
         if (code == 0) { done = true; target = 1; return; }
         ticker.Stop();
-        Fail(mode == Mode.Install
-            ? "Não foi possível instalar o Kona (código " + code + ")."
-            : "Não foi possível remover o Kona (código " + code + ").");
+        if (code == Engine.ErrorCancelled)
+            Fail(mode == Mode.Install
+                ? "Kona needs administrator permission to install here."
+                : "Kona needs administrator permission to be removed.");
+        else
+            Fail(mode == Mode.Install
+                ? "Kona couldn’t be installed (error " + code + ")."
+                : "Kona couldn’t be removed (error " + code + ").");
     }
 
     void Fail(string message)
@@ -660,7 +803,7 @@ class KonaWindow : Window
         status.Text = message;
         status.Foreground = new SolidColorBrush(Coral);
         percent.Text = "";
-        primaryText.Text = "Tentar de novo";
+        primaryText.Text = "Try again";
         ShowButtons(true);
     }
 
@@ -670,15 +813,15 @@ class KonaWindow : Window
         {
             // instalado: só o botão (ele já diz que terminou); abre sozinho em instantes
             status.Text = "";
-            primaryText.Text = "Abrir o Kona";
+            primaryText.Text = "Open Kona";
             ShowButtons(true);
             After(2400, delegate { if (IsVisible) OnPrimary(); });
         }
         else
         {
-            subtitle.Text = "O Kona foi removido. Obrigado por navegar com ele.";
+            subtitle.Text = "Kona has been removed. Thanks for browsing with it.";
             status.Text = "";
-            primaryText.Text = "Fechar";
+            primaryText.Text = "Close";
             ShowButtons(true);
         }
     }
@@ -689,7 +832,7 @@ class KonaWindow : Window
         status.HorizontalAlignment = HorizontalAlignment.Center;
         status.TextAlignment = TextAlignment.Center;
         percent.Text = "";
-        secondary.Visibility = mode == Mode.Uninstall && !done && !failed ? Visibility.Visible : Visibility.Collapsed;
+        secondary.Visibility = !done && !failed ? Visibility.Visible : Visibility.Collapsed;
         Action show = delegate
         {
             track.Visibility = Visibility.Collapsed;
@@ -735,5 +878,86 @@ class KonaWindow : Window
         var s = (ScaleTransform)card.RenderTransform;
         AnimateTransform(s, ScaleTransform.ScaleXProperty, 0.97, 220, 0);
         AnimateTransform(s, ScaleTransform.ScaleYProperty, 0.97, 220, 0);
+    }
+}
+
+/// <summary>
+/// O seletor de pastas moderno do Windows (IFileOpenDialog com FOS_PICKFOLDERS), o mesmo do Explorador.
+/// O FolderBrowserDialog do WinForms mostra a árvore antiga, por isso a chamada direta ao COM.
+/// </summary>
+static class FolderPicker
+{
+    [ComImport, Guid("DC1C5A9C-E88A-4dde-A5A1-60F82A20AEF7")]
+    class FileOpenDialogCom { }
+
+    [ComImport, Guid("42f85136-db7e-439c-85f1-e4075d135fc8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IFileDialog
+    {
+        [PreserveSig] int Show(IntPtr parent);
+        void SetFileTypes(uint count, IntPtr specs);
+        void SetFileTypeIndex(uint index);
+        void GetFileTypeIndex(out uint index);
+        void Advise(IntPtr events, out uint cookie);
+        void Unadvise(uint cookie);
+        void SetOptions(uint options);
+        void GetOptions(out uint options);
+        void SetDefaultFolder(IShellItem item);
+        void SetFolder(IShellItem item);
+        void GetFolder(out IShellItem item);
+        void GetCurrentSelection(out IShellItem item);
+        void SetFileName([MarshalAs(UnmanagedType.LPWStr)] string name);
+        void GetFileName([MarshalAs(UnmanagedType.LPWStr)] out string name);
+        void SetTitle([MarshalAs(UnmanagedType.LPWStr)] string title);
+        void SetOkButtonLabel([MarshalAs(UnmanagedType.LPWStr)] string text);
+        void SetFileNameLabel([MarshalAs(UnmanagedType.LPWStr)] string label);
+        void GetResult(out IShellItem item);
+    }
+
+    [ComImport, Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IShellItem
+    {
+        void BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppv);
+        void GetParent(out IShellItem parent);
+        void GetDisplayName(uint sigdn, out IntPtr name);
+        void GetAttributes(uint mask, out uint attribs);
+        void Compare(IShellItem other, uint hint, out int order);
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+    static extern void SHCreateItemFromParsingName(string path, IntPtr pbc, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellItem item);
+
+    const uint FOS_PICKFOLDERS = 0x20, FOS_FORCEFILESYSTEM = 0x40, FOS_PATHMUSTEXIST = 0x800;
+    const uint SIGDN_FILESYSPATH = 0x80058000;
+
+    /// <summary>Devolve a pasta escolhida, ou null se a pessoa cancelar.</summary>
+    public static string Pick(IntPtr owner, string title, string startDir)
+    {
+        var dlg = (IFileDialog)new FileOpenDialogCom();
+        try
+        {
+            uint opts;
+            dlg.GetOptions(out opts);
+            dlg.SetOptions(opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+            dlg.SetTitle(title);
+            dlg.SetOkButtonLabel("Select folder");
+            if (!string.IsNullOrEmpty(startDir) && Directory.Exists(startDir))
+            {
+                try
+                {
+                    IShellItem start;
+                    SHCreateItemFromParsingName(startDir, IntPtr.Zero, typeof(IShellItem).GUID, out start);
+                    dlg.SetFolder(start);
+                }
+                catch { }
+            }
+            if (dlg.Show(owner) != 0) return null; // cancelado
+            IShellItem result;
+            dlg.GetResult(out result);
+            IntPtr p;
+            result.GetDisplayName(SIGDN_FILESYSPATH, out p);
+            try { return Marshal.PtrToStringUni(p); }
+            finally { Marshal.FreeCoTaskMem(p); }
+        }
+        finally { Marshal.ReleaseComObject(dlg); }
     }
 }

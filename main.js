@@ -378,7 +378,7 @@ app.whenReady().then(async () => {
   try {
     await setupExtensions();
   } catch (err) {
-    console.error('Falha ao preparar extensões:', err);
+    console.error('Failed to set up extensions:', err);
   }
   applySecureDns();
   createWindow();
