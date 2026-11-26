@@ -936,3 +936,27 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 .dl-row.active:hover .sb-badge { display: none; }
 .dl-row .sb-row-text .dl-status { white-space: pre-line; line-height: 1.4; }
 .dl-row.active { padding-top: 8px; padding-bottom: 8px; }
+
+/* ───────────── Menu de contexto ───────────── */
+#ctx-menu {
+  position: fixed; z-index: 200; min-width: 220px; max-width: 340px; padding: 5px;
+  border-radius: 12px; outline: none;
+  background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 var(--rim), 0 0 0 0.5px var(--stroke), var(--shadow-lg);
+  font-size: 13px; color: var(--text);
+  opacity: 0; transform: scale(0.96); pointer-events: none; visibility: hidden;
+  transition: opacity .12s, transform .18s var(--ease), visibility 0s .12s;
+}
+#ctx-menu.show { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity .1s, transform .18s var(--ease), visibility 0s; }
+:root[data-theme="dark"] #ctx-menu { background: rgba(40, 40, 46, 0.92); }
+.ctx-item { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 6px; border-radius: 7px; cursor: default; white-space: nowrap; }
+.ctx-item.sel { background: var(--accent); color: #fff; }
+.ctx-item.disabled { opacity: .38; }
+.ctx-item.bold .ctx-label { font-weight: 650; }
+.ctx-check { width: 14px; flex: none; display: grid; place-items: center; }
+#ctx-menu:not(.checks) .ctx-check { width: 4px; }
+.ctx-check .ic { width: 13px; height: 13px; stroke-width: 2.4; }
+.ctx-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ctx-key { margin-left: 18px; font-size: 11.5px; color: var(--text-2); }
+.ctx-item.sel .ctx-key { color: rgba(255, 255, 255, 0.8); }
+.ctx-sep { height: 1px; margin: 4px 8px; background: var(--stroke); }

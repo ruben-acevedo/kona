@@ -98,7 +98,7 @@ const isInternal = (url) => url === START || url === SETTINGS;
 function toUrl(input) {
   const q = input.trim();
   if (!q) return null;
-  if (/^(https?|file|about|data):/i.test(q)) return q;
+  if (/^(https?|file|about|data):/i.test(q) || /^view-source:https?:/i.test(q)) return q;
   if (/^kona:\/\/(settings|configura[cç](o|õ)es)\/?$/i.test(q)) return SETTINGS;
   if (/^localhost(:\d+)?(\/|$)/i.test(q) || /^[\d.]+(:\d+)?(\/|$)/.test(q)) return 'http://' + q;
   if (/^[^\s]+\.[a-z]{2,}(:\d+)?(\/.*)?$/i.test(q)) return 'https://' + q;
@@ -420,8 +420,13 @@ function ensureWebview(t) {
     setTimeout(() => el?.classList.remove('done'), 600);
   });
   on('dom-ready', () => { if (settings.zoom !== 1) wv.setZoomFactor(settings.zoom); });
-  on('did-navigate', (e) => { t.url = e.url; t.favicon = null; sync(); render(); browseHistory.addVisit(e.url, t.title); });
-  on('did-navigate-in-page', (e) => { if (e.isMainFrame) { t.url = e.url; sync(); render(); } });
+  // o código-fonte (view-source:) chega como o endereço da página: mantém o prefixo e não entra no histórico
+  const viewSource = (url) => (t.url.startsWith('view-source:') && !url.startsWith('view-source:') ? `view-source:${url}` : url);
+  on('did-navigate', (e) => {
+    t.url = viewSource(e.url); t.favicon = null; sync(); render();
+    if (!t.url.startsWith('view-source:')) browseHistory.addVisit(e.url, t.title);
+  });
+  on('did-navigate-in-page', (e) => { if (e.isMainFrame) { t.url = viewSource(e.url); sync(); render(); } });
   on('page-title-updated', (e) => { t.title = e.title; render(); browseHistory.updateTitle(t.url, e.title); });
   on('page-favicon-updated', (e) => { t.favicon = e.favicons?.[0] || null; render(); });
   performance.mark('kona:webview-create');
@@ -523,6 +528,8 @@ function createTabEl(t) {
   el.addEventListener('mousedown', (e) => {
     wasActive = t.id === activeId;
     if (e.button === 1) { e.preventDefault(); closeTab(t.id); return; }
+    // botão direito: só o menu (não troca de aba nem começa a editar o endereço)
+    if (e.button === 2) { if (document.activeElement !== input) e.preventDefault(); return; }
     if (t.id !== activeId && !e.target.closest('.x')) { activate(t.id); e.preventDefault(); }
   });
   // Na aba ativa, qualquer ponto da caixa (não só o texto) começa a edição do endereço.
@@ -552,6 +559,7 @@ function createTabEl(t) {
     input.blur();
     go(t, choice);
   });
+  el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); tabMenu(t, e.clientX, e.clientY, e.target.closest('input')); });
   return el;
 }
 
@@ -881,7 +889,7 @@ function favTile(f, i) {
         <span class="label">${escapeHtml(f.title)}</span>
       </button>`;
   }
-  return `<button class="fav-item" data-url="${escapeHtml(f.url)}" style="--i:${i}" title="${escapeHtml(f.title)}">
+  return `<button class="fav-item" data-url="${escapeHtml(f.url)}" data-bm="${f.id}" style="--i:${i}" title="${escapeHtml(f.title)}">
         <span class="tile glass">${siteIcon(f.url)}</span>
         <span class="label">${escapeHtml(f.title)}</span>
       </button>`;
@@ -1079,6 +1087,16 @@ function shortcut(key, shift) {
   else if (key === 'd') toggleBookmark();
   else if (key === 'h') openSidebarView('history');
   else if (key === 'j') openSidebarView('downloads');
+  else if (key === 'back') goBack();
+  else if (key === 'forward') a.wv?.goForward();
+  else if (['s', 'p', 'u'].includes(key) && !shift) {
+    // salvar, imprimir e ver o código-fonte valem para a página da aba ativa
+    if (!a.wv || !/^https?:/i.test(a.url)) return false;
+    const id = a.wv.getWebContentsId();
+    if (key === 's') api?.ctxDo(id, 'savePage');
+    else if (key === 'p') api?.ctxDo(id, 'print');
+    else openInBackground(`view-source:${a.url}`);
+  }
   else if (key === 'n' && shift) library.switchTo(library.isPrivate() ? tabSets.data.current : 'private');
   else if (key === ',') openSettings();
   else if (key === '\\' || key === '|') toggleOverview();
@@ -1109,6 +1127,9 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') { api?.devtools(); return; }
   if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyZ') { toggleSidebar(); e.preventDefault(); return; }
+  if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest?.('input, textarea')) {
+    shortcut(e.key === 'ArrowLeft' ? 'back' : 'forward'); e.preventDefault(); return;
+  }
   if (!(e.ctrlKey || e.metaKey)) return;
   if (shortcut(e.key.toLowerCase(), e.shiftKey)) e.preventDefault();
 });

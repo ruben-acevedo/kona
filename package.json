@@ -48,6 +48,7 @@
       "updater.js",
       "importer.js",
       "downloads.js",
+      "context-menu.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

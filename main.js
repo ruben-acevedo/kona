@@ -7,6 +7,7 @@ const { onUi, handleUi } = require('./ipc');
 const { startUpdater } = require('./updater');
 const { registerImporter } = require('./importer');
 const { registerDownloads } = require('./downloads');
+const { registerContextMenu, watchPage } = require('./context-menu');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -96,6 +97,10 @@ function createWindow() {
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.on('closed', () => { if (mainWin === win) mainWin = null; });
+  // botões laterais do mouse (voltar/avançar)
+  win.on('app-command', (_e, cmd) => {
+    if (cmd === 'browser-backward' || cmd === 'browser-forward') win.webContents.send('shortcut', { key: cmd === 'browser-backward' ? 'back' : 'forward' });
+  });
 
   const query = { state: process.env.KONA_STATE || '' };
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
@@ -295,6 +300,9 @@ handleUi('default:set', async () => {
 // Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
 registerDownloads({ win: () => mainWin, currentSession: () => browserSession() });
 
+// Menu de contexto (botão direito): ações nas páginas e nos campos da interface
+registerContextMenu({ win: () => mainWin, askNextDownload: (url) => policy.askNext(url) });
+
 // Importar de outro navegador: tudo entra no perfil em uso
 registerImporter(handleUi, {
   currentSession: () => browserSession(),
@@ -402,7 +410,7 @@ onUi('win:devtools', (e) => e.sender.openDevTools({ mode: 'detach' }));
 
 // Conteúdo das abas (webviews): popups viram novas abas e atalhos sobem para a interface
 // Endereços que uma aba pode carregar ao ser criada (os digitados podem ser file: e data:)
-const TAB_SCHEMES = new Set(['http:', 'https:', 'about:', 'file:', 'data:', 'chrome-extension:']);
+const TAB_SCHEMES = new Set(['http:', 'https:', 'about:', 'file:', 'data:', 'chrome-extension:', 'view-source:']);
 const schemeOf = (u) => { try { return new URL(u).protocol; } catch { return ''; } };
 
 app.on('web-contents-created', (_e, contents) => {
@@ -420,6 +428,7 @@ app.on('web-contents-created', (_e, contents) => {
     });
   }
   if (contents.getType() !== 'webview') return;
+  watchPage(contents); // botão direito → menu do Kona
   // Não revela os IPs da rede local por WebRTC (videochamadas continuam funcionando)
   contents.setWebRTCIPHandlingPolicy('default_public_interface_only');
   contents.setWindowOpenHandler(({ url }) => {
@@ -433,6 +442,18 @@ app.on('web-contents-created', (_e, contents) => {
   });
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
+    // Alt+← / Alt+→: voltar e avançar (como no Chrome)
+    if (input.alt && !input.control && !input.meta && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')) {
+      event.preventDefault();
+      contents.hostWebContents?.send('shortcut', { key: input.key === 'ArrowLeft' ? 'back' : 'forward' });
+      return;
+    }
+    // Ctrl+Shift+I: ferramentas de desenvolvedor da página
+    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      contents.openDevTools();
+      return;
+    }
     // Alt+Z (barra lateral) e Alt+V (visão geral) também funcionam com o foco dentro de uma página
     if (input.alt && !input.control && !input.meta && (input.code === 'KeyZ' || input.code === 'KeyV')) {
       event.preventDefault();
@@ -441,7 +462,7 @@ app.on('web-contents-created', (_e, contents) => {
     }
     if (!(input.control || input.meta)) return;
     const key = input.key.toLowerCase();
-    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 'tab', ',', '\\', '|'].includes(key)) {
+    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 's', 'p', 'u', 'tab', ',', '\\', '|'].includes(key)) {
       event.preventDefault();
       contents.hostWebContents?.send('shortcut', { key, shift: input.shift });
     }

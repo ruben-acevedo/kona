@@ -109,3 +109,13 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - Menu lateral → Downloads (Ctrl+J, também com o foco numa página): ícone, nome, "12 MB of 80 MB" / "3.2 MB/s · 20 s left", barra de progresso, pausar/continuar e cancelar; concluído abre com um clique, "Show in folder", × tira da lista; cancelado/falhou tem Retry; apagado do disco aparece "Deleted"; "Clear list" (os arquivos ficam). Contador de downloads em andamento.
   - Barra de ferramentas: botão com anel de progresso, aparece no primeiro download da sessão; quica ao terminar; clicar abre a lista.
   - Lista por perfil (`downloadsList` em `renderer/library.js`); os do modo privado só na memória. Teste: `tests/debug/downloads.js`.
+
+## I. Menu de contexto
+
+- [x] **I1. Botão direito (13).** Alinhado em 2026-11-25: menu desenhado pelo Kona (não o nativo do Windows) com os itens do Chrome, em tudo (páginas, barra de endereço, abas, favoritos da nova aba e campos da interface); corretor nos idiomas do Windows; sem "Translate"; Inspect e View page source para todos.
+  - Páginas (`context-menu.js` no processo principal avisa e executa; `renderer/context-menu.js` desenha): página (Back, Forward, Reload, Save page as…, Print…, View page source), link (Open in new tab — em segundo plano —, Copy address, Save link as…, Add to Favorites), imagem (Open, Save as…, Copy image, Copy address, Search with Google), texto selecionado (Copy, Search <buscador> for “…”), campos (Undo, Redo, Cut, Copy, Paste, Paste as plain text, Select all + sugestões do corretor e Add to dictionary), vídeo/áudio (Play/Pause, Mute, Loop, Show controls, Picture in picture, Open/Save/Copy address) e Inspect sempre.
+  - Interface: aba (New tab, Reload, Duplicate, Add/Remove Favorites, Close tab, Close other tabs; botão direito não troca de aba), aba ativa (+ Copy address, Paste and go), barra de endereço editando (Undo, Cut, Copy, Paste, Paste and go, Select all), favoritos da nova aba e do painel de pasta (Open, Open in new tab, Copy address, Rename…, Remove; pastas: Open, Open all, Rename…, Delete), campos de texto da interface.
+  - Teclado no menu: ↑/↓, Home/End, Enter, Esc. Fecha ao clicar fora (também dentro da página), rolar, redimensionar ou a janela perder o foco.
+  - Atalhos novos para combinar com o menu: Alt+←/→ e os botões laterais do mouse (voltar/avançar), Ctrl+S (salvar página), Ctrl+P (imprimir), Ctrl+U (código-fonte, aba `view-source:`), Ctrl+Shift+I numa página (ferramentas de desenvolvedor dela).
+  - Corretor ortográfico: idiomas preferidos do Windows (aqui en-US e pt-BR), em todos os perfis e no modo privado.
+  - "Save … as" pede a pasta mesmo com o salvamento automático ligado. Teste: `tests/debug/context-menu.js`.

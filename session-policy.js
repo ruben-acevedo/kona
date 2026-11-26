@@ -125,7 +125,10 @@ function createPolicy(ctx) {
   }
   onUi('perm:reply', (_e, { id, allow }) => { pending.get(id)?.(!!allow); pending.delete(id); });
 
-  // Downloads: nome livre na pasta escolhida; o resto fica em downloads.js
+  // Downloads: nome livre na pasta escolhida; o resto fica em downloads.js.
+  // "Save … as" (menu de contexto) pede a pasta mesmo com o salvamento automático ligado.
+  const askUrls = new Set();
+  const askNext = (url) => { askUrls.add(url); setTimeout(() => askUrls.delete(url), 30000); };
   const uniquePath = (dir, name) => {
     const ext = path.extname(name);
     const base = path.basename(name, ext);
@@ -135,6 +138,14 @@ function createPolicy(ctx) {
   };
 
   function install(ses, partition) {
+    // Corretor ortográfico: os idiomas do Windows (Configurações → Idioma), na mesma ordem
+    try {
+      const avail = ses.availableSpellCheckerLanguages || [];
+      const want = app.getPreferredSystemLanguages()
+        .map((l) => avail.find((a) => a.toLowerCase() === l.toLowerCase()) || avail.find((a) => a.toLowerCase().split('-')[0] === l.toLowerCase().split('-')[0]))
+        .filter((l, i, a) => l && a.indexOf(l) === i);
+      if (want.length) ses.setSpellCheckerLanguages(want);
+    } catch { /* sem corretor: segue sem */ }
     ses.webRequest.onBeforeRequest({ urls: ['http://*/*'] }, (details, callback) => {
       if (details.resourceType !== 'mainFrame' || !prefsFor(partition).httpsFirst) { callback({}); return; }
       let u;
@@ -211,7 +222,8 @@ function createPolicy(ctx) {
 
     ses.on('will-download', (_e, item) => {
       const p = prefsFor(partition);
-      if (!p.downloadAsk) {
+      const askThis = item.getURLChain().some((u) => askUrls.delete(u));
+      if (!p.downloadAsk && !askThis) {
         const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
         item.setSavePath(uniquePath(dir, item.getFilename()));
       }
@@ -273,7 +285,7 @@ function createPolicy(ctx) {
       .finally(() => app.quit());
   });
 
-  return { install, prefsFor };
+  return { install, prefsFor, askNext };
 }
 
 module.exports = { createPolicy, siteOf, isThirdParty, DEFAULT_PREFS };

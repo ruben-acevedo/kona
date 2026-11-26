@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
-  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress'];
+  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('kona', {
   setPrefs: (partition, prefs) => ipcRenderer.send('prefs:set', partition, prefs),
   permReply: (id, allow) => ipcRenderer.send('perm:reply', { id, allow }),
   showDownload: (file) => ipcRenderer.invoke('download:show', file),
+  ctxDo: (id, act, data) => ipcRenderer.invoke('ctx:do', id, act, data),
+  ctxUi: (act) => ipcRenderer.invoke('ctx:ui', act),
+  clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
+  clipboardWrite: (text) => ipcRenderer.send('clipboard:write', text),
   downloadPause: (id) => ipcRenderer.invoke('download:pause', id),
   downloadResume: (id) => ipcRenderer.invoke('download:resume', id),
   downloadCancel: (id) => ipcRenderer.invoke('download:cancel', id),
