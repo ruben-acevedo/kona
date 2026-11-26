@@ -30,6 +30,7 @@ const ICONS = {
   star: '<path d="m12 3.8 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.6A7.6 7.6 0 0 0 6.9 6.6l-2.3-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5l.5 2.6h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4z"/>',
   mic: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>',
+  thumbtack: '<path d="M9 4.5h6M10 4.5v5.2L7.5 13h9L14 9.7V4.5M12 13v6.5"/>',
   pin: '<path d="M12 21s6.5-6.1 6.5-11.2a6.5 6.5 0 0 0-13 0C5.5 14.9 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>',
   bell: '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
   clipboard: '<rect x="5.5" y="5" width="13" height="15.5" rx="2.5"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>',
@@ -418,6 +419,7 @@ function ensureWebview(t) {
   wv.setAttribute('src', t.url);
   wv.setAttribute('partition', t.partition);
   wv.setAttribute('allowpopups', ''); // window.open/target=_blank chegam ao main.js, que abre como aba
+  wv.setAttribute('plugins', ''); // leitor de PDF do Chromium (sem isso, PDFs são baixados)
   const sync = () => {
     try { t.canBack = wv.canGoBack(); t.canFwd = wv.canGoForward(); } catch { /* ainda não pronto */ }
   };
@@ -486,6 +488,7 @@ function activate(id) {
   mru = [id, ...mru.filter((x) => x !== id)].slice(0, 12);
   ensureWebview(active());
   render();
+  if (typeof extTabChanged === 'function') requestAnimationFrame(extTabChanged); // extensões: aba ativa e contadores
 }
 
 function newTab(url = START, focus = true) {

@@ -17,7 +17,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const version = require(path.join(ROOT, 'node_modules/electron/package.json')).version;
+const electronWin = require('./electron-win'); // Electron da castLabs (com Widevine)
+const version = electronWin.VERSION;
 
 function winToWsl(p) {
   return execFileSync('wslpath', ['-u', p], { encoding: 'utf8' }).trim();
@@ -35,13 +36,7 @@ const RUN = (process.argv.find((a) => a.startsWith('--run=')) || '').slice(6);
 const appDir = path.join(base, process.argv.includes('--test') || RUN ? 'app-test' : 'app');
 
 async function ensureElectron() {
-  if (fs.existsSync(electronExe)) return;
-  console.log(`Baixando Electron ${version} para Windows (só na primeira vez)…`);
-  const { downloadArtifact } = require('@electron/get');
-  const AdmZip = require('adm-zip');
-  const zip = await downloadArtifact({ version, artifactName: 'electron', platform: 'win32', arch: 'x64' });
-  fs.mkdirSync(electronDir, { recursive: true });
-  new AdmZip(zip).extractAllTo(electronDir, true);
+  await electronWin.ensure(base);
 }
 
 const SKIP_MODULES = new Set(['electron', '@electron', '@electron-internal', '.bin', '.package-lock.json']);
@@ -49,7 +44,7 @@ const SKIP_MODULES = new Set(['electron', '@electron', '@electron-internal', '.b
 function syncApp() {
   fs.rmSync(appDir, { recursive: true, force: true });
   fs.mkdirSync(appDir, { recursive: true });
-  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'importer.js', 'downloads.js', 'context-menu.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
+  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'importer.js', 'downloads.js', 'context-menu.js', 'extensions.js', 'extension-shims.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
   fs.cpSync(path.join(ROOT, 'renderer'), path.join(appDir, 'renderer'), { recursive: true });
   fs.cpSync(path.join(ROOT, 'assets'), path.join(appDir, 'assets'), { recursive: true });
   for (const m of fs.readdirSync(path.join(ROOT, 'node_modules'))) {

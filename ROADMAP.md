@@ -134,3 +134,24 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - Zoom: Ctrl+= / Ctrl++ / Ctrl+- / Ctrl+0 e Ctrl+roda do mouse, nos passos do Chrome (25%–500%). Guardado por site (`settings.siteZoom`), vale para todas as abas do site; quando não é o padrão, aparece na barra de endereço ("125%"; clicar volta ao padrão). O "Default page zoom" das configurações continua sendo o padrão.
   - Reabrir aba fechada: Ctrl+Shift+T e no menu da aba; até 25 abas, na mesma posição; não guarda no modo privado; zera ao trocar de grupo/perfil.
   - Atalhos atualizados em Settings → About Kona e no README. Teste: `tests/debug/page-tools.js`.
+
+## L. Navegador de mercado
+
+Ordem combinada em 2026-11-25 (recomendação aceita, com o modo leitura incluído):
+
+- [x] **L1. Netflix, Spotify, Prime, Disney+ (Widevine).** Electron da castLabs (com o Widevine) + registro VMP.
+  - `scripts/electron-win.js`: o Electron para Windows (rodar, testar, empacotar) é o v45.2.1+wvcus da castLabs, baixado dos Releases deles e conferido pelo SHA-256. O npm do projeto continua com o Electron oficial (o npm desta máquina bloqueia pacotes de git/URL, e só o Windows precisa do Widevine).
+  - `main.js`: `components.whenReady()` em segundo plano (na 1ª vez o Widevine é baixado do Google, ~1 s). Teste: `tests/debug/widevine.js` (MediaKeys criado numa página).
+  - Registro VMP: conta EVS gratuita do autor (criada em 2026-11-25; ferramenta em `~/.local/kona-evs`, credenciais em `~/.config/evs`). `scripts/evs-sign.js` assina o Kona.exe em `afterSign` (depois de o electron-builder gravar ícone/versão; `-H Kona` para não pegar o "Kona Uninstaller.exe"). O Electron de desenvolvimento também foi assinado ("streaming", 1330 dias). Falta o teste do usuário na Netflix/Spotify.
+- [x] **L2. Ver PDF no navegador.** Leitor de PDF do Chromium ligado nas abas (`plugins` no webview). Teste: `tests/debug/pdf.js`.
+- [x] **L3. Extensões completas.** Botões na barra e popups (destrava Bitwarden e outros gerenciadores).
+  - Decidido: modelo do Chrome (quebra-cabeça com a lista; fixar na barra), extensões novas já entram fixadas.
+  - `extensions.js` (electron-chrome-extensions 4.10, MIT): um gerenciador por perfil; abas do Kona visíveis em chrome.tabs (criar/selecionar/fechar pedidos pelas extensões viram ações da interface); itens de chrome.contextMenus no menu do botão direito; ícones via `crx://`.
+  - `extension-shims.js`: o Electron expõe `browser` sem os complementos que a biblioteca põe em `chrome` (tabs, commands…); extensões que preferem `browser` (uBlock Origin Lite) paravam e o popup abria vazio. Agora `browser` usa as versões de `chrome`.
+  - `renderer/extensions-bar.js`: ícones fixados com contador, lista no estilo do Kona (fixar/desafixar, Manage extensions, Chrome Web Store), popup ancorado no botão, botão direito (Options, Pin/Unpin, Remove). Teste: `tests/debug/extensions-bar.js` (uBlock Origin Lite: fixado, popup completo, chrome.tabs enxerga a aba).
+- [ ] **L4. Senhas.** Gerenciador próprio: salvar, preencher, criptografia do Windows, importar CSV do Chrome.
+- [ ] **L5. Tela cheia e som.** F11, vídeo em tela cheia de verdade, indicador de som na aba e silenciar aba.
+- [ ] **L6. Modo leitura (como o do Safari).**
+- [ ] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional).
+
+Depois, conforme o uso: várias janelas, fixar abas, preenchimento de endereços/cartões, tradução, buscadores personalizados, pré-visualização de impressão, português, proteção contra golpes (Safe Browsing/Web Risk), sincronização, macOS/Linux/celular, acessibilidade, relatório de travamentos.

@@ -130,6 +130,19 @@ On WSL, the GPU goes through a translation layer (Mesa D3D12). Tab stress, resiz
 
 `tests/debug/diag.js` is a standalone diagnostic: startup timeline, the cost of creating a webview, scrolling and the tab strip.
 
+## Electron with Widevine (castLabs)
+
+Kona runs on [castLabs' Electron](https://github.com/castlabs/electron-releases), which is the official Electron plus Widevine, the protected-media component that Netflix, Spotify, Prime Video and Disney+ need. `scripts/electron-win.js` downloads the Windows build from castLabs' releases and checks its SHA-256; npm keeps the official Electron for WSL/Linux.
+
+Every build is VMP-signed by castLabs' free EVS service (`scripts/evs-sign.js`, an `afterSign` hook). It needs the EVS tool and a logged-in account:
+
+```bash
+python3 -m venv ~/.local/kona-evs && ~/.local/kona-evs/bin/pip install castlabs-evs
+~/.local/kona-evs/bin/python -m castlabs_evs.account signup   # run in a real terminal (it asks questions)
+```
+
+Without it, builds still work but Netflix refuses to play. `KONA_REQUIRE_VMP=1` makes the build fail instead (use it for releases).
+
 ## Build the installer
 
 ```bash

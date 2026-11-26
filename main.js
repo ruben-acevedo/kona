@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell } = require('electron');
+const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, components } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { installChromeWebStore, uninstallExtension } = require('electron-chrome-web-store');
@@ -8,6 +8,7 @@ const { startUpdater } = require('./updater');
 const { registerImporter } = require('./importer');
 const { registerDownloads } = require('./downloads');
 const { registerContextMenu, watchPage } = require('./context-menu');
+const extensionsApi = require('./extensions');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -224,6 +225,7 @@ function listExtensions() {
     version: ext.version,
     description: localize(ext, ext.manifest.description),
     icon: iconFor(ext),
+    options: ext.manifest.options_ui?.page || ext.manifest.options_page || null, // página de opções
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -255,6 +257,7 @@ function prepareSession(partition) {
     prepared.set(partition, (async () => {
       const ses = browserSession(partition);
       installSession(ses, partition);
+      extensionsApi.attach(ses, partition); // APIs chrome.tabs/action/contextMenus e popups (antes de carregar as extensões)
       await installChromeWebStore({ session: ses, extensionsPath: extensionsPathFor(partition), beforeInstall });
       const notify = () => { if (partition === currentPartition) mainWin?.webContents.send('ext:changed'); };
       const api = extApi(ses);
@@ -299,6 +302,9 @@ handleUi('default:set', async () => {
 
 // Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
 registerDownloads({ win: () => mainWin, currentSession: () => browserSession() });
+
+// Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
+extensionsApi.registerExtensions({ win: () => mainWin });
 
 // Menu de contexto (botão direito): ações nas páginas e nos campos da interface
 registerContextMenu({ win: () => mainWin, askNextDownload: (url) => policy.askNext(url) });
@@ -427,11 +433,13 @@ app.on('web-contents-created', (_e, contents) => {
       prefs.sandbox = true;
       prefs.webSecurity = true;
       prefs.allowRunningInsecureContent = false;
+      prefs.plugins = true; // só o leitor de PDF embutido (o Electron não carrega plugins de terceiros)
       if (contents !== mainWin?.webContents || !TAB_SCHEMES.has(schemeOf(params.src))) e.preventDefault();
     });
   }
   if (contents.getType() !== 'webview') return;
   watchPage(contents); // botão direito → menu do Kona
+  extensionsApi.trackTab(contents); // a aba existe para as extensões (chrome.tabs)
   // Ctrl + roda do mouse: zoom do site (o Kona guarda por site, como o Chrome)
   contents.on('zoom-changed', (_e, dir) => contents.hostWebContents?.send('shortcut', { key: dir === 'in' ? 'zoomin' : 'zoomout' }));
   // Não revela os IPs da rede local por WebRTC (videochamadas continuam funcionando)
@@ -482,6 +490,11 @@ app.on('web-contents-created', (_e, contents) => {
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
+  // ícones das extensões na barra (crx://extension-icon/...) servidos para a interface
+  extensionsApi.ElectronChromeExtensions.handleCRXProtocol(session.defaultSession);
+  // Widevine (Electron da castLabs): vídeo protegido de Netflix, Spotify, Prime Video, Disney+.
+  // Não segura a abertura: na 1ª vez o componente é baixado do Google em segundo plano.
+  components?.whenReady?.().catch((err) => console.error('Widevine unavailable:', err?.message || err));
   try {
     await setupExtensions();
   } catch (err) {

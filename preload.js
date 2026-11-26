@@ -1,7 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
-  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page'];
+  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
+  'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -18,6 +19,13 @@ contextBridge.exposeInMainWorld('kona', {
   permReply: (id, allow) => ipcRenderer.send('perm:reply', { id, allow }),
   showDownload: (file) => ipcRenderer.invoke('download:show', file),
   ctxDo: (id, act, data) => ipcRenderer.invoke('ctx:do', id, act, data),
+  // extensões: estado dos botões (ícone, contador, título), abrir popup, abas pedidas por extensões
+  extActionState: (partition) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.getState'),
+  extActionActivate: (partition, details) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.activate', details),
+  extActionObserve: (partition) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.addObserver'),
+  extTabCreated: (id, wcId) => ipcRenderer.send('ext:tab-created', id, wcId),
+  extTabSelected: (wcId) => ipcRenderer.invoke('ext:tab-selected', wcId),
+  extMenuClick: (id) => ipcRenderer.invoke('ext:menu-click', id),
   ctxUi: (act) => ipcRenderer.invoke('ctx:ui', act),
   clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
   clipboardWrite: (text) => ipcRenderer.send('clipboard:write', text),

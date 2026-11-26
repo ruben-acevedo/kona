@@ -4,6 +4,7 @@
 // inspecionar, controlar vídeo/áudio e o corretor ortográfico (que usa os idiomas do Windows).
 const { clipboard, dialog, webContents } = require('electron');
 const { onUi, handleUi } = require('./ipc');
+const { contextItems } = require('./extensions');
 
 let askNext = () => {};
 
@@ -25,7 +26,7 @@ function pick(p) {
 /** Liga o aviso de botão direito numa página (chamado para cada webview). */
 function watchPage(contents) {
   contents.on('context-menu', (_e, params) => {
-    contents.hostWebContents?.send('ctx:page', { id: contents.id, params: pick(params) });
+    contents.hostWebContents?.send('ctx:page', { id: contents.id, params: { ...pick(params), extItems: contextItems(contents, params) } });
   });
 }
 

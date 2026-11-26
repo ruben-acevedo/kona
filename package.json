@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
+    "electron-chrome-extensions": "^4.10.0",
     "electron-chrome-web-store": "^0.13.0",
     "electron-updater": "^6.8.11"
   },
@@ -49,12 +50,15 @@
       "importer.js",
       "downloads.js",
       "context-menu.js",
+      "extensions.js",
+      "extension-shims.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",
       "!**/*.map"
     ],
     "asar": true,
+    "afterSign": "scripts/evs-sign.js",
     "electronFuses": {
       "runAsNode": false,
       "enableCookieEncryption": true,

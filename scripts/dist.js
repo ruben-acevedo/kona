@@ -26,10 +26,10 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const pkg = require(path.join(ROOT, 'package.json'));
-const electronVersion = require(path.join(ROOT, 'node_modules/electron/package.json')).version;
+const electronWin = require('./electron-win'); // Electron da castLabs (com Widevine)
 const localAppData = execFileSync('cmd.exe', ['/c', 'echo %LOCALAPPDATA%'], { cwd: '/mnt/c', encoding: 'utf8' }).trim();
 const base = execFileSync('wslpath', ['-u', path.join(localAppData, 'Kona-dev')], { encoding: 'utf8' }).trim();
-const electronDist = path.join(base, `electron-${electronVersion}`);
+const electronDist = electronWin.dirFor(base);
 const work = path.join(base, 'build');
 const out = path.join(work, 'dist');
 const publish = process.argv.includes('--publish');
@@ -95,7 +95,7 @@ if (!installerOnly) {
   fs.rmSync(path.join(ROOT, 'build-extra'), { recursive: true, force: true });
   compile({ outFile: path.join(ROOT, 'build-extra', 'Kona Uninstaller.exe'), uninstall: true });
   const r = spawnSync('npx', ['electron-builder', '--win', '--x64', '--publish', publish ? 'always' : 'never',
-    `-c.electronDist=${electronDist}`, `-c.directories.output=${out}`], { cwd: ROOT, env, stdio: 'inherit' });
+    `-c.electronDist=${electronDist}`, `-c.electronVersion=${electronWin.PLAIN_VERSION}`, `-c.directories.output=${out}`], { cwd: ROOT, env, stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 

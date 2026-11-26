@@ -198,6 +198,18 @@ api?.on('ctx:page', ({ id, params: p }) => {
       { label: 'View page source', key: 'Ctrl+U', run: () => openInBackground(`view-source:${p.pageURL}`), disabled: !/^https?:/i.test(p.pageURL) },
     ]);
   }
+  // itens das extensões (chrome.contextMenus): um nível, com o nome do grupo acima dos subitens
+  if (p.extItems?.length) {
+    const flat = [];
+    for (const it of p.extItems) {
+      if (it.sep) { flat.push('-'); continue; }
+      if (it.submenu?.length) {
+        flat.push({ label: it.label, disabled: true });
+        for (const s of it.submenu) flat.push(s.sep ? '-' : { label: `   ${s.label}`, checked: s.checked, disabled: !s.enabled, run: () => api.extMenuClick(s.id) });
+      } else flat.push({ label: it.label, checked: it.checked, disabled: !it.enabled, run: () => api.extMenuClick(it.id) });
+    }
+    sections.push(flat);
+  }
   sections.push([{ label: 'Inspect', key: 'Ctrl+Shift+I', run: doPage('inspect') }]);
   const items = sections.flatMap((s) => ['-', ...s]);
   showMenu(items, r.left + p.x, r.top + p.y, () => t.wv?.focus());
