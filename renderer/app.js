@@ -92,6 +92,17 @@ const ENGINES = {
 };
 const engine = () => ENGINES[settings.searchEngine] || ENGINES.google;
 const isSearchUrl = (url) => Object.values(ENGINES).some((e) => url.startsWith(e.url));
+/**
+ * Endereço da busca. No Google, no mesmo formato da barra de endereço do Chrome (oq, sourceid,
+ * ie): um "/search?q=" sem mais nada, vindo de um cliente novo, é o padrão de robôs que coletam
+ * resultados, e a primeira busca caía na verificação "não sou um robô".
+ */
+function searchUrl(q, typed = q) {
+  const e = engine();
+  const enc = encodeURIComponent(q);
+  if (e === ENGINES.google) return `${e.url}${enc}&oq=${encodeURIComponent(typed)}&sourceid=chrome&ie=UTF-8`;
+  return e.url + enc;
+}
 const SETTINGS = 'kona://settings';
 const isInternal = (url) => url === START || url === SETTINGS;
 
@@ -102,7 +113,7 @@ function toUrl(input) {
   if (/^kona:\/\/(settings|configura[cç](o|õ)es)\/?$/i.test(q)) return SETTINGS;
   if (/^localhost(:\d+)?(\/|$)/i.test(q) || /^[\d.]+(:\d+)?(\/|$)/.test(q)) return 'http://' + q;
   if (/^[^\s]+\.[a-z]{2,}(:\d+)?(\/.*)?$/i.test(q)) return 'https://' + q;
-  return engine().url + encodeURIComponent(q);
+  return searchUrl(q);
 }
 
 // Ícones guardados no app para sites populares cujo ícone não está no endereço padrão

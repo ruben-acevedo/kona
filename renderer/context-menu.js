@@ -182,7 +182,7 @@ api?.on('ctx:page', ({ id, params: p }) => {
     const q = p.selectionText.trim();
     sections.push([
       { label: 'Copy', key: 'Ctrl+C', run: doPage('copy') },
-      { label: `Search ${engine().name} for “${short(q)}”`, run: () => openInBackground(engine().url + encodeURIComponent(q.slice(0, 500))) },
+      { label: `Search ${engine().name} for “${short(q)}”`, run: () => openInBackground(searchUrl(q.slice(0, 500))) },
     ]);
   }
   // a página em si: quando o clique não foi num link, imagem, vídeo, texto ou campo

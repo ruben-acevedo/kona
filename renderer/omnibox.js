@@ -167,7 +167,7 @@ const omnibox = {
       const items = this.compose(q, list);
       const idx = keep ? items.findIndex((x) => x.text === keep.text && x.kind === keep.kind) : 0;
       this.render(items, idx >= 0 ? idx : 0);
-    }, 70);
+    }, 160); // espera uma pausa na digitação: menos pedidos ao buscador (uma rajada parece robô)
   },
 
   compose(q, suggestions) {

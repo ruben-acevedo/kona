@@ -119,3 +119,10 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - Atalhos novos para combinar com o menu: Alt+←/→ e os botões laterais do mouse (voltar/avançar), Ctrl+S (salvar página), Ctrl+P (imprimir), Ctrl+U (código-fonte, aba `view-source:`), Ctrl+Shift+I numa página (ferramentas de desenvolvedor dela).
   - Corretor ortográfico: idiomas preferidos do Windows (aqui en-US e pt-BR), em todos os perfis e no modo privado.
   - "Save … as" pede a pasta mesmo com o salvamento automático ligado. Teste: `tests/debug/context-menu.js`.
+
+## J. Verificação "não sou um robô" do Google
+
+- [~] **J1. Primeira busca no Google cai na verificação (14).** Relatado em 2026-11-25: com perfil novo, a 1ª busca mostrava "unusual traffic"; depois não pergunta mais (o cookie fica liberado).
+  - Reproduzido (`tests/debug/google-captcha.js`, perfil novo, digitando a busca). Antes da busca, o Kona fazia 26 pedidos de sugestão (um por letra) pela sessão do perfil, e o 1º deles criava o cookie do Google usado na busca.
+  - Mudanças: sugestões numa sessão própria, só na memória e sem cookies (também mais privado); espera 160 ms de pausa na digitação (1 pedido em vez de 26 no teste); busca do Google no formato da barra do Chrome (`&oq=…&sourceid=chrome&ie=UTF-8`, função `searchUrl`).
+  - Não deu para concluir: depois dos testes da noite, o Chrome de verdade com perfil novo também caiu na verificação (o Google marcou o IP; IPv6 de provedor brasileiro). Falta a comparação limpa, com o IP "frio": 1 busca com Chrome em perfil novo e 1 com Kona em perfil novo. Não repetir buscas automáticas seguidas do mesmo IP.

@@ -372,9 +372,12 @@ handleUi('suggest', async (_e, q, partition, engine = 'google') => {
     ? `${process.env.KONA_SUGGEST_URL}?client=firefox&q=${encodeURIComponent(q)}`
     : SUGGEST[engine](encodeURIComponent(q), hl);
   try {
-    // no modo privado, a sugestão sai pela sessão privada (sem os cookies do perfil)
-    const ses = isPrivatePartition(partition) ? session.fromPartition(partition) : browserSession();
-    const res = await ses.fetch(url, { signal: AbortSignal.timeout(2500) });
+    // As sugestões saem por uma sessão própria, só na memória e sem cookies. Pedidas pela sessão do
+    // perfil, a rajada de pedidos da digitação criava o primeiro cookie do Google de um perfil novo,
+    // e a busca seguinte (com esse cookie) caía na verificação "não sou um robô". Também é mais
+    // privado: as sugestões não ficam ligadas à conta do Google de quem está logado.
+    const ses = session.fromPartition('kona-suggest');
+    const res = await ses.fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(2500) });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.[1]) ? data[1].filter((x) => typeof x === 'string').slice(0, 8) : [];
