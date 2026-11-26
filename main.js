@@ -12,6 +12,7 @@ const extensionsApi = require('./extensions');
 const { registerPasswords } = require('./passwords');
 const { watchReader, registerReader } = require('./reader');
 const { installShare, registerShare, shareEndedFrom } = require('./screen-share');
+const { watchMedia, registerMedia } = require('./media');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -243,6 +244,7 @@ const installSession = (ses, partition) => {
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-preload.js') });
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-passwords.js') }); // gerenciador de senhas
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-share.js') }); // compartilhar a tela
+  ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-media.js') }); // controle de mídia
   installShare(ses); // seletor de tela/janela/aba do Kona
 };
 
@@ -370,6 +372,9 @@ registerReader();
 // Compartilhar a tela: seletor do Kona e "Stop sharing"
 registerShare({ winFor, broadcast });
 ipcMain.on('share:ended-page', (e) => { if (e.sender.getType() === 'webview') shareEndedFrom(e.sender.id); });
+
+// Controle de mídia global: o painel ♪ da interface (abas de todas as janelas)
+registerMedia({ broadcast, winFor });
 
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
 extensionsApi.registerExtensions({ win: focusedWin, winFor });
@@ -563,6 +568,25 @@ handleUi('tab:move', (e, { wcId, url, title, to } = {}) => {
   else return false;
   return true;
 });
+// Abas fixadas: um link para outro site abre numa aba nova (a fixada continua no site dela)
+const pinnedTabs = new Set(); // webContents.id
+onUi('tab:pinned', (e, wcId, on) => {
+  const wc = webContents.fromId(Number(wcId));
+  if (!wc || wc.hostWebContents !== e.sender) return;
+  if (on) pinnedTabs.add(wc.id); else pinnedTabs.delete(wc.id);
+});
+/** "Site" de um endereço: o domínio registrável (aproximado: exemplo.com, exemplo.com.br, exemplo.co.uk). */
+function siteOf(url) {
+  try {
+    const u = new URL(url);
+    if (!/^https?:$/.test(u.protocol)) return null;
+    const p = u.hostname.split('.');
+    if (p.length <= 2 || /^\d+$/.test(p.at(-1)) || u.hostname.includes(':')) return u.hostname;
+    const second = ['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'gob', 'or', 'ne'].includes(p.at(-2)) && p.at(-1).length === 2;
+    return p.slice(second ? -3 : -2).join('.');
+  } catch { return null; }
+}
+
 // F11: tela cheia da janela (a barra do Kona aparece ao levar o mouse ao topo)
 onUi('win:fullscreen', (e) => { const w = BrowserWindow.fromWebContents(e.sender); w?.setFullScreen(!w.isFullScreen()); });
 onUi('win:devtools', (e) => e.sender.openDevTools({ mode: 'detach' }));
@@ -606,7 +630,16 @@ app.on('web-contents-created', (_e, contents) => {
   }
   if (contents.getType() !== 'webview') return;
   watchPage(contents); // botão direito → menu do Kona
+  contents.on('will-navigate', (e) => {
+    if (!pinnedTabs.has(contents.id) || !e.isMainFrame || e.isSameDocument) return;
+    const from = siteOf(contents.getURL()), to = siteOf(e.url);
+    if (!from || !to || from === to) return;
+    e.preventDefault();
+    contents.hostWebContents?.send('tab:open', e.url);
+  });
+  contents.once('destroyed', () => pinnedTabs.delete(contents.id));
   watchReader(contents); // modo leitura: a página é um artigo?
+  watchMedia(contents); // controle de mídia: o que toca nesta aba
   // som: a aba mostra 🔊 enquanto toca (e permite silenciar)
   contents.on('audio-state-changed', (e) => contents.hostWebContents?.send('tab:audio', { id: contents.id, audible: !!e.audible }));
   extensionsApi.trackTab(contents); // a aba existe para as extensões (chrome.tabs)
@@ -690,7 +723,8 @@ app.on('web-contents-created', (_e, contents) => {
     }
     if (!(input.control || input.meta)) return;
     const key = input.key.toLowerCase();
-    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 's', 'p', 'u', 'f', 'g', '=', '+', '-', '_', '0', 'tab', ',', '\\', '|'].includes(key)) {
+    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 's', 'p', 'u', 'f', 'g', '=', '+', '-', '_', '0', 'tab', ',', '\\', '|',
+      '1', '2', '3', '4', '5', '6', '7', '8', '9', 'pageup', 'pagedown'].includes(key)) {
       event.preventDefault();
       contents.hostWebContents?.send('shortcut', { key, shift: input.shift });
     }

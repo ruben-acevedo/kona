@@ -231,7 +231,7 @@ $('#sidebar').addEventListener('click', async (e) => {
   const row = e.target.closest('.sb-row');
   if (e.target.closest('.sb-edit')) return;
 
-  if (act === 'close-tab') { closeTab(+tabEl2.dataset.tab); return; }
+  if (act === 'close-tab') { closeTab(+tabEl2.dataset.tab, { force: true }); return; }
   if (act === 'new-tab') { newTab(); return; }
   if (act === 'new-group') { sb.editing = { kind: 'newgroup' }; renderMain(); return; }
   if (act === 'rename-group') { sb.editing = { kind: 'group', id: setEl.dataset.set }; renderMain(); return; }

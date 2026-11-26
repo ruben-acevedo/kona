@@ -207,8 +207,9 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [ ] **N6. Recuperar a sessão depois de um travamento.**
 
 ### Esperado em qualquer navegador
-- [ ] **N7. Fixar abas.**
-- [ ] **N8. Atalhos de abas:** Ctrl+1…9, Ctrl+PgUp/PgDn, arrastar link para a barra de abas.
+- [x] **N7. Fixar abas.** "Pin tab" / "Unpin tab" no menu da aba. A fixada fica no começo da barra, só com o ícone (a ativa abre o endereço, como as outras), e aparece em todas as janelas e em todos os grupos, como no Safari (não no modo privado). Link para outro site dentro dela abre numa aba nova; Ctrl+W e o botão do meio não a fecham (vai para a aba seguinte); "Close tab" no menu desafixa e fecha. Arrastar muda a ordem só entre as fixadas; não muda de janela. Guardadas por perfil (`kona:pinned:<perfil>`), com o endereço atual. Testado: `tests/debug/pinned.js`.
+- [x] **N8. Atalhos de abas:** Ctrl+1…9, Ctrl+PgUp/PgDn, arrastar link para a barra de abas.
+  - Feito: Ctrl+1…8 (aba N), Ctrl+9 (última), Ctrl+PgUp/PgDn (anterior/seguinte), Ctrl+Shift+PgUp/PgDn (leva a aba; fixadas só entre fixadas) — também com o foco na página. Soltar link/texto na barra: sobre uma aba abre nela (contorno azul), entre abas abre numa aba nova ali (traço azul); texto vira busca; só http(s). Atalhos novos listados em Configurações. Testado: `tests/debug/tab-shortcuts.js`.
 - [ ] **N9. Preencher endereços e cartões.**
 - [ ] **N10. Traduzir páginas.**
 - [ ] **N11. Instalar sites como aplicativo (PWA).**
@@ -216,7 +217,9 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [ ] **N13. Pré-visualização de impressão.**
 - [ ] **N14. Aviso de download perigoso.**
 - [ ] **N15. Barra de favoritos (opcional).**
-- [ ] **N16. Controle de mídia global e teclas de mídia.**
+- [~] **N16. Controle de mídia global e teclas de mídia.**
+  - Feito: botão ♪ na barra (só quando alguma aba, de qualquer janela, tem mídia; azul enquanto toca). Painel "Playing now": capa, título e artista (do `navigator.mediaSession` do site), tocar/pausar, faixa anterior/seguinte (quando o site oferece), clicar leva à aba (troca de janela se preciso). Abas privadas só aparecem na própria janela. `media.js` + `page-media.js` (captura os botões de mídia do site com função de cara nativa). Testado: `tests/debug/media.js` + ua/smoke.
+  - Falta: teste manual do usuário das teclas de mídia do teclado e do painel de mídia do Windows (não testado automaticamente para não mexer na mídia de outros programas), e com YouTube/Spotify de verdade.
 - [ ] **N17. Configurações por site** (JavaScript, pop-ups, cookies).
 
 ### Grande, para depois

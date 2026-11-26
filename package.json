@@ -59,6 +59,8 @@
       "reader-page.js",
       "screen-share.js",
       "page-share.js",
+      "media.js",
+      "page-media.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

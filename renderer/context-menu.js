@@ -230,10 +230,11 @@ function tabItems(t) {
     { label: 'Duplicate', run: () => (web ? openInBackground(t.url) : newTab(t.url, false)) },
     { label: fav ? 'Remove from Favorites' : 'Add to Favorites', key: 'Ctrl+D', run: () => toggleBookmark(t), disabled: !web },
     { label: t.muted ? 'Unmute tab' : 'Mute tab', run: () => toggleMute(t), disabled: !t.wv },
+    ...(library.isPrivate() ? [] : [{ label: t.pinned ? 'Unpin tab' : 'Pin tab', run: () => { if (t.pinned) library.unpin(t); else library.pin(t); render(); library.onTabsChanged(); } }]),
     '-',
-    { label: 'Close tab', key: 'Ctrl+W', run: () => closeTab(t.id) },
+    { label: 'Close tab', key: t.pinned ? '' : 'Ctrl+W', run: () => closeTab(t.id, { force: true }) },
     { label: 'Reopen closed tab', key: 'Ctrl+Shift+T', run: () => reopenClosedTab(), disabled: !closedTabs.length },
-    { label: 'Close other tabs', run: () => { for (const o of [...tabs]) if (o.id !== t.id) closeTab(o.id); }, disabled: tabs.length < 2 },
+    { label: 'Close other tabs', run: () => { for (const o of [...tabs]) if (o.id !== t.id && !o.pinned) closeTab(o.id); }, disabled: !tabs.some((o) => o.id !== t.id && !o.pinned) },
   ];
 }
 async function pasteAndGo(t) {

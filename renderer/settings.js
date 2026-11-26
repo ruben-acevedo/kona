@@ -183,7 +183,8 @@ const settingsPage = {
   about() {
     const v = appInfo || {};
     const keys = [
-      ['Ctrl+T', 'New tab'], ['Ctrl+N', 'New window'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'],
+      ['Ctrl+T', 'New tab'], ['Ctrl+N', 'New window'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'], ['Ctrl+1…8 / Ctrl+9', 'Go to tab / last tab'],
+      ['Ctrl+PgUp / PgDn', 'Previous / next tab'], ['Ctrl+Shift+PgUp / PgDn', 'Move tab left / right'],
       ['Alt+Z', 'Sidebar'], ['Ctrl+D', 'Add page to Favorites'], ['Ctrl+Shift+D', 'Save to Reading List'],
       ['Ctrl+H', 'History'], ['Ctrl+J', 'Downloads'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
       ['Ctrl+F', 'Find in page'], ['Ctrl+Shift+R', 'Reader'], ['F11', 'Full screen'], ['Ctrl+Shift+T', 'Reopen closed tab'], ['Ctrl+ / Ctrl−', 'Zoom in / out'], ['Ctrl+0', 'Reset zoom'],

@@ -210,6 +210,19 @@ const readingList = {
   unread() { return this.items.filter((x) => !x.read).length; },
 };
 
+/* ───────────── Abas fixadas ─────────────
+   As mesmas em todas as janelas e em todos os grupos (como no Safari), fora do modo privado.
+   Cada uma: { id, url, title }. O endereço acompanha a navegação da aba. */
+const pinnedTabs = {
+  list: [],
+  load() {
+    const d = readJSON(profileKey('pinned'));
+    this.list = Array.isArray(d) ? d.filter((p) => p && typeof p.id === 'string' && typeof p.url === 'string').slice(0, 50) : [];
+  },
+  save() { writeJSON(profileKey('pinned'), this.list); },
+  get(id) { return this.list.find((p) => p.id === id); },
+};
+
 /* ───────────── Grupos de abas e sessão ─────────────
    "default" = as abas sem grupo. Cada grupo guarda as próprias abas (como no Safari):
    trocar de grupo troca o conjunto de abas da barra. */
@@ -254,13 +267,76 @@ const library = {
     readingList.load();
     downloadsList.load();
     tabSets.load();
+    pinnedTabs.load();
   },
 
+  /** As abas do conjunto (as fixadas ficam de fora: são guardadas à parte). */
   snapshot() {
+    const own = tabs.filter((t) => t.url && !t.pinned);
     return {
-      tabs: tabs.filter((t) => t.url).map((t) => ({ url: t.url, title: t.title })),
-      active: Math.max(0, tabs.indexOf(active())),
+      tabs: own.map((t) => ({ url: t.url, title: t.title })),
+      active: Math.max(0, own.indexOf(active())),
     };
+  },
+
+  /* ── Abas fixadas ── */
+  pinnedCount() { let n = 0; while (tabs[n]?.pinned) n++; return n; },
+  /**
+   * Deixa as abas fixadas desta janela iguais à lista guardada: cria as que faltam (sem carregar),
+   * fecha as que saíram, na ordem da lista. No modo privado não há abas fixadas.
+   */
+  syncPinned(fix = true) {
+    const want = this.private ? [] : pinnedTabs.list;
+    const live = tabs.filter((t) => t.pinned);
+    const keep = want.map((p) => {
+      const t = live.find((x) => x.pinId === p.id);
+      if (t) return t;
+      const n = makeTab(p.url, { title: p.title, pinned: true });
+      n.pinId = p.id;
+      tabs.splice(tabs.indexOf(n), 1);
+      return n;
+    });
+    const gone = live.filter((t) => !keep.includes(t));
+    for (const t of gone) { t.wv?.remove(); discardParked(t); mru = mru.filter((x) => x !== t.id); }
+    const rest = tabs.filter((t) => !t.pinned);
+    tabs.splice(0, tabs.length, ...keep, ...rest);
+    if (!fix) return;
+    if (!tabs.length) makeTab();
+    if (gone.some((t) => t.id === activeId) || !active()) activate((tabs[keep.length] || tabs[0]).id);
+  },
+  pin(t) {
+    if (t.pinned || this.private || !t.url) return;
+    t.pinned = true;
+    t.pinId = uid();
+    tabs.splice(tabs.indexOf(t), 1);
+    tabs.splice(this.pinnedCount(), 0, t);
+    pinnedTabs.list.push({ id: t.pinId, url: t.url, title: t.title });
+    this.savePinned();
+    if (t.wv) api?.tabPinned?.(t.wv.getWebContentsId(), true);
+  },
+  unpin(t) {
+    if (!t.pinned) return;
+    pinnedTabs.list = pinnedTabs.list.filter((p) => p.id !== t.pinId);
+    tabs.splice(tabs.indexOf(t), 1);
+    t.pinned = false;
+    t.pinId = null;
+    tabs.splice(this.pinnedCount(), 0, t);
+    this.savePinned();
+    if (t.wv) api?.tabPinned?.(t.wv.getWebContentsId(), false);
+  },
+  /** Guarda a lista na ordem da barra (e os endereços atuais). */
+  savePinned() {
+    pinnedTabs.list = tabs.filter((t) => t.pinned).map((t) => ({ id: t.pinId, url: t.url, title: t.title }));
+    pinnedTabs.save();
+  },
+  /** A aba fixada navegou: o endereço guardado acompanha (só o dela; as outras janelas não recarregam). */
+  pinnedNavigated(t) {
+    const p = pinnedTabs.get(t.pinId);
+    if (!p || isInternal(t.url)) return;
+    p.url = t.url;
+    p.title = t.title;
+    clearTimeout(this.pinTimer);
+    this.pinTimer = setTimeout(() => pinnedTabs.save(), 800);
   },
   /** Guarda as abas do conjunto atual (nunca as do modo privado). */
   saveCurrent() {
@@ -278,16 +354,20 @@ const library = {
     this.changed('tabs');
   },
 
+  /** Fecha as abas do conjunto (as fixadas ficam, menos no modo privado). */
   closeAllLive() {
-    for (const t of tabs) { t.wv?.remove(); discardParked(t); }
-    tabs.length = 0;
-    mru = [];
+    const keep = this.private ? [] : tabs.filter((t) => t.pinned);
+    for (const t of tabs) if (!keep.includes(t)) { t.wv?.remove(); discardParked(t); }
+    tabs.splice(0, tabs.length, ...keep);
+    mru = mru.filter((id) => keep.some((t) => t.id === id));
   },
   openSnapshot(snap) {
     this.closeAllLive();
+    this.syncPinned(false);
+    const np = this.pinnedCount();
     const list = snap?.tabs?.length ? snap.tabs : [{ url: START }];
     for (const s of list) makeTab(LEGACY_URLS[s.url] || s.url, { title: LEGACY_URLS[s.url] ? '' : s.title });
-    activate(tabs[Math.min(snap?.active || 0, tabs.length - 1)].id);
+    activate(tabs[Math.min(np + (snap?.active || 0), tabs.length - 1)].id);
     prewarmTabs();
   },
 
@@ -376,6 +456,7 @@ const library = {
     else if (key === profileKey('downloads')) downloadsList.reloadShared();
     else if (key === profileKey('tabsets')) { if (!this.primary) tabSets.load(); }
     else if (key === profileKey('history')) browseHistory.load();
+    else if (key === profileKey('pinned')) { pinnedTabs.load(); this.syncPinned(); render(); this.changed('tabs'); }
     else if (key === profileKey('settings')) this.changed('settings');
   },
 

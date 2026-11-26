@@ -47,6 +47,9 @@ const ICONS = {
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
   play: '<path d="M8.5 6.2v11.6a.8.8 0 0 0 1.2.7l9.2-5.8a.8.8 0 0 0 0-1.4L9.7 5.5a.8.8 0 0 0-1.2.7z"/>',
   pause: '<path d="M9 6v12M15 6v12"/>',
+  music: '<path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  prevTrack: '<path d="M18 6.6v10.8a.6.6 0 0 1-.9.5L9.6 12.5a.6.6 0 0 1 0-1l7.5-5.4a.6.6 0 0 1 .9.5z"/><path d="M6.5 6v12"/>',
+  nextTrack: '<path d="M6 6.6v10.8a.6.6 0 0 0 .9.5l7.5-5.4a.6.6 0 0 0 0-1L6.9 6.1a.6.6 0 0 0-.9.5z"/><path d="M17.5 6v12"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
   cookie: '<path d="M20.5 12.5A8.5 8.5 0 1 1 11.5 3.5a3 3 0 0 0 3.6 3.4 3 3 0 0 0 3.3 3.6 2.5 2.5 0 0 0 2.1 2z"/><circle cx="9" cy="10" r=".9"/><circle cx="14" cy="15" r=".9"/><circle cx="9.5" cy="15.5" r=".9"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
@@ -422,13 +425,16 @@ const tabs = [];
 let activeId = null;
 const active = () => tabs.find((t) => t.id === activeId);
 
-function makeTab(url = START, { title, index } = {}) {
+function makeTab(url = START, { title, index, pinned = false } = {}) {
   const t = {
     id: ++seq, url, title: title || (url === START ? 'New Tab' : url === SETTINGS ? 'Settings' : hostOf(url)),
     favicon: null, loading: false, canBack: false, canFwd: false, fromStart: false, wv: null, thumb: null,
-    partition: library.partition(),
+    partition: library.partition(), pinned,
   };
-  tabs.splice(index ?? tabs.length, 0, t);
+  // as abas fixadas ficam no começo da barra; as outras sempre depois delas
+  const np = library.pinnedCount();
+  const at = index ?? tabs.length;
+  tabs.splice(pinned ? Math.min(at, np) : Math.max(at, np), 0, t);
   return t;
 }
 
@@ -467,9 +473,12 @@ function ensureWebview(t) {
     t.blockedPopups = null; // e os pop-ups bloqueados também
     t.url = viewSource(e.url); t.favicon = null; sync(); render();
     if (!t.url.startsWith('view-source:')) browseHistory.addVisit(e.url, t.title);
+    if (t.pinned) library.pinnedNavigated(t);
   });
+  // aba fixada: o processo principal abre os links para outros sites numa aba nova
+  on('did-attach', () => { if (t.pinned) api?.tabPinned?.(wv.getWebContentsId(), true); });
   on('did-navigate-in-page', (e) => { if (e.isMainFrame) { t.url = viewSource(e.url); sync(); render(); } });
-  on('page-title-updated', (e) => { t.title = e.title; render(); browseHistory.updateTitle(t.url, e.title); });
+  on('page-title-updated', (e) => { t.title = e.title; render(); browseHistory.updateTitle(t.url, e.title); if (t.pinned) library.pinnedNavigated(t); });
   on('page-favicon-updated', (e) => { t.favicon = e.favicons?.[0] || null; render(); });
   performance.mark('kona:webview-create');
   $('#views').appendChild(wv);
@@ -518,7 +527,7 @@ function activate(id) {
 }
 
 function newTab(url = START, focus = true) {
-  const t = makeTab(url, { index: tabs.indexOf(active()) + 1 });
+  const t = makeTab(url, { index: active()?.pinned ? tabs.length : tabs.indexOf(active()) + 1 });
   sfx.play('tabOpen');
   activate(t.id);
   // com a visão geral aberta, a aba nova aparece nela na hora (e fica selecionada)
@@ -528,9 +537,18 @@ function newTab(url = START, focus = true) {
 }
 
 /** moved: a aba foi para outra janela (não entra em "reabrir aba fechada" nem toca o som). */
-function closeTab(id, { moved = false } = {}) {
+function closeTab(id, { moved = false, force = false } = {}) {
   const i = tabs.findIndex((t) => t.id === id);
   if (i < 0) return;
+  // aba fixada não fecha com Ctrl+W nem com o botão do meio: vai para a aba seguinte
+  if (tabs[i].pinned && !force) {
+    if (activeId === id) {
+      const next = tabs.find((t) => !t.pinned);
+      if (next) activate(next.id); else newTab();
+    }
+    return;
+  }
+  if (tabs[i].pinned) { library.unpin(tabs[i]); return closeTab(id, { moved, force }); }
   const [t] = tabs.splice(i, 1);
   if (!moved && typeof rememberClosed === 'function') rememberClosed(t, i); // Ctrl+Shift+T
   if (!moved) sfx.play('tabClose');
@@ -542,6 +560,20 @@ function closeTab(id, { moved = false } = {}) {
   ensureWebview(active());
   render();
   if ($('#overview').classList.contains('show')) buildOverview();
+}
+
+/** Leva a aba uma posição para o lado (as fixadas só entre as fixadas). */
+function moveTabBy(t, dir) {
+  const i = tabs.indexOf(t);
+  const np = library.pinnedCount();
+  const [lo, hi] = t.pinned ? [0, np - 1] : [np, tabs.length - 1];
+  const j = i + dir;
+  if (i < 0 || j < lo || j > hi) return;
+  tabs.splice(i, 1);
+  tabs.splice(j, 0, t);
+  if (t.pinned) library.savePinned();
+  render();
+  library.onTabsChanged();
 }
 
 function focusAddress() {
@@ -664,6 +696,7 @@ function favHtml(t) {
 function paintTab(t, el) {
   const isActive = t.id === activeId;
   el.classList.toggle('active', isActive);
+  el.classList.toggle('pinned', !!t.pinned);
   el.classList.toggle('web', !isInternal(t.url));
   el.classList.toggle('loading', t.loading);
   el.classList.toggle('secure', t.url.startsWith('https://'));
@@ -924,7 +957,7 @@ function buildOverview() {
       <div class="thumb ${cls}" style="${escapeHtml(style)}">${inner}<button class="ov-x glass" title="Close tab">${icon('x')}</button></div>
       <div class="cap"><span class="tfav">${favHtml(t).html}</span><span>${escapeHtml(t.title)}</span></div>`;
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.ov-x')) { closeTab(t.id); return; }
+      if (e.target.closest('.ov-x')) { closeTab(t.id, { force: true }); return; }
       sfx.play('select');
       activate(t.id);
       closeOverview();
@@ -1164,7 +1197,7 @@ function shortcut(key, shift) {
   const a = active();
   if (key === 't' && shift) reopenClosedTab();
   else if (key === 't') newTab();
-  else if (key === 'w') { if (tabs.length === 1) api?.close(); else closeTab(activeId); }
+  else if (key === 'w') { if (tabs.length === 1 && !a.pinned) api?.close(); else closeTab(activeId); }
   else if (key === 'l' && shift) toggleSidebar();
   else if (key === 'l') focusAddress();
   else if (key === 'r' && shift) toggleReader(a);
@@ -1196,6 +1229,17 @@ function shortcut(key, shift) {
   else if (key === 'n') api?.newWindow();
   else if (key === ',') openSettings();
   else if (key === '\\' || key === '|') toggleOverview();
+  // Ctrl+1…8: aba 1…8 · Ctrl+9: a última (como no Chrome)
+  else if (/^[1-9]$/.test(key) && !shift) {
+    const t = key === '9' ? tabs[tabs.length - 1] : tabs[Number(key) - 1];
+    if (t) activate(t.id);
+  }
+  // Ctrl+PgUp/PgDn: aba anterior/seguinte · com Shift: leva a aba para a esquerda/direita
+  else if ((key === 'pageup' || key === 'pagedown') && shift) moveTabBy(a, key === 'pageup' ? -1 : 1);
+  else if (key === 'pageup' || key === 'pagedown') {
+    const i = tabs.indexOf(a);
+    activate(tabs[(i + (key === 'pageup' ? -1 : 1) + tabs.length) % tabs.length].id);
+  }
   else if (key === 'tab') {
     const i = tabs.indexOf(a);
     activate(tabs[(i + (shift ? -1 : 1) + tabs.length) % tabs.length].id);

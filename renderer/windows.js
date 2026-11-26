@@ -16,6 +16,7 @@ function tabDropIndex(x, skip = null) {
  */
 async function moveTab(t, to) {
   if (library.isPrivate()) { toast('Private tabs stay in their window'); return false; }
+  if (t.pinned) { toast('Pinned tabs are in every window'); return false; }
   let wcId = null;
   try { wcId = t.wv ? t.wv.getWebContentsId() : null; } catch { /* ainda não pronta */ }
   const ok = await api?.tabMove({ wcId, url: t.url, title: t.title, to });
@@ -27,7 +28,7 @@ async function moveTab(t, to) {
 
 /** Itens "Mover para…" do menu da aba. */
 async function moveItems(t) {
-  if (library.isPrivate()) return [];
+  if (library.isPrivate() || t.pinned) return [];
   const others = (await api?.otherWindows?.()) || [];
   return [
     { label: 'Move to new window', run: () => moveTab(t, { newWindow: true }), disabled: tabs.length < 2 },
@@ -67,13 +68,17 @@ addEventListener('pointermove', (e) => {
     document.body.classList.add('tab-dragging');
   }
   const strip = $('#tabs').getBoundingClientRect();
-  const out = e.clientY < strip.top - DETACH || e.clientY > strip.bottom + DETACH || e.clientX < 0 || e.clientX > innerWidth;
+  // a aba fixada só muda de lugar entre as fixadas (está em todas as janelas: não sai)
+  const out = !d.t.pinned && (e.clientY < strip.top - DETACH || e.clientY > strip.bottom + DETACH || e.clientX < 0 || e.clientX > innerWidth);
   // com uma aba só não há para onde reordenar; sair da barra ainda leva a aba para outra janela
   if (out !== d.out) { d.out = out; d.el.classList.toggle('detaching', out); showGhost(out ? d.t : null); }
   if (out) moveGhost(e.clientX, e.clientY);
   if (!out) {
     // reordenar: a aba vai para a posição do ponteiro
-    const want = tabDropIndex(e.clientX, d.el);
+    // fixadas só entre fixadas; as outras só depois delas
+    const np = library.pinnedCount();
+    const raw = tabDropIndex(e.clientX, d.el);
+    const want = d.t.pinned ? Math.min(raw, np - 1) : Math.max(raw, np);
     const cur = tabs.indexOf(d.t);
     if (want !== cur) {
       tabs.splice(cur, 1);
@@ -113,7 +118,7 @@ function endTabDrag(e, cancel = false) {
   el.classList.remove('dragging', 'detaching');
   document.body.classList.remove('tab-dragging');
   el.style.transform = '';
-  if (cancel || !out) { library.onTabsChanged(); return; }
+  if (cancel || !out) { if (t.pinned) library.savePinned(); library.onTabsChanged(); return; }
   // ponto na tela: posição da janela + posição na janela (a janela não tem moldura)
   moveTab(t, { point: { x: window.screenX + e.clientX, y: window.screenY + e.clientY }, allowNew: tabs.length > 1 });
 }
@@ -132,3 +137,57 @@ addEventListener('keydown', (e) => {
   document.body.classList.remove('tab-dragging');
   el.style.transform = '';
 }, true);
+
+/* ───────────── Soltar um link ou texto na barra de abas ─────────────
+   Como no Chrome: sobre uma aba, abre nela; entre abas (ou no espaço vazio), abre numa aba nova
+   ali. Texto que não é endereço vira busca. */
+const linkDrop = { el: null, mode: null };
+const droppedUrl = (dt) => {
+  const uri = (dt.getData('text/uri-list') || '').split(/\r?\n/).find((l) => l && !l.startsWith('#'));
+  const text = (uri || dt.getData('text/plain') || '').trim().slice(0, 2000);
+  if (!text) return null;
+  const url = toUrl(text);
+  return url && /^https?:/i.test(url) ? url : null; // arquivos e outros esquemas não entram por aqui
+};
+const acceptsDrop = (dt) => !tabDrag.on && [...(dt?.types || [])].some((x) => x === 'text/uri-list' || x === 'text/plain');
+function markDrop(el, mode) {
+  if (linkDrop.el === el && linkDrop.mode === mode) return;
+  linkDrop.el?.classList.remove('drop-into', 'drop-before', 'drop-after');
+  Object.assign(linkDrop, { el, mode });
+  el?.classList.add(`drop-${mode}`);
+}
+/** Onde o link cai: { t, into } (abrir na aba) ou { index } (aba nova ali). */
+function dropTarget(x) {
+  const els = $$('#tabs .tab:not(.leaving)');
+  for (const [i, el] of els.entries()) {
+    const r = el.getBoundingClientRect();
+    if (x < r.left || x > r.right) continue;
+    const t = tabs.find((o) => String(o.id) === el.dataset.id);
+    const edge = Math.min(14, r.width * 0.2);
+    if (x < r.left + edge) return { el, mode: 'before', index: i };
+    if (x > r.right - edge) return { el, mode: 'after', index: i + 1 };
+    return { el, mode: 'into', t };
+  }
+  const last = els[els.length - 1];
+  return { el: last, mode: 'after', index: els.length };
+}
+$('#tabs').addEventListener('dragover', (e) => {
+  if (!acceptsDrop(e.dataTransfer)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'link';
+  const d = dropTarget(e.clientX);
+  markDrop(d.el, d.mode);
+});
+$('#tabs').addEventListener('dragleave', (e) => { if (!e.currentTarget.contains(e.relatedTarget)) markDrop(null, null); });
+$('#tabs').addEventListener('drop', (e) => {
+  if (!acceptsDrop(e.dataTransfer)) return;
+  e.preventDefault();
+  markDrop(null, null);
+  const url = droppedUrl(e.dataTransfer);
+  if (!url) return;
+  const d = dropTarget(e.clientX);
+  if (d.t) { activate(d.t.id); navigate(d.t, url); return; }
+  const t = makeTab(url, { index: d.index });
+  sfx.play('tabOpen');
+  activate(t.id);
+});

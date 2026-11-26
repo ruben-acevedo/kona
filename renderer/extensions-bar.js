@@ -171,7 +171,7 @@ api?.on('ext:tab-create', ({ id, url, active: focus }) => {
 });
 const tabByWc = (wcId) => tabs.find((t) => { try { return t.wv?.getWebContentsId() === wcId; } catch { return false; } });
 api?.on('ext:tab-select', (wcId) => { const t = tabByWc(wcId); if (t) activate(t.id); });
-api?.on('ext:tab-remove', (wcId) => { const t = tabByWc(wcId); if (t) closeTab(t.id); });
+api?.on('ext:tab-remove', (wcId) => { const t = tabByWc(wcId); if (t) closeTab(t.id, { force: true }); });
 
 /* ───────────── Ligações ───────────── */
 api?.on('browserAction.update', () => refreshExtActions());

@@ -1184,3 +1184,39 @@ body.tab-dragging, body.tab-dragging * { cursor: grabbing !important; user-selec
 #tab-ghost .title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* janela secundária: os grupos de abas ficam na janela principal */
 body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
+
+/* ───────────── Abas fixadas: só o ícone (a ativa abre o endereço, como as outras) ───────────── */
+.tab.pinned:not(.active) {
+  flex: 0 0 38px; max-width: 38px; min-width: 38px; padding: 0; justify-content: center;
+}
+.tab.pinned:not(.active) .title { display: none; }
+.tab.pinned .x { display: none; }
+.tab.pinned:hover .tfav { opacity: 1; }
+.tab.pinned + .tab:not(.pinned) { margin-left: 6px; }
+
+/* soltar um link na barra de abas: dentro da aba (contorno) ou entre abas (traço) */
+.tab.drop-into { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent); }
+.tab.drop-before::before, .tab.drop-after::after {
+  content: ""; position: absolute; top: 6px; bottom: 6px; width: 2px; border-radius: 1px; background: var(--accent);
+}
+.tab.drop-before::before { left: 0; }
+.tab.drop-after::after { right: 0; }
+.tab img { -webkit-user-drag: none; }
+
+/* ───────────── Controle de mídia (♪) ───────────── */
+#btn-media.playing { color: var(--accent); }
+#media-pop { width: 340px; transform-origin: top right; transform: translateY(-6px) scale(0.98); }
+#media-pop.show { transform: none; }
+.md-row { display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 12px; }
+.md-row:hover { background: var(--glass-hover); }
+.md-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; padding: 2px; border-radius: 10px; }
+.md-art { width: 40px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; background: var(--glass-press); }
+.md-site { display: grid; place-items: center; }
+.md-site img, .md-site .ic { width: 20px; height: 20px; border-radius: 5px; }
+.md-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.md-title, .md-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-title { font-size: 13px; font-weight: 600; }
+.md-sub { font-size: 11.5px; color: var(--text-2); }
+.md-ctl { display: flex; align-items: center; gap: 2px; flex: none; }
+.md-ctl .ic { width: 16px; height: 16px; }
+.md-play .ic { fill: currentColor; }
