@@ -9,7 +9,7 @@ const fs = require('fs');
 
 const live = new Map(); // id → DownloadItem em andamento
 let seq = 0;
-let win = () => null;
+let broadcast = () => {};
 let currentSession = () => null;
 
 /* ───────────── Arquivos baixados pelo Kona ───────────── */
@@ -46,11 +46,11 @@ function info(id, item) {
 }
 
 /** Chamado pela política da sessão (session-policy.js) a cada download que começa. */
-function track(item) {
+function track(item, { priv = false } = {}) {
   const id = ++seq;
   live.set(id, item);
-  const send = (channel, data) => win()?.webContents.send(channel, data);
-  send('download:start', info(id, item));
+  const send = (channel, data) => broadcast(channel, data);
+  send('download:start', { ...info(id, item), priv });
   let last = 0;
   item.on('updated', () => {
     const now = Date.now();
@@ -80,7 +80,7 @@ let fallbackIcon = null;
 const appIcon = () => (fallbackIcon ||= nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon-256.png')).resize({ width: 32 }));
 
 function registerDownloads(opts) {
-  win = opts.win;
+  broadcast = opts.broadcast;
   currentSession = opts.currentSession;
   const byId = (id) => live.get(Number(id));
   handleUi('download:pause', (_e, id) => { byId(id)?.pause(); return true; });

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, components, ipcMain } = require('electron');
+const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, components, ipcMain, webContents } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { installChromeWebStore, uninstallExtension } = require('electron-chrome-web-store');
@@ -44,14 +44,16 @@ function targetsFrom(argv) {
 }
 const pendingTargets = targetsFrom(process.argv);
 function openTargets(list) {
-  if (!mainWin) { pendingTargets.push(...list); return; }
-  for (const url of list) mainWin.webContents.send('tab:external', url);
+  const w = focusedWin();
+  if (!w) { pendingTargets.push(...list); return; }
+  for (const url of list) w.webContents.send('tab:external', url);
 }
 app.on('second-instance', (_e, argv) => {
-  if (!mainWin) return;
-  if (mainWin.isMinimized()) mainWin.restore();
-  mainWin.show();
-  mainWin.focus();
+  const w = focusedWin();
+  if (!w) return;
+  if (w.isMinimized()) w.restore();
+  w.show();
+  w.focus();
   openTargets(targetsFrom(argv));
 });
 
@@ -76,12 +78,35 @@ let currentPartition = DEFAULT_PARTITION;
 // faz o Chromium parar de enviar as client hints (Sec-CH-UA) — o Google trata "Chrome sem
 // client hints" como robô e mostra a verificação “não sou um robô”.
 app.userAgentFallback = app.userAgentFallback.replace(/\s(Electron|kona)\/\S+/gi, '');
-let mainWin = null;
+/* ───────────── Janelas ─────────────
+   O Kona pode ter várias janelas (Ctrl+N, arrastar uma aba para fora). A primeira é a "principal":
+   ela guarda a sessão e os grupos de abas. Se fechar com outras abertas, a mais antiga assume. */
+const windows = []; // em ordem de abertura
+let lastFocused = null;
+let primaryWin = null;
+const alive = (w) => w && !w.isDestroyed();
+/** A janela em uso (a última que teve o foco). */
+const focusedWin = () => (alive(lastFocused) ? lastFocused : windows.find(alive)) || null;
+/** A janela da interface que hospeda uma aba (ou a em uso, se não der para saber). */
+const winFor = (wc) => {
+  const host = wc && !wc.isDestroyed() ? (wc.hostWebContents || wc) : null;
+  const w = host && BrowserWindow.fromWebContents(host);
+  return (w && windows.includes(w) ? w : null) || focusedWin();
+};
+const isUiContents = (wc) => windows.some((w) => alive(w) && w.webContents === wc);
+/** Avisa todas as janelas (downloads, senhas, extensões…). */
+const broadcast = (channel, data) => { for (const w of windows) if (alive(w)) w.webContents.send(channel, data); };
 
-function createWindow() {
+/**
+ * opts: { adopt (aba vinda de outra janela), bounds, maximize }.
+ * Sem opts é a abertura do app (maximizada, como sempre).
+ */
+function createWindow(opts = {}) {
+  const first = !windows.length;
   const win = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    width: opts.bounds?.width || 1360,
+    height: opts.bounds?.height || 860,
+    ...(opts.bounds && opts.bounds.x != null ? { x: opts.bounds.x, y: opts.bounds.y } : {}),
     minWidth: 760,
     minHeight: 480,
     frame: false,
@@ -96,37 +121,55 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  mainWin = win;
+  windows.push(win);
+  if (first || !alive(primaryWin)) primaryWin = win;
+  lastFocused = win;
+  win.on('focus', () => { lastFocused = win; });
   // A interface nunca sai do index.html nem abre janelas próprias
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  win.on('closed', () => { if (mainWin === win) mainWin = null; });
+  win.on('closed', () => {
+    windows.splice(windows.indexOf(win), 1);
+    if (lastFocused === win) lastFocused = null;
+    // a principal fechou: a mais antiga das outras passa a guardar a sessão
+    if (primaryWin === win) {
+      primaryWin = windows.find(alive) || null;
+      primaryWin?.webContents.send('win:promote');
+    }
+  });
   // botões laterais do mouse (voltar/avançar)
   win.on('app-command', (_e, cmd) => {
     if (cmd === 'browser-backward' || cmd === 'browser-forward') win.webContents.send('shortcut', { key: cmd === 'browser-backward' ? 'back' : 'forward' });
   });
 
-  const query = { state: process.env.KONA_STATE || '' };
+  const query = { state: first ? process.env.KONA_STATE || '' : '' };
+  if (!first) { query.role = 'secondary'; query.nowelcome = '1'; } // as ofertas do primeiro uso só na 1ª janela
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
   if (process.env.KONA_WALLPAPER) query.wallpaper = process.env.KONA_WALLPAPER;
   // testes automáticos (pasta de dados própria) não recebem as ofertas do primeiro uso, a não ser que peçam
   if (process.env.KONA_USER_DATA && !process.env.KONA_WELCOME) query.nowelcome = '1';
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query });
   win.once('ready-to-show', () => {
-    win.maximize(); // sempre abre maximizado (restaurar volta a 1360×860)
+    // a abertura do app é sempre maximizada (restaurar volta a 1360×860); as outras janelas seguem
+    // a de onde vieram (Ctrl+N) ou abrem onde a aba foi solta
+    if (first || opts.maximize) win.maximize();
     win.show();
     win.webContents.send('win:shown');
   });
+  // a janela foi aberta para receber esta aba: ela toma o lugar da nova aba vazia
+  if (opts.adopt) win.webContents.once('did-finish-load', () => win.webContents.send('tab:adopt', { ...opts.adopt, fresh: true }));
 
   const sendState = () =>
     win.webContents.send('win:state', { maximized: win.isMaximized(), focused: win.isFocused(), fullscreen: win.isFullScreen() });
   ['maximize', 'unmaximize', 'focus', 'blur', 'enter-full-screen', 'leave-full-screen'].forEach((ev) => win.on(ev, sendState));
   win.webContents.on('did-finish-load', sendState);
-  win.webContents.once('did-finish-load', () => captureUaHints(win.webContents));
-  win.webContents.once('did-finish-load', () => setTimeout(() => openTargets(pendingTargets.splice(0)), 400));
+  if (first) {
+    win.webContents.once('did-finish-load', () => captureUaHints(win.webContents));
+    win.webContents.once('did-finish-load', () => setTimeout(() => openTargets(pendingTargets.splice(0)), 400));
+  }
 
   // KONA_SCREENSHOT=arquivo.png salva uma captura da janela e encerra (útil para revisar o design)
-  const shot = process.env.KONA_SCREENSHOT;
+  const shot = first && process.env.KONA_SCREENSHOT;
   if (shot) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
@@ -136,6 +179,13 @@ function createWindow() {
       }, Number(process.env.KONA_SHOT_DELAY || 2500));
     });
   }
+  return win;
+}
+
+/** Ctrl+N: janela nova do tamanho da atual, um pouco deslocada (ou maximizada, se a atual estiver). */
+function newWindowFrom(src, adopt) {
+  const b = alive(src) ? src.getNormalBounds() : null;
+  return createWindow({ adopt, maximize: !!src?.isMaximized(), bounds: b && { x: b.x + 30, y: b.y + 30, width: b.width, height: b.height } });
 }
 
 /* ───────────── Extensões (Chrome Web Store) ───────────── */
@@ -163,7 +213,8 @@ async function captureUaHints(wc) {
 
 // Client hints, cookies de terceiros, GPC, permissões e downloads (ver session-policy.js)
 const policy = createPolicy({
-  win: () => mainWin,
+  win: () => focusedWin(),
+  winFor,
   uaHints: () => uaHints,
   currentPartition: () => currentPartition,
   isPrivate: (p) => isPrivatePartition(p),
@@ -241,6 +292,7 @@ const extensionsPathFor = (partition) => (partition === DEFAULT_PARTITION
 
 // Antes de instalar uma extensão, pede confirmação numa folha da própria interface
 async function beforeInstall(details) {
+  const mainWin = focusedWin();
   if (!mainWin) return { action: 'deny' };
   const id = ++confirmSeq;
   const m = details.manifest || {};
@@ -265,7 +317,7 @@ function prepareSession(partition) {
       installSession(ses, partition);
       extensionsApi.attach(ses, partition); // APIs chrome.tabs/action/contextMenus e popups (antes de carregar as extensões)
       await installChromeWebStore({ session: ses, extensionsPath: extensionsPathFor(partition), beforeInstall });
-      const notify = () => { if (partition === currentPartition) mainWin?.webContents.send('ext:changed'); };
+      const notify = () => { if (partition === currentPartition) broadcast('ext:changed'); };
       const api = extApi(ses);
       api.on?.('extension-loaded', notify);
       api.on?.('extension-unloaded', notify);
@@ -307,20 +359,20 @@ handleUi('default:set', async () => {
 });
 
 // Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
-registerDownloads({ win: () => mainWin, currentSession: () => browserSession() });
+registerDownloads({ broadcast, currentSession: () => browserSession() });
 
 // Gerenciador de senhas (salvar, preencher, gerar, importar/exportar), por perfil
-registerPasswords({ win: () => mainWin, currentPartition: () => currentPartition });
+registerPasswords({ win: focusedWin, broadcast, currentPartition: () => currentPartition });
 
 // Modo leitura (como o do Safari)
 registerReader();
 
 // Compartilhar a tela: seletor do Kona e "Stop sharing"
-registerShare({ win: () => mainWin });
+registerShare({ winFor, broadcast });
 ipcMain.on('share:ended-page', (e) => { if (e.sender.getType() === 'webview') shareEndedFrom(e.sender.id); });
 
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
-extensionsApi.registerExtensions({ win: () => mainWin });
+extensionsApi.registerExtensions({ win: focusedWin, winFor });
 
 // Sites com pop-ups sempre permitidos (escolha da pessoa no aviso de pop-up bloqueado)
 const popupsAllowed = new Set();
@@ -330,7 +382,7 @@ onUi('popups:allowed', (_e, list) => {
 });
 
 // Menu de contexto (botão direito): ações nas páginas e nos campos da interface
-registerContextMenu({ win: () => mainWin, askNextDownload: (url) => policy.askNext(url) });
+registerContextMenu({ win: focusedWin, askNextDownload: (url) => policy.askNext(url) });
 
 // Importar de outro navegador: tudo entra no perfil em uso
 registerImporter(handleUi, {
@@ -344,7 +396,7 @@ handleUi('profile:use', async (_e, partition) => {
   await prepareSession(partition);
   currentPartition = partition;
   applySecureDns();
-  mainWin?.webContents.send('ext:changed');
+  broadcast('ext:changed');
   return true;
 });
 
@@ -438,6 +490,79 @@ onUi('theme:set', (e, value) => {
   nativeTheme.themeSource = value;
   BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(bgColor());
 });
+// Várias janelas: nova janela (Ctrl+N, "abrir link em nova janela") e mover abas entre janelas
+handleUi('win:new', (e, url) => {
+  const adopt = typeof url === 'string' && /^https?:\/\//i.test(url) ? { url, title: '' } : null;
+  newWindowFrom(BrowserWindow.fromWebContents(e.sender), adopt);
+  return true;
+});
+handleUi('win:count', () => windows.filter(alive).length);
+// janelas no modo privado não recebem abas de outras janelas (nem aparecem em "Mover para…")
+const privateWins = new WeakSet();
+onUi('win:private', (e, on) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) { if (on) privateWins.add(w); else privateWins.delete(w); }
+});
+handleUi('win:role', (e) => ({ primary: BrowserWindow.fromWebContents(e.sender) === primaryWin }));
+/** As outras janelas (para "Mover para…"): título da aba ativa de cada uma. */
+handleUi('win:others', async (e) => {
+  const me = BrowserWindow.fromWebContents(e.sender);
+  const out = [];
+  for (const w of windows) {
+    if (!alive(w) || w === me || privateWins.has(w)) continue;
+    const title = await w.webContents.executeJavaScript('typeof active === "function" ? active()?.title || "" : ""').catch(() => '');
+    out.push({ id: w.id, title: String(title).slice(0, 80) });
+  }
+  return out;
+});
+// Histórico das abas que estão mudando de janela, até a aba nova nascer (token → { index, entries })
+const pendingRestores = new Map();
+const attachQueues = new WeakMap();
+const attachQueue = (contents) => { if (!attachQueues.has(contents)) attachQueues.set(contents, []); return attachQueues.get(contents); };
+/**
+ * Move uma aba para outra janela. O <webview> não muda de janela: a aba renasce lá, com o histórico
+ * de voltar/avançar. to: { window: id } | { point: {x, y} } (onde a aba foi solta) | { newWindow: true }.
+ * Devolve true se a aba foi aceita (a janela de origem então fecha a dela).
+ */
+handleUi('tab:move', (e, { wcId, url, title, to } = {}) => {
+  const src = BrowserWindow.fromWebContents(e.sender);
+  if (!src || typeof url !== 'string' || !(TAB_SCHEMES.has(schemeOf(url)) || /^kona:\/\/\w+$/.test(url))) return false;
+  const adopt = { url, title: typeof title === 'string' ? title.slice(0, 300) : '' };
+  const wc = Number.isInteger(wcId) && webContents.fromId(wcId);
+  if (wc && !wc.isDestroyed() && wc.hostWebContents === e.sender) {
+    const entries = wc.navigationHistory.getAllEntries();
+    if (entries.length) {
+      const token = require('crypto').randomBytes(8).toString('hex');
+      pendingRestores.set(token, { index: wc.navigationHistory.getActiveIndex(), entries });
+      setTimeout(() => pendingRestores.delete(token), 30000);
+      adopt.restore = token;
+    }
+  }
+  let target = null;
+  const pt = to?.point;
+  if (Number.isInteger(to?.window)) target = windows.find((w) => alive(w) && w.id === to.window && w !== src && !privateWins.has(w));
+  else if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+    // solta sobre a barra de abas de outra janela → vai para ela; em qualquer outro lugar → janela nova
+    target = windows.find((w) => {
+      if (!alive(w) || w === src || w.isMinimized() || privateWins.has(w)) return false;
+      const b = w.getBounds();
+      return pt.x >= b.x && pt.x < b.x + b.width && pt.y >= b.y && pt.y < b.y + 64;
+    });
+    if (target) adopt.screenX = pt.x;
+  }
+  if (target) {
+    target.webContents.send('tab:adopt', adopt);
+    target.focus();
+  } else if (pt) {
+    if (to.allowNew === false) return false; // a única aba da janela, solta fora: nada a fazer
+    const b = src.getNormalBounds();
+    const width = Math.min(b.width, 1360), height = Math.min(b.height, 860);
+    // a janela nova aparece com a aba sob o mouse
+    createWindow({ adopt, bounds: { x: Math.round(pt.x - 140), y: Math.round(pt.y - 22), width, height } });
+  } else if (to?.newWindow) newWindowFrom(src, adopt);
+  else return false;
+  return true;
+});
 // F11: tela cheia da janela (a barra do Kona aparece ao levar o mouse ao topo)
 onUi('win:fullscreen', (e) => { const w = BrowserWindow.fromWebContents(e.sender); w?.setFullScreen(!w.isFullScreen()); });
 onUi('win:devtools', (e) => e.sender.openDevTools({ mode: 'detach' }));
@@ -459,7 +584,24 @@ app.on('web-contents-created', (_e, contents) => {
       prefs.webSecurity = true;
       prefs.allowRunningInsecureContent = false;
       prefs.plugins = true; // só o leitor de PDF embutido (o Electron não carrega plugins de terceiros)
-      if (contents !== mainWin?.webContents || !TAB_SCHEMES.has(schemeOf(params.src))) e.preventDefault();
+      if (!isUiContents(contents) || !TAB_SCHEMES.has(schemeOf(params.src))) { e.preventDefault(); return; }
+      // aba vinda de outra janela: nasce sem endereço e recebe o histórico inteiro (ver tab:move)
+      const token = /^about:blank#kona-restore-(\w+)$/.exec(params.src)?.[1];
+      const history = token && pendingRestores.get(token);
+      if (history) {
+        pendingRestores.delete(token);
+        params.src = '';
+        attachQueue(contents).push(history);
+      }
+    });
+    // a aba vinda de outra janela: o histórico volta antes da primeira navegação
+    contents.on('did-attach-webview', (_e, guest) => {
+      const history = attachQueue(contents).shift();
+      if (!history) return;
+      guest.navigationHistory.restore(history).catch(() => {
+        const entry = history.entries[history.index];
+        if (entry && !guest.isDestroyed()) guest.loadURL(entry.url).catch(() => {});
+      });
     });
   }
   if (contents.getType() !== 'webview') return;
@@ -502,7 +644,7 @@ app.on('web-contents-created', (_e, contents) => {
   contents.on('did-create-window', (popup) => {
     popup.setMenu(null);
     popup.webContents.setWindowOpenHandler(({ url }) => {
-      if (['http:', 'https:'].includes(schemeOf(url))) mainWin?.webContents.send('tab:open', url);
+      if (['http:', 'https:'].includes(schemeOf(url))) winFor(contents)?.webContents.send('tab:open', url);
       return { action: 'deny' };
     });
     const closeWithOpener = () => { if (!popup.isDestroyed()) popup.close(); };
@@ -569,7 +711,7 @@ app.whenReady().then(async () => {
   }
   applySecureDns();
   createWindow();
-  startUpdater(() => mainWin);
+  startUpdater(focusedWin);
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow());
 });
 

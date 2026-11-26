@@ -78,6 +78,8 @@ function closeProfileLayers() {
 async function switchProfile(id) {
   const p = PROFILES.byId(id);
   if (!p || id === PROFILES.current) return;
+  // um perfil por vez em todas as janelas (cada janela de um perfil fica para depois)
+  if ((await api?.windowCount?.()) > 1) { toast('Close the other windows to switch profiles'); return; }
   const ok = await (api?.profileUse(p.partition) ?? Promise.resolve(true));
   if (ok === false) { toast('Couldn’t open that profile'); return; }
   // As abas do perfil anterior ficam guardadas nele; o novo perfil reabre as dele

@@ -1168,3 +1168,19 @@ body.win-fullscreen #winctl { display: none; }
 #share-bar .btn-primary { height: 30px; padding: 0 14px; }
 .share-dot { width: 9px; height: 9px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 0 4px rgba(255, 59, 48, .2); animation: share-pulse 1.6s ease-in-out infinite; }
 @keyframes share-pulse { 50% { box-shadow: 0 0 0 7px rgba(255, 59, 48, .05); } }
+
+/* ───────────── Várias janelas: arrastar abas ───────────── */
+.tab.dragging { transition: none; z-index: 5; cursor: grabbing; }
+.tab.detaching { opacity: 0.35; }
+body.tab-dragging, body.tab-dragging * { cursor: grabbing !important; user-select: none; }
+#tab-ghost {
+  position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none;
+  display: flex; align-items: center; gap: 8px; max-width: 240px; height: 36px; padding: 0 14px;
+  border-radius: 999px; color: var(--text); font-size: 13px; box-shadow: var(--shadow);
+  animation: fade .15s var(--ease) both;
+}
+#tab-ghost .tfav { display: grid; place-items: center; width: 16px; height: 16px; flex: none; }
+#tab-ghost .tfav img { width: 16px; height: 16px; border-radius: 4px; }
+#tab-ghost .title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* janela secundária: os grupos de abas ficam na janela principal */
+body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }

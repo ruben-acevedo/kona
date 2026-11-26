@@ -49,7 +49,8 @@ function setRow({ key, ic, label, count, actions = '' }) {
 
 function renderMain() {
   const d = tabSets.data;
-  const nDefault = library.currentKey() === 'default' ? tabs.length : d.default.tabs.length || 1;
+  const own = library.primary ? d.default.tabs.length : library.ownTabs?.tabs.length;
+  const nDefault = library.currentKey() === 'default' ? tabs.length : own || 1;
   $('#sb-sets').innerHTML =
     setRow({ key: 'default', ic: 'tabs', label: `${nDefault} ${nDefault === 1 ? 'Tab' : 'Tabs'}` }) +
     setRow({ key: 'private', ic: 'hand', label: 'Private', count: library.isPrivate() ? tabs.length : null });

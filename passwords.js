@@ -19,6 +19,7 @@ const { siteOf } = require('./session-policy');
 
 let currentPartition = () => 'persist:kona';
 let win = () => null;
+let broadcast = () => {};
 
 /* ───────────── Armazenamento ───────────── */
 const dir = () => path.join(app.getPath('userData'), 'passwords');
@@ -37,7 +38,7 @@ function save(partition = currentPartition()) {
   const tmp = `${fileFor(partition)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(store(partition)));
   fs.renameSync(tmp, fileFor(partition));
-  win()?.webContents.send('pw:changed');
+  broadcast('pw:changed');
 }
 const enc = (text) => (safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(text).toString('base64') : null);
 const dec = (b64) => { try { return safeStorage.decryptString(Buffer.from(b64, 'base64')); } catch { return null; } };
@@ -191,6 +192,7 @@ function generatePassword() {
 
 function registerPasswords(opts) {
   win = opts.win;
+  broadcast = opts.broadcast;
   currentPartition = opts.currentPartition;
   registerPageChannels();
   handleUi('pw:set-offer', (_e, on) => { offerEnabled = !!on; return true; });

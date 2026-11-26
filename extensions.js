@@ -7,7 +7,8 @@ const { webContents } = require('electron');
 const { onUi, handleUi } = require('./ipc');
 
 const managers = new Map(); // partição → ElectronChromeExtensions
-let win = () => null;
+let win = () => null; // janela em foco
+let winFor = () => null; // janela que hospeda uma aba
 
 /** Aba nova pedida por uma extensão (chrome.tabs.create): a interface cria e devolve o webview. */
 const waiting = new Map();
@@ -19,12 +20,15 @@ function createTabFromExtension(details) {
     waiting.set(id, (wcId) => {
       clearTimeout(timer);
       const wc = webContents.fromId(wcId);
-      if (wc) resolve([wc, win()]); else reject(new Error('tab not found'));
+      if (wc) resolve([wc, winFor(wc)]); else reject(new Error('tab not found'));
     });
     win()?.webContents.send('ext:tab-create', { id, url: details.url || '', active: details.active !== false });
   });
 }
 onUi('ext:tab-created', (_e, id, wcId) => { waiting.get(id)?.(Number(wcId)); waiting.delete(id); });
+
+/** A interface que hospeda a aba. Uma aba já destruída (ao fechar) não tem mais: nada a avisar. */
+const hostOf = (wc) => { try { return wc.isDestroyed() ? null : wc.hostWebContents; } catch { return null; } };
 
 /** Cria o gerenciador de uma sessão de perfil (antes de carregar as extensões dela). */
 function attach(ses, partition) {
@@ -32,12 +36,12 @@ function attach(ses, partition) {
   const m = new ElectronChromeExtensions({
     session: ses,
     createTab: createTabFromExtension,
-    selectTab: (wc) => win()?.webContents.send('ext:tab-select', wc.id),
-    removeTab: (wc) => win()?.webContents.send('ext:tab-remove', wc.id),
-    createWindow: async (details) => { // o Kona tem uma janela: a "janela nova" vira uma aba
+    selectTab: (wc) => hostOf(wc)?.send('ext:tab-select', wc.id),
+    removeTab: (wc) => hostOf(wc)?.send('ext:tab-remove', wc.id),
+    createWindow: async (details) => { // a "janela nova" de uma extensão vira uma aba da janela em foco
       const url = Array.isArray(details.url) ? details.url[0] : details.url;
-      await createTabFromExtension({ url, active: true });
-      return win();
+      const [wc] = await createTabFromExtension({ url, active: true });
+      return winFor(wc);
     },
   });
   // APIs que faltam (chrome.commands…), nas páginas e service workers das extensões
@@ -53,7 +57,8 @@ const managerOf = (ses) => ElectronChromeExtensions.fromSession(ses);
 /** Cada aba (webview) da sessão passa a existir para chrome.tabs. */
 function trackTab(contents) {
   const m = managerOf(contents.session);
-  if (m && win()) m.addTab(contents, win());
+  const w = winFor(contents);
+  if (m && w) m.addTab(contents, w);
 }
 
 /** Itens que as extensões acrescentam ao menu do botão direito (chrome.contextMenus). */
@@ -66,7 +71,7 @@ function contextItems(contents, params) {
   const map = (items) => items.filter((it) => it.visible !== false).map((it) => {
     if (it.type === 'separator') return { sep: true };
     const id = ++clickSeq;
-    if (it.click) pendingClicks.set(id, () => it.click(it, win(), contents));
+    if (it.click) pendingClicks.set(id, () => it.click(it, winFor(contents), contents));
     return { id, label: it.label, enabled: it.enabled !== false, checked: it.type === 'checkbox' || it.type === 'radio' ? !!it.checked : undefined,
       submenu: it.submenu ? map(it.submenu.items || it.submenu) : undefined };
   });
@@ -75,6 +80,7 @@ function contextItems(contents, params) {
 
 function registerExtensions(opts) {
   win = opts.win;
+  winFor = opts.winFor;
   handleUi('ext:tab-selected', (_e, wcId) => {
     const wc = webContents.fromId(Number(wcId));
     if (wc) managerOf(wc.session)?.selectTab(wc);

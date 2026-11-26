@@ -171,7 +171,9 @@ const downloadsList = {
   get(key) { return this.items.find((x) => x.key === key); },
   active() { return this.items.filter((x) => x.state === 'progressing'); },
   add(d, priv) {
-    this.items.unshift({ key: uid(), ...d, priv: !!priv, t: d.start || Date.now() });
+    // a mesma chave em todas as janelas (todas recebem o mesmo aviso do download)
+    if (this.get(`dl-${d.id}-${d.start}`)) return;
+    this.items.unshift({ key: `dl-${d.id}-${d.start}`, ...d, priv: !!priv, t: d.start || Date.now() });
     if (this.items.length > this.MAX) this.items.length = this.MAX;
     this.save();
   },
@@ -180,6 +182,15 @@ const downloadsList = {
   /** Limpa a lista (os arquivos ficam). Os em andamento continuam. */
   clear() { this.items = this.items.filter((x) => x.state === 'progressing'); this.save(); },
   dropPrivate() { this.items = this.items.filter((x) => !x.priv); library.changed('downloads'); },
+  /** A lista mudou em outra janela: relê, mantendo o estado ao vivo dos que estão baixando aqui. */
+  reloadShared() {
+    const d = readJSON(profileKey('downloads'));
+    const live = new Map(this.items.filter((x) => x.id != null && x.state === 'progressing').map((x) => [x.key, x]));
+    const fresh = (Array.isArray(d) ? d : []).map((x) => live.get(x.key) || x);
+    const priv = this.items.filter((x) => x.priv);
+    this.items = [...priv, ...fresh];
+    library.changed('downloads');
+  },
 };
 
 /* ───────────── Lista de leitura ───────────── */
@@ -226,6 +237,10 @@ const tabSets = {
 const library = {
   private: null, // partição da sessão privada ativa (ou null)
   listeners: new Set(),
+  // Várias janelas: só a principal guarda a sessão e mostra os grupos. As outras têm as próprias
+  // abas (só na memória), até a principal fechar e uma delas assumir (promote).
+  primary: new URLSearchParams(location.search).get('role') !== 'secondary',
+  ownTabs: null, // abas desta janela secundária guardadas enquanto ela está no modo privado
 
   isPrivate() { return !!this.private; },
   /** Sessão onde as abas novas abrem: a privada (se ativa) ou a do perfil. */
@@ -250,6 +265,7 @@ const library = {
   /** Guarda as abas do conjunto atual (nunca as do modo privado). */
   saveCurrent() {
     if (this.private || !tabs.length) return;
+    if (!this.primary) { this.ownTabs = this.snapshot(); return; }
     const snap = this.snapshot();
     const cur = tabSets.data.current;
     if (cur === 'default') tabSets.data.default = snap;
@@ -282,7 +298,13 @@ const library = {
     if (target === 'private') {
       this.private = (await api?.privateOpen()) || `kona-private-${'0'.repeat(12)}`;
       document.body.classList.add('private');
+      api?.windowPrivate?.(true);
       this.openSnapshot(null);
+    } else if (!this.primary) {
+      // janela secundária: só as próprias abas (os grupos ficam na janela principal)
+      if (target !== 'default') return;
+      if (this.private) await this.leavePrivate();
+      this.openSnapshot(this.ownTabs);
     } else {
       if (this.private) await this.leavePrivate();
       tabSets.data.current = target;
@@ -296,6 +318,7 @@ const library = {
     const p = this.private;
     this.private = null;
     document.body.classList.remove('private');
+    api?.windowPrivate?.(false);
     this.closeAllLive();
     downloadsList.dropPrivate();
     await api?.privateClose(p);
@@ -304,10 +327,56 @@ const library = {
   /** Abertura do app: retoma o grupo atual; as abas sem grupo dependem do ajuste “Ao abrir”. */
   boot() {
     this.loadProfileData();
+    document.body.classList.toggle('secondary', !this.primary);
+    if (!this.primary) { this.openSnapshot(null); return; } // janela nova: uma aba nova (ou a aba que chegou)
     const cur = tabSets.data.current;
     if (cur !== 'default') this.openSnapshot(tabSets.group(cur));
     else if (settings.startup === 'restore' && tabSets.data.default.tabs.length) this.openSnapshot(tabSets.data.default);
     else this.openSnapshot(null);
+  },
+
+  /**
+   * A janela principal fechou e esta passa a guardar a sessão. Se a principal estava num grupo, as
+   * abas sem grupo que ela tinha guardado entram aqui (em segundo plano), para nada se perder.
+   */
+  promote() {
+    if (this.primary) return;
+    this.primary = true;
+    document.body.classList.remove('secondary');
+    tabSets.load();
+    const stashed = tabSets.data.current !== 'default' ? tabSets.data.default.tabs : [];
+    tabSets.data.current = 'default';
+    if (this.private) {
+      tabSets.data.default = { tabs: [...stashed, ...(this.ownTabs?.tabs || [])], active: 0 };
+      tabSets.save();
+    } else {
+      for (const s of stashed) makeTab(LEGACY_URLS[s.url] || s.url, { title: s.title });
+      if (stashed.length) { render(); prewarmTabs(); }
+      tabSets.save();
+      this.saveCurrent();
+    }
+    this.ownTabs = null;
+    this.changed('sets');
+  },
+
+  /** Ao fechar a janela: guarda na hora o que ainda estava para ser guardado. */
+  flush() {
+    clearTimeout(this.saveTimer);
+    if (this.primary) this.saveCurrent();
+  },
+
+  /**
+   * Outra janela mudou algo guardado (favoritos, lista de leitura, histórico, ajustes, downloads,
+   * sessão): esta janela relê, para todas mostrarem o mesmo.
+   */
+  syncFromStorage(key) {
+    if (key === PROFILES.KEY) { PROFILES.load(); this.changed('profiles'); return; }
+    if (key === profileKey('bookmarks')) { bookmarks.load(); this.changed('bookmarks'); }
+    else if (key === profileKey('reading')) { readingList.load(); this.changed('reading'); }
+    else if (key === profileKey('downloads')) downloadsList.reloadShared();
+    else if (key === profileKey('tabsets')) { if (!this.primary) tabSets.load(); }
+    else if (key === profileKey('history')) browseHistory.load();
+    else if (key === profileKey('settings')) this.changed('settings');
   },
 
   /** Troca de perfil: guarda as abas do perfil anterior e abre as do novo. */

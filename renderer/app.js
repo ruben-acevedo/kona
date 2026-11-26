@@ -435,7 +435,9 @@ function makeTab(url = START, { title, index } = {}) {
 function ensureWebview(t) {
   if (t.wv || isInternal(t.url)) return;
   const wv = document.createElement('webview');
-  wv.setAttribute('src', t.url);
+  // aba vinda de outra janela: nasce vazia e o processo principal devolve o histórico dela
+  wv.setAttribute('src', t.restore ? `about:blank#kona-restore-${t.restore}` : t.url);
+  t.restore = null;
   wv.setAttribute('partition', t.partition);
   wv.setAttribute('allowpopups', ''); // window.open/target=_blank chegam ao main.js, que abre como aba
   wv.setAttribute('plugins', ''); // leitor de PDF do Chromium (sem isso, PDFs são baixados)
@@ -525,12 +527,13 @@ function newTab(url = START, focus = true) {
   return t;
 }
 
-function closeTab(id) {
+/** moved: a aba foi para outra janela (não entra em "reabrir aba fechada" nem toca o som). */
+function closeTab(id, { moved = false } = {}) {
   const i = tabs.findIndex((t) => t.id === id);
   if (i < 0) return;
   const [t] = tabs.splice(i, 1);
-  if (typeof rememberClosed === 'function') rememberClosed(t, i); // Ctrl+Shift+T
-  sfx.play('tabClose');
+  if (!moved && typeof rememberClosed === 'function') rememberClosed(t, i); // Ctrl+Shift+T
+  if (!moved) sfx.play('tabClose');
   t.wv?.remove();
   discardParked(t);
   mru = mru.filter((x) => x !== id);
@@ -1189,7 +1192,8 @@ function shortcut(key, shift) {
     else if (key === 'p') api?.ctxDo(id, 'print');
     else openInBackground(`view-source:${a.url}`);
   }
-  else if (key === 'n' && shift) library.switchTo(library.isPrivate() ? tabSets.data.current : 'private');
+  else if (key === 'n' && shift) library.switchTo(library.isPrivate() ? (library.primary ? tabSets.data.current : 'default') : 'private');
+  else if (key === 'n') api?.newWindow();
   else if (key === ',') openSettings();
   else if (key === '\\' || key === '|') toggleOverview();
   else if (key === 'tab') {
@@ -1239,6 +1243,36 @@ api?.on('shortcut', ({ key, shift, alt }) => {
   else shortcut(key, shift);
 });
 api?.on('tab:open', (url) => newTab(url, false));
+// Várias janelas: aba vinda de outra janela (arrastada, "mover para", Ctrl+N com link)
+api?.on('tab:adopt', ({ url, title, restore, screenX, fresh: forNewWindow }) => {
+  if (typeof url !== 'string') return;
+  // janela aberta para esta aba: a aba que chegou toma o lugar da nova aba vazia
+  const a = active();
+  const fresh = forNewWindow && tabs.length === 1 && a?.url === START && !a.wv;
+  let index = tabs.indexOf(a) + 1;
+  if (Number.isFinite(screenX) && typeof tabDropIndex === 'function') index = tabDropIndex(screenX - window.screenX);
+  const t = makeTab(url, { title, index });
+  if (restore) t.restore = restore;
+  if (fresh) { tabs.splice(tabs.indexOf(a), 1); mru = mru.filter((x) => x !== a.id); }
+  sfx.play('tabOpen');
+  activate(t.id);
+});
+// a janela principal fechou: esta assume (um instante depois, para a sessão que ela guardou ao fechar chegar aqui)
+api?.on('win:promote', () => setTimeout(() => library.promote(), 300));
+// ao fechar a janela, a sessão é guardada na hora (sem esperar o intervalo)
+addEventListener('pagehide', () => library.flush());
+// outra janela mudou algo guardado: relê
+addEventListener('storage', (e) => { if (e.key) library.syncFromStorage(e.key); });
+library.onChange((what) => {
+  if (what === 'settings') {
+    reloadSettings();
+    applyTheme();
+    applyWallpaper();
+    applySections();
+    render();
+    if (active()?.url === SETTINGS && typeof settingsPage !== 'undefined') settingsPage.render();
+  } else if (what === 'profiles' && typeof renderProfileUI === 'function') renderProfileUI();
+});
 api?.on('update:ready', ({ version }) => toast(`Kona ${version} is ready to install`, { label: 'Restart now', run: () => api.installUpdate() }));
 let wasMaximized = null;
 api?.on('win:state', ({ focused, maximized, fullscreen }) => {

@@ -48,22 +48,30 @@ function trackSpeed(x, d) {
   x._lastAt = now; x._lastBytes = d.received;
 }
 
+/** O download do aviso (todas as janelas recebem; uma janela aberta no meio dele o acha pela chave). */
+function dlFor(d) {
+  const x = downloadsList.byId(d.id) || downloadsList.get(`dl-${d.id}-${d.start}`);
+  if (x) x.id = d.id;
+  return x;
+}
 api?.on('download:start', (d) => {
-  downloadsList.add({ id: d.id, url: d.url, name: d.name, path: d.path, received: d.received, total: d.total, state: 'progressing', paused: false, start: d.start }, library.isPrivate());
+  if (d.priv && !library.isPrivate()) return; // download do modo privado de outra janela
+  downloadsList.add({ id: d.id, url: d.url, name: d.name, path: d.path, received: d.received, total: d.total, state: 'progressing', paused: false, start: d.start }, d.priv);
   dlSession = true;
   updateDlButton(true);
   refreshDownloadsView();
 });
 api?.on('download:progress', (d) => {
-  const x = downloadsList.byId(d.id);
+  const x = dlFor(d);
   if (!x) return;
+  x.state = 'progressing';
   trackSpeed(x, d);
   Object.assign(x, { name: d.name, path: d.path, received: d.received, total: d.total, paused: d.paused, canResume: d.canResume });
   updateDlButton();
   updateDlRow(x);
 });
 api?.on('download:done', (d) => {
-  const x = downloadsList.byId(d.id);
+  const x = dlFor(d);
   if (!x) return;
   Object.assign(x, { name: d.name, path: d.path, received: d.received, total: d.total || d.received, state: d.state, paused: false, speed: 0, missing: false });
   downloadsList.save();

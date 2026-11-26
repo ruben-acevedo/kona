@@ -6,7 +6,8 @@
 const { desktopCapturer, webContents } = require('electron');
 const { onUi } = require('./ipc');
 
-let win = () => null;
+let winFor = () => null; // janela que hospeda uma aba (webContents)
+let broadcast = () => {}; // aviso para todas as janelas
 
 /**
  * Responde ao Electron. Recusar é `null` (um objeto vazio, com vídeo pedido, lança erro no processo
@@ -29,7 +30,7 @@ function installShare(ses) {
     let wc = null;
     try { wc = frame && webContents.fromFrame?.(frame); } catch { /* frame já fechado */ }
     const origin = request.securityOrigin || (() => { try { return new URL(frame.url).origin; } catch { return ''; } })();
-    const host = win();
+    const host = winFor(wc);
     if (!host || !request.videoRequested) { reply(callback, null); return; }
     // o seletor abre na hora; telas e janelas (com miniaturas) chegam em seguida — a 1ª listagem é lenta
     const id = ++seq;
@@ -52,7 +53,8 @@ function installShare(ses) {
 }
 
 function registerShare(opts) {
-  win = opts.win;
+  winFor = opts.winFor;
+  broadcast = opts.broadcast;
   // resposta do seletor: { source } (tela/janela), { tab } (webContents de uma aba) ou nada (cancelar)
   onUi('share:choice', (_e, id, choice) => {
     const p = pending.get(Number(id));
@@ -70,7 +72,7 @@ function registerShare(opts) {
     if (choice.audio) res.audio = 'loopback'; // áudio do sistema (Windows)
     reply(p.callback, res);
     active.set(Number(id), { wcId: p.wcId, origin: p.origin });
-    win()?.webContents.send('share:started', { id: Number(id), origin: p.origin, wcId: p.wcId, what: choice.source ? (choice.source.startsWith('screen') ? 'screen' : 'window') : 'tab' });
+    broadcast('share:started', { id: Number(id), origin: p.origin, wcId: p.wcId, what: choice.source ? (choice.source.startsWith('screen') ? 'screen' : 'window') : 'tab' });
   });
   // "Stop sharing": a página encerra a captura (page-share.js)
   onUi('share:stop', (_e, id) => {
@@ -78,14 +80,14 @@ function registerShare(opts) {
     active.delete(Number(id));
     const wc = a?.wcId && webContents.fromId(a.wcId);
     if (wc && !wc.isDestroyed()) wc.send('share:stop');
-    win()?.webContents.send('share:ended', { id: Number(id) });
+    broadcast('share:ended', { id: Number(id) });
   });
 }
 
 /** A página avisou que a captura acabou (o site parou de compartilhar). */
 function shareEndedFrom(wcId) {
   for (const [id, a] of active) {
-    if (a.wcId === wcId) { active.delete(id); win()?.webContents.send('share:ended', { id }); }
+    if (a.wcId === wcId) { active.delete(id); broadcast('share:ended', { id }); }
   }
 }
 

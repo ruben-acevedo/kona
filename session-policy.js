@@ -106,15 +106,15 @@ const isLocalHost = (h) => !h.includes('.') || /^[\d.]+$/.test(h) || h.startsWit
   || /\.(localhost|local|lan|internal|home\.arpa|test)$/i.test(h);
 
 function createPolicy(ctx) {
-  // ctx: { win(), uaHints(), currentPartition(), isPrivate(p), onPrefs(partition) }
+  // ctx: { win(), winFor(webContents), uaHints(), currentPartition(), isPrivate(p), onPrefs(partition) }
   const prefsFor = (partition) => prefsByPartition.get(ctx.isPrivate(partition) ? ctx.currentPartition() : partition)
     || prefsByPartition.get(ctx.currentPartition()) || DEFAULT_PREFS;
 
   // Pedido de permissão: pergunta na interface e espera a resposta
   const pending = new Map();
   let seq = 0;
-  function askUser(req) {
-    const win = ctx.win();
+  function askUser(req, wc) {
+    const win = ctx.winFor(wc);
     if (!win) return Promise.resolve(false);
     const id = ++seq;
     win.webContents.send('perm:ask', { id, ...req });
@@ -205,7 +205,7 @@ function createPolicy(ctx) {
       const ds = kinds.map((k) => decide(p, origin, k));
       if (ds.includes('block')) { callback(false); return; }
       if (ds.every((d) => d === 'allow')) { callback(true); return; }
-      callback(await askUser({ origin, kinds, partition, private: ctx.isPrivate(partition) }));
+      callback(await askUser({ origin, kinds, partition, private: ctx.isPrivate(partition) }, wc));
     });
     // Consultas síncronas (navigator.permissions, Notification.permission): só "sim" se permitido
     ses.setPermissionCheckHandler((_wc, permission, requestingOrigin, details) => {
@@ -227,7 +227,7 @@ function createPolicy(ctx) {
         const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
         item.setSavePath(uniquePath(dir, item.getFilename()));
       }
-      downloads.track(item);
+      downloads.track(item, { priv: ctx.isPrivate(partition) });
     });
   }
 

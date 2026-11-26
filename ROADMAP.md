@@ -96,11 +96,11 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - Senhas e logins não dá: o Chrome os criptografa de um jeito que só ele lê (avisado na janela).
   - Testes automáticos (`KONA_USER_DATA`) não recebem a oferta do primeiro uso, a não ser com `KONA_WELCOME=1`. Teste: `tests/debug/import.js` (e `import-read.js`, só leitura).
 
-- [~] **G3. Navegador padrão (11).** O instalador registra o Kona como navegador (`installer/uninstall.nsh`: `KonaHTML` para http/https e .html/.htm/.xhtml/.svg/.pdf, `StartMenuInternet\Kona`, `RegisteredApplications`; a desinstalação remove). Uma instância só: links vindos de outros programas (e abrir o Kona de novo) viram abas na janela aberta.
+- [x] **G3. Navegador padrão (11).** O instalador registra o Kona como navegador (`installer/uninstall.nsh`: `KonaHTML` para http/https e .html/.htm/.xhtml/.svg/.pdf, `StartMenuInternet\Kona`, `RegisteredApplications`; a desinstalação remove). Uma instância só: links vindos de outros programas (e abrir o Kona de novo) viram abas na janela aberta.
   - Barra abaixo da barra de ferramentas, enquanto o Kona instalado não for o padrão: "Kona isn’t your default browser · Make default · ×". O botão abre Configurações do Windows na página do Kona (o Windows não deixa app nenhum se tornar padrão sozinho); ao voltar para o Kona, confere de novo e a barra some com "Kona is now your default browser". O × vale até o Kona ser aberto de novo.
   - No Kona de desenvolvimento (`npm run windows`, sem instalador) a barra não aparece.
   - Testado: segunda instância com link vira aba; a barra empurra a página sem cobrir (`tests/debug/default-browser.js`).
-  - Corrigido (1º teste do usuário): no Windows 11 recente a escolha fica em `UserChoiceLatest\ProgId` e o `UserChoice` antigo fica desatualizado; a barra não sumia. Agora lê o novo primeiro e confirma com `app.getApplicationNameForProtocol` (`tests/debug/default-status.js`). Falta o reteste do usuário.
+  - Corrigido (1º teste do usuário): no Windows 11 recente a escolha fica em `UserChoiceLatest\ProgId` e o `UserChoice` antigo fica desatualizado; a barra não sumia. Agora lê o novo primeiro e confirma com `app.getApplicationNameForProtocol` (`tests/debug/default-status.js`). Retestado pelo usuário em 2026-11-26: ok.
 
 ## H. Downloads
 
@@ -191,7 +191,13 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Pedido junto: som em todos os botões novos (pastas, downloads, botões da barra de endereço, busca na página, extensões, senhas, leitor, compartilhar, avisos e janelas) via listas HOVER/CLICK de `renderer/sounds.js`; um clique que já toca o próprio som não toca dois "select".
   - Lição: um `const EASE` repetido entre scripts derrubou o arquivo novo inteiro (sem erro visível); conferir nomes globais repetidos entre `renderer/*.js`.
   - Teste: `tests/debug/screen-share.js` (sem erros no processo principal).
-- [ ] **N2. Várias janelas.** Ctrl+N, arrastar aba para fora, mover aba entre janelas.
+- [x] **N2. Várias janelas.** Ctrl+N, arrastar aba para fora, mover aba entre janelas.
+  - Feito: Ctrl+N (e "New window" no menu da aba), "Open link in new window" no menu de links, arrastar aba (muda a ordem; solta longe da barra → janela nova onde soltou; solta na barra de outra janela → vai para ela), "Move to new window" / "Move to window: …" no menu da aba.
+  - A aba muda de janela com o histórico de voltar/avançar, mas recarrega (vídeo e formulário pela metade se perdem; o `<webview>` não muda de janela — igualar o Chrome pediria trocar por `WebContentsView`).
+  - A 1ª janela é a principal: guarda a sessão e mostra os grupos. As outras têm só as próprias abas; se a principal fechar, a mais antiga assume (e recebe as abas sem grupo guardadas, se a principal estava num grupo).
+  - Favoritos, lista de leitura, histórico, ajustes e downloads ficam iguais em todas as janelas. Permissões, compartilhar a tela e extensões respondem na janela da aba.
+  - Limites: trocar de perfil pede fechar as outras janelas; abas do modo privado não mudam de janela e janelas privadas não recebem abas.
+  - Testado (`tests/debug/windows.js`): todos os casos acima + smoke de downloads, extensões e geral. Falta o teste manual do usuário (arrastar com o mouse de verdade, várias telas).
 - [x] **N3. Bloqueio de pop-ups.** Conferir se pop-ups sem clique (propaganda) viram abas; bloquear como o Chrome.
   - Conferido: pop-up aberto sem clique virava aba. Agora (main.js) só abre o que vem até 5 s depois de um clique ou tecla da pessoa naquela aba (como a "ativação" do Chrome); o resto é bloqueado e a barra de endereço mostra o ícone (aviso "Pop-up blocked" no 1º). Clicar no ícone: a lista (clicar abre) e "Always allow pop-ups from <site>" (`settings.popupsAllowed`, por perfil). Teste: `tests/debug/popups-links.js`.
   - Corrigido (relato do usuário: "quando comecei a transmitir ele abriu uma aba em branco"): o Kona transformava todo pop-up em aba. Agora, como no Chrome, pedido de aba (`target=_blank`) vira aba do Kona e pop-up de verdade (`disposition: new-window`, `about:blank` ou com tamanho) vira janela pop-up ligada à página que a abriu — os controles de apresentação do Meet e os logins "Entrar com Google/Microsoft" (window.opener/postMessage) dependem disso. A janela não tem menu, o que ela abrir vira aba e ela fecha junto com a aba de origem. Teste: `tests/debug/popup-window.js`.
@@ -213,7 +219,8 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [ ] **N16. Controle de mídia global e teclas de mídia.**
 - [ ] **N17. Configurações por site** (JavaScript, pop-ups, cookies).
 
-### Grandes, para depois
-- [ ] **N18. Sincronização.**
-- [ ] **N19. macOS e celular.**
+### Grande, para depois
 - [ ] **N20. Acessibilidade completa.**
+
+### Por último
+- [ ] **N21. Reescrever o README** com tudo o que há de novo, seguindo a filosofia do navegador: **design, funcionalidade e performance**. Pedido em 2026-11-26. Atualizar capturas de tela, recursos (pastas, importação, downloads, menu de contexto, Ctrl+F/zoom, Netflix/Spotify, PDF, extensões completas, senhas, tela cheia/som, modo leitura, compartilhar a tela, pop-ups, autocompletar…) e atalhos; sem passos de desenvolvimento nem menção à ajuda de IA.

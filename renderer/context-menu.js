@@ -130,7 +130,10 @@ api?.on('ctx:page', ({ id, params: p }) => {
   if (p.linkURL && /^(https?|mailto|ftp):/i.test(p.linkURL)) {
     const web = /^https?:/i.test(p.linkURL);
     sections.push([
-      ...(web ? [{ label: 'Open link in new tab', run: () => openInBackground(p.linkURL) }] : []),
+      ...(web ? [
+        { label: 'Open link in new tab', run: () => openInBackground(p.linkURL) },
+        ...(library.isPrivate() ? [] : [{ label: 'Open link in new window', run: () => api?.newWindow(p.linkURL) }]),
+      ] : []),
       { label: 'Copy link address', run: () => copyText(p.linkURL) },
       ...(web ? [
         { label: 'Save link as…', run: doPage('save', { url: p.linkURL }) },
@@ -221,6 +224,7 @@ function tabItems(t) {
   const fav = web && !!bookmarks.find(t.url);
   return [
     { label: 'New tab', key: 'Ctrl+T', run: () => newTab() },
+    { label: 'New window', key: 'Ctrl+N', run: () => api?.newWindow() },
     '-',
     { label: 'Reload', key: 'Ctrl+R', run: () => t.wv?.reload(), disabled: !t.wv },
     { label: 'Duplicate', run: () => (web ? openInBackground(t.url) : newTab(t.url, false)) },
@@ -238,7 +242,7 @@ async function pasteAndGo(t) {
   $(`#tabs .tab[data-id="${t.id}"] input`)?.blur();
   go(t, { text });
 }
-function tabMenu(t, x, y, onInput) {
+async function tabMenu(t, x, y, onInput) {
   const input = $(`#tabs .tab[data-id="${t.id}"] input`);
   const editing = onInput && document.activeElement === input;
   if (editing) {
@@ -257,6 +261,8 @@ function tabMenu(t, x, y, onInput) {
     return;
   }
   const web = /^https?:/i.test(t.url);
+  const move = typeof moveItems === 'function' ? await moveItems(t) : [];
+  if (!tabs.includes(t)) return;
   showMenu([
     ...(t.id === activeId ? [
       { label: 'Copy address', run: () => copyText(t.url), disabled: !web },
@@ -264,6 +270,7 @@ function tabMenu(t, x, y, onInput) {
       '-',
     ] : []),
     ...tabItems(t),
+    ...(move.length ? ['-', ...move] : []),
   ], x, y);
 }
 
