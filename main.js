@@ -15,6 +15,7 @@ const { watchReader, registerReader } = require('./reader');
 const { installShare, registerShare, shareEndedFrom } = require('./screen-share');
 const { watchMedia, registerMedia } = require('./media');
 const apps = require('./apps');
+const printing = require('./print');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -266,6 +267,7 @@ function openInBrowser(url) {
   if (ok) pendingTargets.push(url);
   createWindow();
 }
+printing.register();
 apps.register({
   openAppWindow, openInBrowser, broadcast,
   appWindows: (id) => [...appWins].filter(([w, x]) => alive(w) && x === id).map(([w]) => w),
@@ -748,6 +750,12 @@ app.on('web-contents-created', (_e, contents) => {
     });
   }
   if (contents.getType() !== 'webview') return;
+  // a prévia de impressão (N13) é um PDF local: não é aba (sem extensões, menus nem pop-ups)
+  if (contents.session === session.fromPartition(printing.PREVIEW_PARTITION)) {
+    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    contents.on('will-navigate', (e) => e.preventDefault());
+    return;
+  }
   watchPage(contents); // botão direito → menu do Kona
   contents.on('will-navigate', (e) => {
     if (!pinnedTabs.has(contents.id) || !e.isMainFrame || e.isSameDocument) return;

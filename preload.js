@@ -44,6 +44,14 @@ contextBridge.exposeInMainWorld('kona', {
   tabKill: (wcId) => ipcRenderer.invoke('tab:kill', wcId),
   mediaList: () => ipcRenderer.invoke('media:list'),
   mediaControl: (wcId, action) => ipcRenderer.send('media:control', wcId, action),
+  print: {
+    printers: (wcId) => ipcRenderer.invoke('print:printers', wcId),
+    preview: (wcId, opts) => ipcRenderer.invoke('print:preview', wcId, opts),
+    done: (wcId) => ipcRenderer.invoke('print:done', wcId),
+    run: (wcId, printer, opts) => ipcRenderer.invoke('print:run', wcId, printer, opts),
+    system: (wcId) => ipcRenderer.invoke('print:system', wcId),
+    pdf: (wcId, opts) => ipcRenderer.invoke('print:pdf', wcId, opts),
+  },
   apps: {
     inspect: (wcId) => ipcRenderer.invoke('app:inspect', wcId),
     check: (wcId, partition) => ipcRenderer.invoke('app:check', wcId, partition),

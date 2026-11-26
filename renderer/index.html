@@ -407,6 +407,36 @@
     </footer>
   </section>
 
+  <!-- Pré-visualização de impressão (N13) -->
+  <section id="print-sheet" class="sheet" role="dialog" aria-label="Print">
+    <div class="pr-preview" id="pr-preview"><div class="pr-busy" id="pr-busy"><span class="app-spin"></span></div><p class="pr-error" id="pr-error" hidden></p></div>
+    <aside class="pr-side">
+      <div class="pr-head"><h2>Print</h2><span id="pr-count"></span></div>
+      <div class="pr-fields">
+        <label class="pr-row"><span>Destination</span><select class="st-select" id="pr-dest"></select></label>
+        <label class="pr-row"><span>Pages</span><select class="st-select" id="pr-pages"><option value="all">All pages</option><option value="custom">Custom</option></select></label>
+        <input class="pr-input" id="pr-range" placeholder="e.g. 1-3, 5" spellcheck="false" hidden />
+        <label class="pr-row pr-printer"><span>Copies</span><input class="pr-input pr-num" id="pr-copies" type="number" min="1" max="99" value="1" /></label>
+        <label class="pr-row"><span>Layout</span><select class="st-select" id="pr-layout"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label>
+        <label class="pr-row pr-printer"><span>Color</span><select class="st-select" id="pr-color"><option value="color">Color</option><option value="bw">Black and white</option></select></label>
+        <button class="pr-more" id="pr-more" type="button"><span>More settings</span><span data-icon="forward"></span></button>
+        <div class="pr-extra" id="pr-extra" hidden>
+          <label class="pr-row"><span>Paper size</span><select class="st-select" id="pr-paper"><option value="A4">A4</option><option value="A3">A3</option><option value="A5">A5</option><option value="Letter">Letter</option><option value="Legal">Legal</option><option value="Tabloid">Tabloid</option></select></label>
+          <label class="pr-row"><span>Margins</span><select class="st-select" id="pr-margins"><option value="default">Default</option><option value="minimum">Minimum</option><option value="none">None</option></select></label>
+          <label class="pr-row"><span>Scale</span><select class="st-select" id="pr-scale"><option value="100">100%</option><option value="90">90%</option><option value="80">80%</option><option value="70">70%</option><option value="60">60%</option><option value="50">50%</option><option value="125">125%</option><option value="150">150%</option></select></label>
+          <label class="pr-row pr-printer"><span>Two-sided</span><select class="st-select" id="pr-duplex"><option value="simplex">Off</option><option value="longEdge">Flip on long edge</option><option value="shortEdge">Flip on short edge</option></select></label>
+          <label class="pr-check"><input type="checkbox" id="pr-hf" checked /> <span>Headers and footers</span></label>
+          <label class="pr-check"><input type="checkbox" id="pr-bg" /> <span>Background graphics</span></label>
+        </div>
+        <button class="btn-link pr-system pr-printer" id="pr-system" type="button">Print using the Windows dialog…</button>
+      </div>
+      <footer class="confirm-actions">
+        <button class="btn-secondary" id="pr-cancel">Cancel</button>
+        <button class="btn-primary" id="pr-go">Print</button>
+      </footer>
+    </aside>
+  </section>
+
   <!-- Instalar um site como app (N11) -->
   <section id="app-sheet" class="sheet small" role="dialog" aria-label="Install app">
     <div class="confirm-body">
@@ -468,6 +498,7 @@
   <script src="settings.js"></script>
   <script src="site-info.js"></script>
   <script src="app-mode.js"></script>
+  <script src="print-ui.js"></script>
   <script src="downloads.js"></script>
   <script src="page-tools.js"></script>
   <script src="reader-ui.js"></script>

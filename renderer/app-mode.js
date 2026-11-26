@@ -135,7 +135,7 @@ if (APP_MODE) {
       { label: tl('Reload'), key: 'Ctrl+R', run: () => t?.wv?.reload() },
       { label: tl('Copy link'), run: () => copyText(t.url), disabled: !/^https?:/.test(t?.url || '') },
       { label: tl('Find…'), key: 'Ctrl+F', run: () => findBar.open() },
-      { label: tl('Print…'), key: 'Ctrl+P', run: () => { try { api?.ctxDo(t.wv.getWebContentsId(), 'print'); } catch { /* sem página */ } } },
+      { label: tl('Print…'), key: 'Ctrl+P', run: () => openPrint(t) },
       { label: tl('Zoom in'), key: 'Ctrl++', run: () => zoomStep(1) },
       { label: tl('Zoom out'), key: 'Ctrl+-', run: () => zoomStep(-1) },
       '-',

@@ -44,7 +44,7 @@ const SKIP_MODULES = new Set(['electron', '@electron', '@electron-internal', '.b
 function syncApp() {
   fs.rmSync(appDir, { recursive: true, force: true });
   fs.mkdirSync(appDir, { recursive: true });
-  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'apps.js', 'importer.js', 'downloads.js', 'context-menu.js', 'extensions.js', 'extension-shims.js', 'passwords.js', 'page-passwords.js', 'reader.js', 'reader-page.js', 'screen-share.js', 'page-share.js', 'media.js', 'page-media.js', 'i18n.js', 'session.js', 'autofill.js', 'page-autofill.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
+  for (const f of ['main.js', 'preload.js', 'page-preload.js', 'ipc.js', 'updater.js', 'session-policy.js', 'apps.js', 'print.js', 'importer.js', 'downloads.js', 'context-menu.js', 'extensions.js', 'extension-shims.js', 'passwords.js', 'page-passwords.js', 'reader.js', 'reader-page.js', 'screen-share.js', 'page-share.js', 'media.js', 'page-media.js', 'i18n.js', 'session.js', 'autofill.js', 'page-autofill.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(appDir, f));
   fs.cpSync(path.join(ROOT, 'renderer'), path.join(appDir, 'renderer'), { recursive: true });
   fs.cpSync(path.join(ROOT, 'assets'), path.join(appDir, 'assets'), { recursive: true });
   for (const m of fs.readdirSync(path.join(ROOT, 'node_modules'))) {
@@ -81,6 +81,7 @@ function runTests() {
       WSLENV: 'KONA_TEST_PASS:KONA_TEST_OUT/p:KONA_TEST_PROFILE/p:KONA_TEST_NET:KONA_TEST_UPDATE_BASELINE:KONA_TEST_ONLY',
     };
     spawnSync(electronExe, [wslToWin(path.join(appDir, 'tests', 'harness.js'))], { cwd: electronDir, env, stdio: ['ignore', 'inherit', 'ignore'] });
+    killLeftovers();
     const file = path.join(out, `results-${pass}.json`);
     passes.push(fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8'))
       : { pass, results: [{ pass, suite: 'harness', name: 'a passada não gerou resultados', status: 'FAIL', detail: '' }] });
@@ -95,6 +96,14 @@ function runTests() {
   process.exit(fail ? 1 : 0);
 }
 
+// encerra processos de teste que sobraram (só os da pasta app-test; o Kona de uso não é tocado)
+function killLeftovers() {
+  const dir = wslToWin(appDir).replace(/'/g, "''");
+  spawnSync('powershell.exe', ['-NoProfile', '-Command',
+    `Get-CimInstance Win32_Process -Filter "name='electron.exe'" | Where-Object { $_.CommandLine -like '*${dir}*' } | ForEach-Object { taskkill /F /T /PID $_.ProcessId | Out-Null }`],
+  { cwd: '/mnt/c', stdio: 'ignore' });
+}
+
 (async () => {
   await ensureElectron();
   if (RUN) {
@@ -102,8 +111,12 @@ function runTests() {
     // variáveis KONA_* do WSL seguem para o script (ex.: KONA_PROBE_MODE)
     const pass = Object.keys(process.env).filter((k) => k.startsWith('KONA_'));
     const env = { ...process.env, WSLENV: [process.env.WSLENV, ...pass].filter(Boolean).join(':') };
-    const r = spawnSync(electronExe, [wslToWin(path.join(appDir, RUN))], { cwd: electronDir, env, stdio: ['ignore', 'inherit', 'inherit'] });
-    process.exit(r.status ?? 0);
+    // limite de tempo: um script que falha no meio não chega ao app.exit e fica vivo com janelas ocultas
+    const limit = Number(process.env.KONA_RUN_TIMEOUT) || 300000;
+    const r = spawnSync(electronExe, [wslToWin(path.join(appDir, RUN))], { cwd: electronDir, env, stdio: ['ignore', 'inherit', 'inherit'], timeout: limit });
+    if (r.error?.code === 'ETIMEDOUT') console.error(`\n[windows.js] ${RUN} passou de ${limit / 1000}s; encerrando.`);
+    killLeftovers();
+    process.exit(r.status ?? 1);
   }
   if (process.argv.includes('--test')) {
     console.log('Copiando app e testes para', wslToWin(appDir));

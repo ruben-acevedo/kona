@@ -197,7 +197,7 @@ api?.on('ctx:page', ({ id, params: p }) => {
       { label: tl('Reload'), key: 'Ctrl+R', run: () => t.wv?.reload() },
     ], [
       { label: tl('Save page as…'), key: 'Ctrl+S', run: doPage('savePage') },
-      { label: tl('Print…'), key: 'Ctrl+P', run: doPage('print') },
+      { label: tl('Print…'), key: 'Ctrl+P', run: () => openPrint(t) },
       ...appMenuItems(t),
     ], [
       { label: tl('View page source'), key: 'Ctrl+U', run: () => openInBackground(`view-source:${p.pageURL}`), disabled: !/^https?:/i.test(p.pageURL) },

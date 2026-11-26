@@ -1206,7 +1206,7 @@ function toggleSidebar(force) {
 }
 
 // Clicar fora do menu lateral fecha o menu. Painéis abertos a partir dele não contam como "fora".
-const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #import-sheet, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #app-sheet, #scrim, #toast';
+const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #import-sheet, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #app-sheet, #print-sheet, #scrim, #toast';
 document.addEventListener('mousedown', (e) => {
   if (document.body.classList.contains('sidebar-open') && !e.target.closest(SIDEBAR_INSIDE)) toggleSidebar(false);
 }, true);
@@ -1287,7 +1287,7 @@ function shortcut(key, shift) {
     if (!a.wv || !/^https?:/i.test(a.url)) return false;
     const id = a.wv.getWebContentsId();
     if (key === 's') api?.ctxDo(id, 'savePage');
-    else if (key === 'p') api?.ctxDo(id, 'print');
+    else if (key === 'p') openPrint(a); // pré-visualização de impressão (N13)
     else openInBackground(`view-source:${a.url}`);
   }
   else if (key === 'n' && shift) library.switchTo(library.isPrivate() ? (library.primary ? tabSets.data.current : 'default') : 'private');
