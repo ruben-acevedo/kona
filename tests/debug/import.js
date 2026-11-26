@@ -29,6 +29,8 @@ app.whenReady().then(async () => {
   // deixa só uma extensão marcada (a primeira), para o teste ser rápido
   await js(`(() => { const on = [...document.querySelectorAll('#imp-body [data-ext]')].filter((c) => c.checked); on.slice(1).forEach((c) => c.click()); return 0; })()`);
   await click('#imp-go');
+  await sleep(300);
+  log('durante a importação, botões:', await js(`['#imp-go', '#imp-cancel', '#imp-close'].map((s) => s.slice(5) + (document.querySelector(s).hidden ? ' escondido' : ' VISÍVEL')).join(', ') + ' · ' + document.querySelector('#imp-hint').textContent`));
   const finished = await until(`imp.phase === 'done'`, 90000);
   log('terminou:', finished, '·', await js(`document.querySelector('.imp-done p')?.textContent`));
   log('aviso de falha:', await js(`document.querySelector('.imp-done .imp-warn')?.textContent || 'nenhum'`));

@@ -84,10 +84,13 @@ function renderImport() {
 function setImportFooter() {
   const go = $('#imp-go'), cancel = $('#imp-cancel'), hint = $('#imp-hint');
   hint.textContent = '';
+  $('#imp-close').hidden = imp.phase === 'working'; // sem fechar no meio da importação
   if (imp.phase === 'done' || imp.phase === 'none') {
     cancel.hidden = true; go.hidden = false; go.disabled = false; go.textContent = 'Done';
     return;
   }
+  // importando: sem botões (só o progresso); voltam no fim como "Done"
+  if (imp.phase === 'working') { cancel.hidden = true; go.hidden = true; hint.textContent = 'This may take a moment. Keep Kona open.'; return; }
   cancel.hidden = false; go.hidden = false; go.textContent = 'Import';
   const p = imp.pick;
   go.disabled = imp.busy || !imp.data || !(p.bookmarks || p.history || p.extensions.size);
@@ -107,7 +110,6 @@ async function runImport() {
   imp.busy = true;
   imp.phase = 'working';
   setImportFooter();
-  $('#imp-cancel').hidden = true;
   const done = [];
   const failed = [];
   const step = (text) => { $('#imp-body').innerHTML = `<div class="imp-progress"><span class="imp-spin"></span><span>${escapeHtml(text)}</span></div>`; };

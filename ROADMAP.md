@@ -155,3 +155,8 @@ Ordem combinada em 2026-11-25 (recomendação aceita, com o modo leitura incluí
 - [ ] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional).
 
 Depois, conforme o uso: várias janelas, fixar abas, preenchimento de endereços/cartões, tradução, buscadores personalizados, pré-visualização de impressão, português, proteção contra golpes (Safe Browsing/Web Risk), sincronização, macOS/Linux/celular, acessibilidade, relatório de travamentos.
+
+## M. Ajustes do uso (2026-11-26)
+
+- [x] **M1. Importação: botões durante a instalação.** Import, Cancel e o X somem enquanto a importação roda (só o progresso e "This may take a moment"); no fim aparece "Done". Teste: `tests/debug/import.js`.
+- [x] **M2. Passkey abrindo sozinha no Gmail.** O login do Google pede passkey em "mediação condicional" (no Chrome vira uma sugestão discreta na lista de preenchimento); sem essa lista, o pedido abria a janela de passkey do Windows. `page-preload.js` informa que a mediação condicional não existe e segura pedidos condicionais sem abrir janela (até a página cancelar). A passkey continua quando a pessoa escolhe usá-la. Teste: `tests/debug/passkey-conditional.js` (sem chamar passkey de verdade). Confirmado pelo usuário no Gmail (2026-11-26).

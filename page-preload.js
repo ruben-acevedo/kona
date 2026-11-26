@@ -63,3 +63,36 @@ contextBridge.executeInMainWorld({
     if (!window.chrome) Object.defineProperty(window, 'chrome', { value: c, writable: true, configurable: false, enumerable: true });
   },
 });
+
+// Passkeys: o Kona não tem a lista de preenchimento onde o Chrome sugere passkeys sem interromper
+// ("mediação condicional"). Sem ela, o pedido silencioso do login do Google virava a janela de
+// passkey do Windows, aberta sozinha. Aqui as páginas são informadas de que esse modo não existe
+// (e um pedido condicional fica aguardando, sem abrir janela, até a página cancelar). A passkey
+// continua funcionando quando a pessoa escolhe "Use a passkey".
+contextBridge.executeInMainWorld({
+  func: () => {
+    const PKC = window.PublicKeyCredential;
+    if (PKC && typeof PKC.isConditionalMediationAvailable === 'function') {
+      const fn = function isConditionalMediationAvailable() { return Promise.resolve(false); };
+      Object.defineProperty(PKC, 'isConditionalMediationAvailable', { value: fn, writable: true, configurable: true });
+    }
+    const creds = navigator.credentials;
+    if (creds && typeof creds.get === 'function') {
+      const get = creds.get.bind(creds);
+      const wrapped = function get_(options) {
+        if (options && options.mediation === 'conditional' && options.publicKey) {
+          return new Promise((_resolve, reject) => {
+            const signal = options.signal;
+            if (signal) {
+              if (signal.aborted) { reject(new DOMException('The operation was aborted.', 'AbortError')); return; }
+              signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')), { once: true });
+            }
+          });
+        }
+        return get(options);
+      };
+      Object.defineProperty(wrapped, 'name', { value: 'get' });
+      try { Object.defineProperty(Object.getPrototypeOf(creds), 'get', { value: wrapped, writable: true, configurable: true }); } catch { /* sem acesso: segue sem */ }
+    }
+  },
+});
