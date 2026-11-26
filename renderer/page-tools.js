@@ -106,3 +106,44 @@ function reopenClosedTab() {
 }
 // trocar de grupo, de perfil ou entrar no modo privado: a lista é daquele conjunto de abas
 library.onChange((what) => { if (what === 'sets' || what === 'profile') closedTabs.length = 0; });
+
+/* ───────────── Som nas abas ───────────── */
+api?.on('tab:audio', ({ id, audible }) => {
+  const t = tabs.find((x) => { try { return x.wv?.getWebContentsId() === id; } catch { return false; } });
+  if (!t) return;
+  t.audible = audible;
+  render();
+});
+/** Silenciar/reativar o som da aba (🔊 na aba, menu da aba). */
+function toggleMute(t) {
+  if (!t?.wv) return;
+  t.muted = !t.muted;
+  try { t.wv.setAudioMuted(t.muted); } catch { /* webview fechando */ }
+  sfx.play('tick');
+  render();
+}
+
+/* ───────────── Tela cheia (F11): a barra aparece ao levar o mouse ao topo ───────────── */
+const peekZone = document.createElement('div');
+peekZone.id = 'peek-zone';
+document.body.appendChild(peekZone);
+let peekTimer = null;
+const peek = (on) => {
+  clearTimeout(peekTimer);
+  if (on) document.body.classList.add('peek');
+  else peekTimer = setTimeout(() => {
+    // fica enquanto o endereço está sendo editado ou um menu está aberto
+    if (document.activeElement?.closest?.('#toolbar') || ctx?.open) return;
+    document.body.classList.remove('peek');
+  }, 450);
+};
+peekZone.addEventListener('mouseenter', () => peek(true));
+// a barra desliza por baixo do mouse (sem "entrar" nela): sair da faixa do topo também esconde,
+// a não ser que o mouse esteja sobre a barra (aí o mouseenter dela cancela o tempo)
+peekZone.addEventListener('mouseleave', () => peek(false));
+document.addEventListener('mousemove', (e) => { if (document.body.classList.contains('peek') && e.target.closest?.('#toolbar')) peek(true); });
+api?.on('page:mousedown', () => { if (document.body.classList.contains('peek')) { clearTimeout(peekTimer); document.body.classList.remove('peek'); } });
+$('#toolbar').addEventListener('mouseenter', () => { if (document.body.classList.contains('win-fullscreen')) peek(true); });
+$('#toolbar').addEventListener('mouseleave', () => peek(false));
+$('#toolbar').addEventListener('focusin', () => { if (document.body.classList.contains('win-fullscreen')) peek(true); });
+$('#toolbar').addEventListener('focusout', () => peek(false));

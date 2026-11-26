@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
-  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed'];
+  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('kona', {
   minimize: () => ipcRenderer.send('win:minimize'),
   maximize: () => ipcRenderer.send('win:maximize'),
   devtools: () => ipcRenderer.send('win:devtools'),
+  toggleFullscreen: () => ipcRenderer.send('win:fullscreen'),
   setTheme: (value) => ipcRenderer.send('theme:set', value),
   extList: () => ipcRenderer.invoke('ext:list'),
   extRemove: (id) => ipcRenderer.invoke('ext:remove', id),

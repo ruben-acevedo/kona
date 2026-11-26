@@ -1069,3 +1069,22 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 .pw-edit-acts { display: flex; justify-content: flex-end; gap: 8px; }
 .pw-sub { margin: 14px 8px 4px; font-size: 11.5px; font-weight: 600; color: var(--text-2); }
 .pw-row.never { min-height: 34px; }
+
+/* ───────────── Tela cheia ───────────── */
+/* vídeo (ou outro elemento) em tela cheia: só a página, sem nada do Kona */
+body.page-fullscreen :is(#toolbar, #sidebar, #infobar, #find-bar, #pw-suggest, #pw-bubble, #ext-pop, #toast, #peek-zone) { display: none !important; }
+body.page-fullscreen #views { inset: 0; }
+/* F11: a página ocupa a tela; a barra desliza ao levar o mouse ao topo */
+#peek-zone { display: none; position: fixed; z-index: 95; top: 0; left: 0; right: 0; height: 6px; }
+body.win-fullscreen:not(.page-fullscreen) #peek-zone { display: block; }
+body.win-fullscreen:not(.page-fullscreen) #views { inset: 0; }
+body.win-fullscreen:not(.page-fullscreen) #toolbar { z-index: 96; transform: translateY(-100%); transition: transform .22s var(--ease); background: var(--glass-strong); backdrop-filter: blur(30px); }
+body.win-fullscreen.peek:not(.page-fullscreen) #toolbar { transform: none; }
+body.win-fullscreen #winctl { display: none; }
+
+/* som na aba */
+.tab .snd { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; color: var(--text-2); flex: none; }
+.tab .snd[hidden] { display: none; }
+.tab .snd .ic { width: 14px; height: 14px; }
+.tab .snd:hover { background: var(--glass-hover); color: var(--text); }
+.tab.audible .snd { color: var(--accent); }

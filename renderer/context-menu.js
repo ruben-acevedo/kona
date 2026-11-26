@@ -225,6 +225,7 @@ function tabItems(t) {
     { label: 'Reload', key: 'Ctrl+R', run: () => t.wv?.reload(), disabled: !t.wv },
     { label: 'Duplicate', run: () => (web ? openInBackground(t.url) : newTab(t.url, false)) },
     { label: fav ? 'Remove from Favorites' : 'Add to Favorites', key: 'Ctrl+D', run: () => toggleBookmark(t), disabled: !web },
+    { label: t.muted ? 'Unmute tab' : 'Mute tab', run: () => toggleMute(t), disabled: !t.wv },
     '-',
     { label: 'Close tab', key: 'Ctrl+W', run: () => closeTab(t.id) },
     { label: 'Reopen closed tab', key: 'Ctrl+Shift+T', run: () => reopenClosedTab(), disabled: !closedTabs.length },

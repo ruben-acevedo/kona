@@ -117,8 +117,8 @@ function createWindow() {
   });
 
   const sendState = () =>
-    win.webContents.send('win:state', { maximized: win.isMaximized(), focused: win.isFocused() });
-  ['maximize', 'unmaximize', 'focus', 'blur'].forEach((ev) => win.on(ev, sendState));
+    win.webContents.send('win:state', { maximized: win.isMaximized(), focused: win.isFocused(), fullscreen: win.isFullScreen() });
+  ['maximize', 'unmaximize', 'focus', 'blur', 'enter-full-screen', 'leave-full-screen'].forEach((ev) => win.on(ev, sendState));
   win.webContents.on('did-finish-load', sendState);
   win.webContents.once('did-finish-load', () => captureUaHints(win.webContents));
   win.webContents.once('did-finish-load', () => setTimeout(() => openTargets(pendingTargets.splice(0)), 400));
@@ -420,6 +420,8 @@ onUi('theme:set', (e, value) => {
   nativeTheme.themeSource = value;
   BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(bgColor());
 });
+// F11: tela cheia da janela (a barra do Kona aparece ao levar o mouse ao topo)
+onUi('win:fullscreen', (e) => { const w = BrowserWindow.fromWebContents(e.sender); w?.setFullScreen(!w.isFullScreen()); });
 onUi('win:devtools', (e) => e.sender.openDevTools({ mode: 'detach' }));
 
 // Conteúdo das abas (webviews): popups viram novas abas e atalhos sobem para a interface
@@ -444,6 +446,8 @@ app.on('web-contents-created', (_e, contents) => {
   }
   if (contents.getType() !== 'webview') return;
   watchPage(contents); // botão direito → menu do Kona
+  // som: a aba mostra 🔊 enquanto toca (e permite silenciar)
+  contents.on('audio-state-changed', (e) => contents.hostWebContents?.send('tab:audio', { id: contents.id, audible: !!e.audible }));
   extensionsApi.trackTab(contents); // a aba existe para as extensões (chrome.tabs)
   // Ctrl + roda do mouse: zoom do site (o Kona guarda por site, como o Chrome)
   contents.on('zoom-changed', (_e, dir) => contents.hostWebContents?.send('shortcut', { key: dir === 'in' ? 'zoomin' : 'zoomout' }));
@@ -464,6 +468,12 @@ app.on('web-contents-created', (_e, contents) => {
     if (input.alt && !input.control && !input.meta && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')) {
       event.preventDefault();
       contents.hostWebContents?.send('shortcut', { key: input.key === 'ArrowLeft' ? 'back' : 'forward' });
+      return;
+    }
+    // F11: tela cheia da janela
+    if (input.key === 'F11' && !input.control && !input.alt) {
+      event.preventDefault();
+      contents.hostWebContents?.send('shortcut', { key: 'f11' });
       return;
     }
     // F3 / Shift+F3: próxima/anterior ocorrência da busca na página

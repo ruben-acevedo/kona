@@ -155,7 +155,11 @@ Ordem combinada em 2026-11-25 (recomendação aceita, com o modo leitura incluí
   - `page-passwords.js` (preload das páginas, mundo isolado): avisa foco em campos de login, preenche (setter nativo + eventos, para React/Vue), percebe o envio (submit, Enter, botão) e a 1ª etapa de logins em duas telas (Google).
   - `renderer/passwords.js`: lista sob o campo, balão Save/Update/Never/Not now, Settings → Passwords (ligar/desligar, Manage…, Import…, Export…) e a tela com busca, mostrar, copiar, editar, apagar e "Never saved".
   - Teste: `tests/debug/passwords.js` (sem chamar o Windows Hello). Falta o teste do usuário: Windows Hello (mostrar/copiar/exportar), importar o CSV do Chrome e logins reais.
-- [ ] **L5. Tela cheia e som.** F11, vídeo em tela cheia de verdade, indicador de som na aba e silenciar aba.
+- [x] **L5. Tela cheia e som.** F11, vídeo em tela cheia de verdade, indicador de som na aba e silenciar aba.
+  - Vídeo em tela cheia (requestFullscreen, ex.: YouTube): a janela já ia para tela cheia, mas a barra do Kona ficava na frente; agora `body.page-fullscreen` esconde toda a interface e a página ocupa a tela; Esc volta.
+  - F11 (também com o foco na página): tela cheia da janela; a barra some e desliza de volta ao levar o mouse ao topo (some ao sair da faixa do topo, ao sair da barra ou ao clicar na página); fica enquanto se edita o endereço.
+  - Som: a aba que toca mostra 🔊 (azul); clicar silencia (🔇) e clicar de novo reativa; "Mute tab"/"Unmute tab" no menu da aba. `audio-state-changed` do webContents → `tab:audio`.
+  - Teste: `tests/debug/fullscreen.js`.
 - [ ] **L6. Modo leitura (como o do Safari).**
 - [ ] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional).
 

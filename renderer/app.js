@@ -31,6 +31,8 @@ const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.6A7.6 7.6 0 0 0 6.9 6.6l-2.3-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5l.5 2.6h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4z"/>',
   mic: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>',
   thumbtack: '<path d="M9 4.5h6M10 4.5v5.2L7.5 13h9L14 9.7V4.5M12 13v6.5"/>',
+  volume: '<path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.6 6.8a7.5 7.5 0 0 1 0 10.4"/>',
+  volumeOff: '<path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/>',
   key: '<circle cx="8" cy="14.5" r="3.8"/><path d="m10.7 11.8 8.3-8.3M15.5 7.3l2.2 2.2M17.6 5.2l1.6 1.6"/>',
   eye: '<path d="M2.8 12s3.4-6.2 9.2-6.2 9.2 6.2 9.2 6.2-3.4 6.2-9.2 6.2S2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8"/>',
   eyeOff: '<path d="M2.8 12s3.4-6.2 9.2-6.2c1.6 0 3 .5 4.2 1.1M21.2 12s-3.4 6.2-9.2 6.2c-1.6 0-3-.5-4.2-1.1"/><path d="M4 20 20 4"/>',
@@ -438,6 +440,9 @@ function ensureWebview(t) {
     el?.classList.add('done');
     setTimeout(() => el?.classList.remove('done'), 600);
   });
+  // tela cheia pedida pela página (vídeo): esconde a interface do Kona; a janela já vai para tela cheia
+  on('enter-html-full-screen', () => document.body.classList.add('page-fullscreen'));
+  on('leave-html-full-screen', () => document.body.classList.remove('page-fullscreen'));
   // zoom do site (ou o padrão) e busca na página (renderer/page-tools.js, carregado depois deste arquivo)
   on('dom-ready', () => { if (typeof applyZoom === 'function') applyZoom(t); else if (settings.zoom !== 1) wv.setZoomFactor(settings.zoom); });
   if (typeof findBar !== 'undefined') findBar.watch(t, wv);
@@ -542,6 +547,7 @@ function createTabEl(t) {
   el.innerHTML = `
     <span class="slot"><span class="tfav"></span><button class="x" title="Close tab">${icon('x')}</button></span>
     <span class="title"></span>
+    <button class="snd" title="Mute tab" hidden></button>
     <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder="Search or enter address" /></form>
     <button class="zoomind" title="Reset zoom (Ctrl+0)" hidden></button>
     <button class="bm" title="Add to Favorites (Ctrl+D)">${icon('star')}</button>
@@ -567,6 +573,8 @@ function createTabEl(t) {
   $('.reload', el).addEventListener('click', () => { if (t.wv) (t.loading ? t.wv.stop() : t.wv.reload()); });
   $('.bm', el).addEventListener('click', () => toggleBookmark(t));
   $('.zoomind', el).addEventListener('click', () => zoomReset());
+  $('.snd', el).addEventListener('mousedown', (e) => e.stopPropagation()); // não troca de aba
+  $('.snd', el).addEventListener('click', (e) => { e.stopPropagation(); toggleMute(t); });
   input.addEventListener('focus', () => {
     el.classList.add('editing');
     input.value = t.url === START ? '' : t.url;
@@ -637,6 +645,17 @@ function paintTab(t, el) {
   el.classList.toggle('loading', t.loading);
   el.classList.toggle('secure', t.url.startsWith('https://'));
   el.classList.toggle('bookmarked', isActive && t.url !== START && !!bookmarks.find(t.url));
+  // som: 🔊 tocando, 🔇 silenciada (clicar alterna)
+  const snd = $('.snd', el);
+  const muted = !!t.muted;
+  snd.hidden = !(t.audible || muted);
+  el.classList.toggle('audible', !!t.audible && !muted);
+  el.classList.toggle('muted', muted);
+  if (!snd.hidden && snd.dataset.state !== String(muted)) {
+    snd.dataset.state = String(muted);
+    snd.innerHTML = icon(muted ? 'volumeOff' : 'volume');
+    snd.title = muted ? 'Unmute tab' : 'Mute tab';
+  }
   // zoom diferente do padrão: aparece na barra (clicar volta ao padrão)
   const z = isActive && t.wv && typeof zoomFor === 'function' ? zoomFor(t.url) : settings.zoom;
   const zi = $('.zoomind', el);
@@ -1128,6 +1147,7 @@ function shortcut(key, shift) {
   else if (key === 'zoomin') zoomStep(1);
   else if (key === 'zoomout') zoomStep(-1);
   else if (key === 'back') goBack();
+  else if (key === 'f11') api?.toggleFullscreen();
   else if (key === 'forward') a.wv?.goForward();
   else if (['s', 'p', 'u'].includes(key) && !shift) {
     // salvar, imprimir e ver o código-fonte valem para a página da aba ativa
@@ -1171,6 +1191,7 @@ document.addEventListener('keydown', (e) => {
   if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest?.('input, textarea')) {
     shortcut(e.key === 'ArrowLeft' ? 'back' : 'forward'); e.preventDefault(); return;
   }
+  if (e.key === 'F11' && !e.ctrlKey && !e.altKey) { api?.toggleFullscreen(); e.preventDefault(); return; }
   if (e.key === 'F3' && !e.ctrlKey && !e.altKey) { shortcut('f3', e.shiftKey); e.preventDefault(); return; }
   if (!(e.ctrlKey || e.metaKey)) return;
   if (shortcut(e.key.toLowerCase(), e.shiftKey)) e.preventDefault();
@@ -1188,8 +1209,10 @@ api?.on('shortcut', ({ key, shift, alt }) => {
 api?.on('tab:open', (url) => newTab(url, false));
 api?.on('update:ready', ({ version }) => toast(`Kona ${version} is ready to install`, { label: 'Restart now', run: () => api.installUpdate() }));
 let wasMaximized = null;
-api?.on('win:state', ({ focused, maximized }) => {
+api?.on('win:state', ({ focused, maximized, fullscreen }) => {
   document.body.classList.toggle('blurred', !focused);
+  document.body.classList.toggle('win-fullscreen', !!fullscreen);
+  if (!fullscreen) document.body.classList.remove('page-fullscreen', 'peek');
   setMaximized(maximized);
   if (wasMaximized !== null && wasMaximized !== maximized) settle(maximized);
   wasMaximized = maximized;
