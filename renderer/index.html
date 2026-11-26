@@ -338,6 +338,24 @@
     </footer>
   </section>
 
+  <!-- Compartilhar a tela: o que compartilhar (tela, janela ou aba do Kona) -->
+  <section id="share-sheet" class="sheet share-sheet" role="dialog" aria-labelledby="share-title">
+    <header class="sheet-head">
+      <div><h2 id="share-title">Choose what to share</h2><p id="share-sub"></p></div>
+    </header>
+    <div class="seg share-tabs" id="share-tabs">
+      <span class="share-ind" aria-hidden="true"></span>
+      <button data-kind="screen">Entire screen</button><button data-kind="window">Window</button><button data-kind="tab">Kona tab</button>
+    </div>
+    <div class="share-stage" id="share-stage"><div class="share-grid" id="share-grid"></div></div>
+    <footer class="sheet-foot">
+      <label class="share-audio" id="share-audio-row"><input type="checkbox" id="share-audio" /> Also share system audio</label>
+      <span class="spacer"></span>
+      <button class="btn-secondary" id="share-cancel">Cancel</button>
+      <button class="btn-primary" id="share-go" disabled>Share</button>
+    </footer>
+  </section>
+
   <!-- Pedido de permissão de um site -->
   <section id="perm-sheet" class="sheet small" role="alertdialog">
     <div class="confirm-body">
@@ -352,6 +370,9 @@
   </section>
 
   <div id="toast" class="glass"></div>
+
+  <!-- Enquanto compartilha a tela -->
+  <div id="share-bar" class="glass" role="status"></div>
 
   <!-- Senhas: contas para o campo focado na página e o balão "Save password?" -->
   <div id="pw-suggest" class="glass" role="listbox" aria-label="Saved passwords"></div>
@@ -387,6 +408,7 @@
   <script src="downloads.js"></script>
   <script src="page-tools.js"></script>
   <script src="reader-ui.js"></script>
+  <script src="screen-share-ui.js"></script>
   <script src="extensions-bar.js"></script>
   <script src="context-menu.js"></script>
   <script src="import.js"></script>

@@ -147,3 +147,33 @@ $('#toolbar').addEventListener('mouseenter', () => { if (document.body.classList
 $('#toolbar').addEventListener('mouseleave', () => peek(false));
 $('#toolbar').addEventListener('focusin', () => { if (document.body.classList.contains('win-fullscreen')) peek(true); });
 $('#toolbar').addEventListener('focusout', () => peek(false));
+
+/* ───────────── Pop-ups bloqueados (como o Chrome) ───────────── */
+const popupHost = (o) => { try { return new URL(o).host; } catch { return o; } };
+api?.on('popup:blocked', ({ id, url, origin }) => {
+  const t = tabs.find((x) => { try { return x.wv?.getWebContentsId() === id; } catch { return false; } });
+  if (!t) return;
+  t.blockedPopups ||= [];
+  t.blockedPopupsOrigin = origin;
+  if (!t.blockedPopups.includes(url)) t.blockedPopups.push(url);
+  if (t.blockedPopups.length === 1 && t === active()) toast('Pop-up blocked');
+  render();
+});
+function popupMenu(t, x, y) {
+  const list = t.blockedPopups || [];
+  const host = popupHost(t.blockedPopupsOrigin || '');
+  showMenu([
+    { label: `Pop-ups blocked on ${host}`, disabled: true },
+    '-',
+    ...list.slice(-8).map((u) => ({ label: u.replace(/^https?:\/\//, '').slice(0, 60), run: () => { t.blockedPopups = t.blockedPopups.filter((x) => x !== u); newTab(u, false); } })),
+    '-',
+    { label: `Always allow pop-ups from ${host}`, run: () => {
+      settings.popupsAllowed = [...new Set([...(settings.popupsAllowed || []), t.blockedPopupsOrigin])];
+      saveSettings(); api?.setPopupsAllowed(settings.popupsAllowed);
+      t.blockedPopups = null; render();
+      toast(`Pop-ups allowed on ${host}`);
+    } },
+  ], x, y);
+}
+api?.setPopupsAllowed(settings.popupsAllowed || []);
+library.onChange((what) => { if (what === 'profile') api?.setPopupsAllowed(settings.popupsAllowed || []); });

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, components } = require('electron');
+const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, components, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { installChromeWebStore, uninstallExtension } = require('electron-chrome-web-store');
@@ -11,6 +11,7 @@ const { registerContextMenu, watchPage } = require('./context-menu');
 const extensionsApi = require('./extensions');
 const { registerPasswords } = require('./passwords');
 const { watchReader, registerReader } = require('./reader');
+const { installShare, registerShare, shareEndedFrom } = require('./screen-share');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -190,6 +191,8 @@ const installSession = (ses, partition) => {
   policy.install(ses, partition);
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-preload.js') });
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-passwords.js') }); // gerenciador de senhas
+  ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-share.js') }); // compartilhar a tela
+  installShare(ses); // seletor de tela/janela/aba do Kona
 };
 
 const pendingConfirms = new Map();
@@ -312,8 +315,19 @@ registerPasswords({ win: () => mainWin, currentPartition: () => currentPartition
 // Modo leitura (como o do Safari)
 registerReader();
 
+// Compartilhar a tela: seletor do Kona e "Stop sharing"
+registerShare({ win: () => mainWin });
+ipcMain.on('share:ended-page', (e) => { if (e.sender.getType() === 'webview') shareEndedFrom(e.sender.id); });
+
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
 extensionsApi.registerExtensions({ win: () => mainWin });
+
+// Sites com pop-ups sempre permitidos (escolha da pessoa no aviso de pop-up bloqueado)
+const popupsAllowed = new Set();
+onUi('popups:allowed', (_e, list) => {
+  popupsAllowed.clear();
+  if (Array.isArray(list)) for (const o of list.slice(0, 1000)) if (typeof o === 'string' && /^https?:\/\//.test(o)) popupsAllowed.add(o);
+});
 
 // Menu de contexto (botão direito): ações nas páginas e nos campos da interface
 registerContextMenu({ win: () => mainWin, askNextDownload: (url) => policy.askNext(url) });
@@ -458,17 +472,50 @@ app.on('web-contents-created', (_e, contents) => {
   contents.on('zoom-changed', (_e, dir) => contents.hostWebContents?.send('shortcut', { key: dir === 'in' ? 'zoomin' : 'zoomout' }));
   // Não revela os IPs da rede local por WebRTC (videochamadas continuam funcionando)
   contents.setWebRTCIPHandlingPolicy('default_public_interface_only');
-  contents.setWindowOpenHandler(({ url }) => {
-    // Popups viram abas, mas uma página não pode abrir arquivos locais nem esquemas estranhos
-    if (['http:', 'https:'].includes(schemeOf(url)) || url === 'about:blank') contents.hostWebContents?.send('tab:open', url);
+  // Bloqueio de pop-ups, como o Chrome: só abre (como aba) o que vem logo depois de um clique ou tecla
+  // da pessoa naquela aba; o resto é bloqueado e a interface mostra o aviso na barra de endereço.
+  let lastInput = 0;
+  contents.setWindowOpenHandler(({ url, disposition, features }) => {
+    // uma página não pode abrir arquivos locais nem esquemas estranhos
+    if (!(['http:', 'https:'].includes(schemeOf(url)) || url === 'about:blank')) return { action: 'deny' };
+    const origin = (() => { try { return new URL(contents.getURL()).origin; } catch { return ''; } })();
+    if (!(Date.now() - lastInput <= 5000 || popupsAllowed.has(origin))) {
+      contents.hostWebContents?.send('popup:blocked', { id: contents.id, url, origin });
+      return { action: 'deny' };
+    }
+    // Pop-up de verdade (janela com tamanho, ou em branco para a página preencher — os controles de
+    // apresentação do Meet, o "Entrar com Google/Microsoft" de outros sites): janela pop-up ligada à
+    // página que a abriu, como no Chrome. Virar aba quebraria esse vínculo (abria uma aba em branco).
+    if (disposition === 'new-window' || url === 'about:blank' || /\b(width|height|popup)\b/i.test(features || '')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          autoHideMenuBar: true, icon: APP_ICON, backgroundColor: '#ffffff', show: true,
+          webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
+        },
+      };
+    }
+    contents.hostWebContents?.send('tab:open', url); // "abrir em nova aba" (target=_blank): aba do Kona
     return { action: 'deny' };
+  });
+  // a janela pop-up: sem menu; o que ela abrir vira aba do Kona; fecha junto se a aba que a abriu fechar
+  contents.on('did-create-window', (popup) => {
+    popup.setMenu(null);
+    popup.webContents.setWindowOpenHandler(({ url }) => {
+      if (['http:', 'https:'].includes(schemeOf(url))) mainWin?.webContents.send('tab:open', url);
+      return { action: 'deny' };
+    });
+    const closeWithOpener = () => { if (!popup.isDestroyed()) popup.close(); };
+    contents.once('destroyed', closeWithOpener);
+    popup.once('closed', () => contents.removeListener('destroyed', closeWithOpener));
   });
   // Cliques dentro das páginas não chegam ao DOM da interface: avisa para fechar menus abertos
   contents.on('before-mouse-event', (_event, mouse) => {
-    if (mouse.type === 'mouseDown') contents.hostWebContents?.send('page:mousedown');
+    if (mouse.type === 'mouseDown') { lastInput = Date.now(); contents.hostWebContents?.send('page:mousedown'); }
   });
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
+    lastInput = Date.now();
     // Alt+← / Alt+→: voltar e avançar (como no Chrome)
     if (input.alt && !input.control && !input.meta && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')) {
       event.preventDefault();

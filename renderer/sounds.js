@@ -9,6 +9,7 @@ const sfx = (() => {
   let noise = null; // 50 ms de ruído branco, gerado uma vez (base do som de tecla)
   let lastTick = 0;
   let lastKey = 0;
+  let lastSelect = 0;
   let lastBig = 0; // último som de abrir/fechar: a "seleção" logo em seguida seria um som duplicado
 
   function ensure() {
@@ -102,6 +103,8 @@ const sfx = (() => {
       if (name === 'tick') { if (now - lastTick < 40) return; lastTick = now; }
       if (name === 'key') { if (now - lastKey < 18) return; lastKey = now; }
       if (name === 'select' && now - lastBig < 150) return;
+      // um clique que já toca o próprio som não toca dois "select" seguidos
+      if (name === 'select') { if (now - lastSelect < 90) return; lastSelect = now; }
       if (name !== 'tick' && name !== 'key' && name !== 'select') lastBig = now;
       SOUNDS[name]?.(ctx.currentTime + 0.002);
       window.__sfxLog?.push(name); // só nos testes
@@ -113,12 +116,27 @@ const sfx = (() => {
     '#toolbar .tb', '#toolbar .addr', '#omnibox .om-row',
     '#sidebar .sb-item', '#sidebar .sb-tab', '.fav-item', '#btn-customize',
     '#custom-pop .wp-swatch', '#custom-pop .toggle', '#custom-pop .seg button', '#profile-pop .pf-row',
+    // botões e listas que vieram depois: pastas e downloads no menu, botões da barra de endereço,
+    // busca na página, extensões, senhas, modo leitura, compartilhar a tela, avisos e janelas (sheets)
+    '#sb-list .sb-row', '#sb-list .sb-act', '#sb-tools button', '#sb-subfoot button', '#folder-pop .tb',
+    '.tab :is(.zoomind, .readerbtn, .aabtn, .snd, .popupind, .bm, .reload)',
+    '#find-bar .tb', '#ext-pop .ext-pop-row', '#ext-pop .pop-item', '#ext-pop .ext-pin',
+    '#pw-suggest .pw-opt', '#pw-bubble button', '#pw-list .sb-act', '#pw-list .btn-link',
+    '#reader-pop button', '#share-tabs button', '#share-grid .share-item', '#share-bar button',
+    '#infobar button', '#imp-body label',
+    '.sheet :is(.btn-primary, .btn-secondary, .btn-danger, .btn-link)', '.sheet-head .tb',
+    '#st-nav .st-nav-item', '#st-main :is(.btn-primary, .btn-secondary, .btn-link, .sw)',
   ].join(', ');
   const CLICK = [
     '#sidebar .sb-item', '#sidebar .sb-tab', '#custom-pop .wp-swatch', '#custom-pop .toggle',
     '#custom-pop .seg button', '#profile-pop .pf-row',
     // da barra, só os que não abrem painel nem focam a pesquisa (esses já têm o próprio som)
     '#back', '#fwd',
+    // os que vieram depois (os que já tocam um som próprio não tocam dois: ver lastSelect)
+    '#sb-list .sb-act', '#sb-tools button', '.tab :is(.zoomind, .bm, .reload)', '#find-bar .tb',
+    '#ext-pop .pop-item', '#pw-bubble button', '#pw-list .sb-act', '#pw-list .btn-link', '#infobar button',
+    '#imp-body label', '.sheet:not(#share-sheet) :is(.btn-primary, .btn-secondary, .btn-danger, .btn-link)',
+    '#st-nav .st-nav-item', '#st-main :is(.btn-primary, .btn-secondary, .btn-link, .sw)', '#share-grid .share-item',
   ].join(', ');
   let hovered = null;
   document.addEventListener('pointerover', (e) => {

@@ -96,3 +96,27 @@ contextBridge.executeInMainWorld({
     }
   },
 });
+
+// Compartilhar a tela: guarda as capturas abertas pela página para o "Stop sharing" do Kona
+// encerrá-las (evento vindo de page-share.js) e avisa quando todas acabaram.
+contextBridge.executeInMainWorld({
+  func: () => {
+    const md = navigator.mediaDevices;
+    if (!md || typeof md.getDisplayMedia !== 'function') return;
+    const original = md.getDisplayMedia.bind(md);
+    const live = new Set();
+    const check = () => { if (![...live].some((s) => s.getTracks().some((t) => t.readyState === 'live'))) { live.clear(); window.dispatchEvent(new CustomEvent('__kona_share_ended')); } };
+    const getDisplayMedia = function getDisplayMedia(constraints) {
+      return original(constraints).then((stream) => {
+        live.add(stream);
+        for (const t of stream.getTracks()) t.addEventListener('ended', () => setTimeout(check, 0));
+        return stream;
+      });
+    };
+    Object.defineProperty(md, 'getDisplayMedia', { value: getDisplayMedia, writable: true, configurable: true });
+    window.addEventListener('__kona_share_stop', () => {
+      for (const s of live) for (const t of s.getTracks()) { t.stop(); t.dispatchEvent(new Event('ended')); }
+      live.clear();
+    });
+  },
+});

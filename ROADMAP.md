@@ -174,3 +174,44 @@ Depois, conforme o uso: várias janelas, fixar abas, preenchimento de endereços
 
 - [x] **M1. Importação: botões durante a instalação.** Import, Cancel e o X somem enquanto a importação roda (só o progresso e "This may take a moment"); no fim aparece "Done". Teste: `tests/debug/import.js`.
 - [x] **M2. Passkey abrindo sozinha no Gmail.** O login do Google pede passkey em "mediação condicional" (no Chrome vira uma sugestão discreta na lista de preenchimento); sem essa lista, o pedido abria a janela de passkey do Windows. `page-preload.js` informa que a mediação condicional não existe e segura pedidos condicionais sem abrir janela (até a página cancelar). A passkey continua quando a pessoa escolhe usá-la. Teste: `tests/debug/passkey-conditional.js` (sem chamar passkey de verdade). Confirmado pelo usuário no Gmail (2026-11-26).
+
+---
+
+# Roadmap 2 — Funcionar como os outros navegadores
+
+Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas esperam do Chrome, do Edge e do Safari. Ordem combinada: N1–N4 primeiro (N3 e N4 começam por uma conferência), depois N7, N8 e N16, depois N5 e o resto um por vez.
+
+### Faz falta logo
+- [x] **N1. Compartilhar a tela** (Meet, Teams, Zoom, Discord). Hoje bloqueado. Alinhar o visual do seletor antes.
+  - Alinhado: como no Chrome, no visual do Kona — seletor "Choose what to share" com Entire screen / Window / Kona tab, "Also share system audio", pergunta a cada vez; barra "<site> is sharing your screen · Stop sharing".
+  - `screen-share.js` (principal): `setDisplayMediaRequestHandler` em cada sessão de abas; o seletor abre na hora e as telas/janelas (desktopCapturer, com miniaturas) chegam em seguida; recusar é `callback(null)` (um objeto vazio lançava erro no processo principal — relatado pelo usuário com captura da janela de erro) e toda resposta é protegida para nunca derrubar o Kona. `page-preload.js`/`page-share.js` guardam as capturas da página para o "Stop sharing" e avisam quando o site parou sozinho.
+  - `renderer/screen-share-ui.js`: indicador que desliza entre as opções, grade que sai para um lado e entra do outro com a altura acompanhando, itens entrando em cascata; sons (abrir, trocar de opção, escolher, Share = som de aba abrindo, Stop = som de aba fechando, o site parar sozinho = fechar).
+  - Pedido junto: som em todos os botões novos (pastas, downloads, botões da barra de endereço, busca na página, extensões, senhas, leitor, compartilhar, avisos e janelas) via listas HOVER/CLICK de `renderer/sounds.js`; um clique que já toca o próprio som não toca dois "select".
+  - Lição: um `const EASE` repetido entre scripts derrubou o arquivo novo inteiro (sem erro visível); conferir nomes globais repetidos entre `renderer/*.js`.
+  - Teste: `tests/debug/screen-share.js` (sem erros no processo principal).
+- [ ] **N2. Várias janelas.** Ctrl+N, arrastar aba para fora, mover aba entre janelas.
+- [x] **N3. Bloqueio de pop-ups.** Conferir se pop-ups sem clique (propaganda) viram abas; bloquear como o Chrome.
+  - Conferido: pop-up aberto sem clique virava aba. Agora (main.js) só abre o que vem até 5 s depois de um clique ou tecla da pessoa naquela aba (como a "ativação" do Chrome); o resto é bloqueado e a barra de endereço mostra o ícone (aviso "Pop-up blocked" no 1º). Clicar no ícone: a lista (clicar abre) e "Always allow pop-ups from <site>" (`settings.popupsAllowed`, por perfil). Teste: `tests/debug/popups-links.js`.
+  - Corrigido (relato do usuário: "quando comecei a transmitir ele abriu uma aba em branco"): o Kona transformava todo pop-up em aba. Agora, como no Chrome, pedido de aba (`target=_blank`) vira aba do Kona e pop-up de verdade (`disposition: new-window`, `about:blank` ou com tamanho) vira janela pop-up ligada à página que a abriu — os controles de apresentação do Meet e os logins "Entrar com Google/Microsoft" (window.opener/postMessage) dependem disso. A janela não tem menu, o que ela abrir vira aba e ela fecha junto com a aba de origem. Teste: `tests/debug/popup-window.js`.
+- [x] **N4. Links especiais** (mailto:, tel:, zoommtg:, msteams:…): conferir se abrem o programa certo.
+  - Conferido: já funciona como no Chrome — o Kona pergunta "<site> wants to open an app on your computer" (permissão "Open external apps") e lembra por site; permitido, o Windows abre o programa do protocolo.
+- [ ] **N5. Português (e outros idiomas).**
+- [ ] **N6. Recuperar a sessão depois de um travamento.**
+
+### Esperado em qualquer navegador
+- [ ] **N7. Fixar abas.**
+- [ ] **N8. Atalhos de abas:** Ctrl+1…9, Ctrl+PgUp/PgDn, arrastar link para a barra de abas.
+- [ ] **N9. Preencher endereços e cartões.**
+- [ ] **N10. Traduzir páginas.**
+- [ ] **N11. Instalar sites como aplicativo (PWA).**
+- [ ] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.
+- [ ] **N13. Pré-visualização de impressão.**
+- [ ] **N14. Aviso de download perigoso.**
+- [ ] **N15. Barra de favoritos (opcional).**
+- [ ] **N16. Controle de mídia global e teclas de mídia.**
+- [ ] **N17. Configurações por site** (JavaScript, pop-ups, cookies).
+
+### Grandes, para depois
+- [ ] **N18. Sincronização.**
+- [ ] **N19. macOS e celular.**
+- [ ] **N20. Acessibilidade completa.**

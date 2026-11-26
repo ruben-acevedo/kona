@@ -3,7 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
-  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state'];
+  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked',
+  'share:pick', 'share:sources', 'share:started', 'share:ended'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -12,6 +13,9 @@ contextBridge.exposeInMainWorld('kona', {
   maximize: () => ipcRenderer.send('win:maximize'),
   devtools: () => ipcRenderer.send('win:devtools'),
   toggleFullscreen: () => ipcRenderer.send('win:fullscreen'),
+  setPopupsAllowed: (list) => ipcRenderer.send('popups:allowed', list),
+  shareChoice: (id, choice) => ipcRenderer.send('share:choice', id, choice),
+  shareStop: (id) => ipcRenderer.send('share:stop', id),
   reader: {
     open: (id, s) => ipcRenderer.invoke('reader:open', id, s),
     close: (id) => ipcRenderer.invoke('reader:close', id),

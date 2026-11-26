@@ -33,6 +33,7 @@ const ICONS = {
   thumbtack: '<path d="M9 4.5h6M10 4.5v5.2L7.5 13h9L14 9.7V4.5M12 13v6.5"/>',
   volume: '<path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.6 6.8a7.5 7.5 0 0 1 0 10.4"/>',
   volumeOff: '<path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/>',
+  popupBlocked: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9h17"/><path d="m10 12.5 4 4M14 12.5l-4 4"/>',
   reader: '<rect x="4.5" y="4" width="15" height="16" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/>',
   speaker: '<path d="M4.5 9.5h3l4-3.5v12l-4-3.5h-3z"/><path d="M15 9.2a4 4 0 0 1 0 5.6"/>',
   key: '<circle cx="8" cy="14.5" r="3.8"/><path d="m10.7 11.8 8.3-8.3M15.5 7.3l2.2 2.2M17.6 5.2l1.6 1.6"/>',
@@ -208,6 +209,7 @@ const DEFAULTS = {
   offerPasswords: true, // oferecer salvar senhas (o gerenciador do Kona)
   reader: { size: 5, font: 'system', theme: null }, // modo leitura (theme null = segue o tema do Kona)
   readerAuto: {}, // sites em que o modo leitura abre sozinho
+  popupsAllowed: [], // sites com pop-ups sempre permitidos
   // Downloads
   downloadDir: null, downloadAsk: false,
 };
@@ -454,6 +456,7 @@ function ensureWebview(t) {
   const viewSource = (url) => (t.url.startsWith('view-source:') && !url.startsWith('view-source:') ? `view-source:${url}` : url);
   on('did-navigate', (e) => {
     t.reader = null; // o modo leitura vale por página
+    t.blockedPopups = null; // e os pop-ups bloqueados também
     t.url = viewSource(e.url); t.favicon = null; sync(); render();
     if (!t.url.startsWith('view-source:')) browseHistory.addVisit(e.url, t.title);
   });
@@ -554,6 +557,7 @@ function createTabEl(t) {
     <span class="title"></span>
     <button class="snd" title="Mute tab" hidden></button>
     <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder="Search or enter address" /></form>
+    <button class="popupind" title="Pop-ups blocked" hidden></button>
     <button class="readerbtn" title="Show Reader (Ctrl+Shift+R)" hidden></button>
     <button class="aabtn" title="Reader options" hidden>Aa</button>
     <button class="zoomind" title="Reset zoom (Ctrl+0)" hidden></button>
@@ -581,6 +585,7 @@ function createTabEl(t) {
   $('.bm', el).addEventListener('click', () => toggleBookmark(t));
   $('.zoomind', el).addEventListener('click', () => zoomReset());
   $('.readerbtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReader(t); });
+  $('.popupind', el).addEventListener('click', (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); popupMenu(t, r.left, r.bottom + 6); });
   $('.aabtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReaderPop(e.currentTarget); });
   $('.snd', el).addEventListener('mousedown', (e) => e.stopPropagation()); // não troca de aba
   $('.snd', el).addEventListener('click', (e) => { e.stopPropagation(); toggleMute(t); });
@@ -654,6 +659,10 @@ function paintTab(t, el) {
   el.classList.toggle('loading', t.loading);
   el.classList.toggle('secure', t.url.startsWith('https://'));
   el.classList.toggle('bookmarked', isActive && t.url !== START && !!bookmarks.find(t.url));
+  // pop-ups bloqueados nesta página: ícone na barra (clicar mostra a lista e "sempre permitir")
+  const pi = $('.popupind', el);
+  pi.hidden = !(isActive && t.blockedPopups?.length);
+  if (!pi.hidden && !pi.firstChild) pi.innerHTML = icon('popupBlocked');
   // modo leitura: ícone quando a página é um artigo; "Aa" com o leitor aberto
   const rb = $('.readerbtn', el), aa = $('.aabtn', el);
   rb.hidden = !(isActive && t.reader?.available);

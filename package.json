@@ -57,6 +57,8 @@
       "page-passwords.js",
       "reader.js",
       "reader-page.js",
+      "screen-share.js",
+      "page-share.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

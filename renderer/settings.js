@@ -150,7 +150,7 @@ const settingsPage = {
         </div>`).join('')
       : '<p class="st-empty">No saved choices yet. When a site asks for a permission, your answer will show up here.</p>';
     return this.section('permissoes', 'Site permissions', rows,
-      'What sites can do without asking. Screen sharing is blocked in this version.') +
+      'What sites can do without asking. Screen sharing always asks what to share.') +
       `<div class="st-card st-sites"><h3>Choices by site</h3>${list}</div>`;
   },
 

@@ -70,9 +70,9 @@ const originOf = (u) => { try { const x = new URL(u); return `${x.protocol}//${x
 
 /* ───────────── Permissões ───────────── */
 // sempre permitidas (inofensivas e esperadas): tela cheia, copiar, travar o ponteiro em jogos
-const ALWAYS = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock']);
-// Compartilhar a tela fica negado: no Windows o Electron não tem seletor de tela/janela,
-// então permitir significaria entregar a tela inteira sem o usuário escolher o quê.
+// 'display-capture' (compartilhar a tela): o consentimento é o seletor do Kona (screen-share.js), que
+// pergunta a cada vez e só entrega o que a pessoa escolher.
+const ALWAYS = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock', 'display-capture']);
 const SIMPLE = { geolocation: 'location', notifications: 'notifications', 'clipboard-read': 'clipboard', openExternal: 'apps' };
 function kindsFor(permission, details = {}) {
   if (permission === 'media') {
