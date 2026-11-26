@@ -31,6 +31,10 @@ const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.6A7.6 7.6 0 0 0 6.9 6.6l-2.3-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5l.5 2.6h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4z"/>',
   mic: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>',
   thumbtack: '<path d="M9 4.5h6M10 4.5v5.2L7.5 13h9L14 9.7V4.5M12 13v6.5"/>',
+  key: '<circle cx="8" cy="14.5" r="3.8"/><path d="m10.7 11.8 8.3-8.3M15.5 7.3l2.2 2.2M17.6 5.2l1.6 1.6"/>',
+  eye: '<path d="M2.8 12s3.4-6.2 9.2-6.2 9.2 6.2 9.2 6.2-3.4 6.2-9.2 6.2S2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  eyeOff: '<path d="M2.8 12s3.4-6.2 9.2-6.2c1.6 0 3 .5 4.2 1.1M21.2 12s-3.4 6.2-9.2 6.2c-1.6 0-3-.5-4.2-1.1"/><path d="M4 20 20 4"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>',
   pin: '<path d="M12 21s6.5-6.1 6.5-11.2a6.5 6.5 0 0 0-13 0C5.5 14.9 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>',
   bell: '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
   clipboard: '<rect x="5.5" y="5" width="13" height="15.5" rx="2.5"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>',
@@ -197,6 +201,7 @@ const DEFAULTS = {
   permissions: { camera: 'ask', microphone: 'ask', location: 'ask', notifications: 'ask', clipboard: 'ask', apps: 'ask' },
   sites: {},
   siteZoom: {}, // zoom guardado por site (host → fator), como no Chrome
+  offerPasswords: true, // oferecer salvar senhas (o gerenciador do Kona)
   // Downloads
   downloadDir: null, downloadAsk: false,
 };
@@ -1146,7 +1151,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
-    for (const id of ['#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    for (const id of ['#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
     if (findBar.close()) return;
     if (closeProfileLayers()) return;
@@ -1283,6 +1288,7 @@ $('#scrim').addEventListener('click', () => {
   if ($('#confirm-sheet').classList.contains('show')) answerConfirm(false);
   closeSheet('#ext-sheet');
   closeSheet('#fav-sheet');
+  closeSheet('#pw-sheet');
   if ($('#import-sheet').classList.contains('show')) closeImport();
 });
 api?.on('ext:changed', () => {

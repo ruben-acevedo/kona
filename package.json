@@ -52,6 +52,8 @@
       "context-menu.js",
       "extensions.js",
       "extension-shims.js",
+      "passwords.js",
+      "page-passwords.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

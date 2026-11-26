@@ -1015,3 +1015,57 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 .ext-pin .ic { width: 15px; height: 15px; }
 .ext-pin:hover { background: var(--glass-press); opacity: 1; }
 .ext-pin.on { color: var(--accent); opacity: 1; }
+
+/* ───────────── Senhas ───────────── */
+#pw-suggest {
+  position: fixed; z-index: 70; max-width: 440px; padding: 5px; border-radius: 12px;
+  background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 var(--rim), 0 0 0 0.5px var(--stroke), var(--shadow-lg);
+  opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .12s, transform .2s var(--ease);
+}
+#pw-suggest.show { opacity: 1; transform: none; pointer-events: auto; }
+:root[data-theme="dark"] #pw-suggest, :root[data-theme="dark"] #pw-bubble { background: rgba(40, 40, 46, 0.94); }
+.pw-opt { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 8px; border-radius: 8px; cursor: default; }
+.pw-opt:hover { background: var(--accent); color: #fff; }
+.pw-opt:hover small { color: rgba(255,255,255,.8); }
+.pw-ic { width: 22px; height: 22px; display: grid; place-items: center; flex: none; color: var(--text-2); }
+.pw-opt:hover .pw-ic { color: #fff; }
+.pw-ic .ic { width: 16px; height: 16px; }
+.pw-txt { display: flex; flex-direction: column; min-width: 0; }
+.pw-txt b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pw-txt small { font-size: 11.5px; color: var(--text-2); }
+.pw-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .02em; }
+.pw-note { margin: 2px 10px 6px 40px; font-size: 11px; color: var(--text-2); line-height: 1.4; }
+#pw-suggest .pop-sep { height: 0.5px; background: var(--stroke); margin: 4px 6px; }
+.pw-manage b { font-weight: 500; }
+
+#pw-bubble {
+  position: fixed; z-index: 70; top: calc(var(--top-h) + 8px); right: 16px; width: 320px; padding: 14px 16px 14px;
+  border-radius: 16px; background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 var(--rim), 0 0 0 0.5px var(--stroke), var(--shadow-lg);
+  opacity: 0; transform: translateY(-8px) scale(0.98); transform-origin: top right; pointer-events: none;
+  transition: opacity .16s, transform .28s var(--ease);
+}
+#pw-bubble.show { opacity: 1; transform: none; pointer-events: auto; }
+.pwb-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.pwb-head .pw-ic { width: 32px; height: 32px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.pwb-head > div { flex: 1; }
+.pwb-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.pwb-head p { margin: 2px 0 0; font-size: 12px; color: var(--text-2); }
+.pwb-pass { color: var(--text-2); letter-spacing: .15em; display: flex; align-items: center; }
+.pwb-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.pwb-actions .spacer { flex: 1; }
+
+.pw-list { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; max-height: min(460px, calc(100vh - 300px)); overflow: auto; }
+.pw-row { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; border-radius: 10px; min-height: 42px; }
+.pw-row:hover { background: var(--glass-hover); }
+.pw-row .sb-row-text { flex: 1; }
+.pw-secret { font-size: 12px; color: var(--text-2); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .12em; }
+.pw-secret.shown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: 0; color: var(--text); }
+.pw-acts { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.pw-row:hover .pw-acts, .pw-row:focus-within .pw-acts { opacity: 1; }
+.pw-row.editing { align-items: flex-start; background: var(--glass-hover); }
+.pw-edit { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.pw-edit-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.pw-sub { margin: 14px 8px 4px; font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.pw-row.never { min-height: 34px; }

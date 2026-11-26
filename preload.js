@@ -2,7 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
-  'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove'];
+  'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
+  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -19,6 +20,21 @@ contextBridge.exposeInMainWorld('kona', {
   permReply: (id, allow) => ipcRenderer.send('perm:reply', { id, allow }),
   showDownload: (file) => ipcRenderer.invoke('download:show', file),
   ctxDo: (id, act, data) => ipcRenderer.invoke('ctx:do', id, act, data),
+  // senhas (o processo principal confere origem e Windows Hello; a interface nunca guarda senhas)
+  pw: {
+    setOffer: (on) => ipcRenderer.invoke('pw:set-offer', on),
+    fill: (suggestId, accountId, generated) => ipcRenderer.invoke('pw:fill', suggestId, accountId, generated),
+    neverHere: (suggestId) => ipcRenderer.invoke('pw:never-here', suggestId),
+    answer: (id, answer, username) => ipcRenderer.invoke('pw:save-answer', id, answer, username),
+    list: () => ipcRenderer.invoke('pw:list'),
+    reveal: (id) => ipcRenderer.invoke('pw:reveal', id),
+    copy: (id) => ipcRenderer.invoke('pw:copy', id),
+    edit: (id, data) => ipcRenderer.invoke('pw:edit', id, data),
+    remove: (id) => ipcRenderer.invoke('pw:delete', id),
+    neverRemove: (origin) => ipcRenderer.invoke('pw:never-remove', origin),
+    importCsv: () => ipcRenderer.invoke('pw:import'),
+    exportCsv: () => ipcRenderer.invoke('pw:export'),
+  },
   // extensões: estado dos botões (ícone, contador, título), abrir popup, abas pedidas por extensões
   extActionState: (partition) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.getState'),
   extActionActivate: (partition, details) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.activate', details),

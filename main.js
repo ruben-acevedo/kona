@@ -9,6 +9,7 @@ const { registerImporter } = require('./importer');
 const { registerDownloads } = require('./downloads');
 const { registerContextMenu, watchPage } = require('./context-menu');
 const extensionsApi = require('./extensions');
+const { registerPasswords } = require('./passwords');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -187,6 +188,7 @@ function applySecureDns() {
 const installSession = (ses, partition) => {
   policy.install(ses, partition);
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-preload.js') });
+  ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-passwords.js') }); // gerenciador de senhas
 };
 
 const pendingConfirms = new Map();
@@ -302,6 +304,9 @@ handleUi('default:set', async () => {
 
 // Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
 registerDownloads({ win: () => mainWin, currentSession: () => browserSession() });
+
+// Gerenciador de senhas (salvar, preencher, gerar, importar/exportar), por perfil
+registerPasswords({ win: () => mainWin, currentPartition: () => currentPartition });
 
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
 extensionsApi.registerExtensions({ win: () => mainWin });

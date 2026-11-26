@@ -323,6 +323,21 @@
     </footer>
   </section>
 
+  <!-- Senhas salvas (Settings → Passwords → Manage) -->
+  <section id="pw-sheet" class="sheet" role="dialog" aria-labelledby="pw-title">
+    <header class="sheet-head">
+      <div><h2 id="pw-title">Passwords</h2><p id="pw-count"></p></div>
+      <button class="tb small" id="pw-close" data-icon="x" title="Close"></button>
+    </header>
+    <div class="pf-body">
+      <input class="sb-search" id="pw-q" placeholder="Search passwords" spellcheck="false" />
+      <div class="pw-list" id="pw-list"></div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="hint">Showing, copying or exporting a password asks for Windows Hello.</span>
+    </footer>
+  </section>
+
   <!-- Pedido de permissão de um site -->
   <section id="perm-sheet" class="sheet small" role="alertdialog">
     <div class="confirm-body">
@@ -337,6 +352,10 @@
   </section>
 
   <div id="toast" class="glass"></div>
+
+  <!-- Senhas: contas para o campo focado na página e o balão "Save password?" -->
+  <div id="pw-suggest" class="glass" role="listbox" aria-label="Saved passwords"></div>
+  <div id="pw-bubble" class="glass" role="dialog" aria-labelledby="pwb-title"></div>
 
   <!-- Lista de extensões (botão de quebra-cabeça) -->
   <div id="ext-pop" class="glass" role="menu" aria-label="Extensions"></div>
@@ -367,6 +386,7 @@
   <script src="extensions-bar.js"></script>
   <script src="context-menu.js"></script>
   <script src="import.js"></script>
+  <script src="passwords.js"></script>
   <script src="default-browser.js"></script>
 </body>
 </html>

@@ -14,6 +14,7 @@ const PERM_INFO = Object.fromEntries(PERMS.map(([k, label, ic, verb]) => [k, { l
 const ST_SECTIONS = [
   ['geral', 'General', 'gear'],
   ['aparencia', 'Appearance', 'palette'],
+  ['senhas', 'Passwords', 'key'],
   ['privacidade', 'Privacy and security', 'shield'],
   ['permissoes', 'Site permissions', 'hand'],
   ['downloads', 'Downloads', 'download'],
@@ -69,7 +70,7 @@ const settingsPage = {
     if (!this.built) return;
     const scroll = $('#st-scroll').scrollTop;
     $('#st-main').innerHTML = [
-      this.general(), this.appearance(), this.privacy(), this.permissions(),
+      this.general(), this.appearance(), this.passwords(), this.privacy(), this.permissions(),
       this.downloads(), this.profiles(), this.extensions(), this.about(),
     ].join('');
     $('#st-scroll').scrollTop = scroll;
@@ -104,6 +105,16 @@ const settingsPage = {
       stRow('Interface sounds', 'Short sounds when you open menus, move between tabs and hover over favorites.', stSwitch('sounds')) +
       stRow('Default page zoom', null,
         stSelect('zoom', [[0.75, '75%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.25, '125%'], [1.5, '150%']])));
+  },
+
+  passwords() {
+    const n = typeof pwState !== 'undefined' ? pwState.count : null;
+    return this.section('senhas', 'Passwords',
+      stRow('Offer to save passwords', 'Kona asks to save the password when you sign in to a site, and fills it in next time.', stSwitch('offerPasswords', settings.offerPasswords !== false)) +
+      stRow('Saved passwords', n == null ? 'Stored on this computer, encrypted by Windows.' : `${n} ${n === 1 ? 'password' : 'passwords'} · stored on this computer, encrypted by Windows.`,
+        stButton('Manage…', 'pw-manage')) +
+      stRow('Import passwords', 'From a CSV file exported by Chrome, Edge, Firefox, Bitwarden or another password manager.', stButton('Import…', 'pw-import')) +
+      stRow('Export passwords', 'Saves all your passwords to a CSV file. Anyone with the file can read them.', stButton('Export…', 'pw-export')));
   },
 
   privacy() {
@@ -189,6 +200,7 @@ function afterSetting(key) {
   saveSettings();
   if (key === 'zoom') for (const t of tabs) applyZoom(t);
   if (key === 'searchEngine' || key === 'suggestions') omnibox.cache.clear();
+  if (key === 'offerPasswords') api?.pw.setOffer(settings.offerPasswords !== false);
   if (key === 'sounds') { applySections(); if (settings.sounds) sfx.play('select'); }
   settingsPage.refresh();
 }
@@ -219,6 +231,9 @@ $('#st-main').addEventListener('click', async (e) => {
     case 'clear-data': openClearSheet({ historyOnly: false }); break;
     case 'sites': openSitesSheet(); break;
     case 'import': openImport(); break;
+    case 'pw-manage': openPasswordSheet(); break;
+    case 'pw-import': importPasswords(); break;
+    case 'pw-export': exportPasswords(); break;
     case 'pick-folder': {
       const dir = await api?.pickFolder();
       if (dir) { settings.downloadDir = dir; afterSetting('downloadDir'); }
