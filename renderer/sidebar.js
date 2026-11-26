@@ -117,7 +117,8 @@ function sidebarEscape() {
   return false;
 }
 
-const siteRowIcon = (url) => `<span class="sb-fav"><span class="mono">${escapeHtml((brandOf(url)[0] || '?').toUpperCase())}</span></span>`;
+// o ícone do site, como na nova aba (ícone do app, ícone grande do site, favicon e, sem nenhum, a inicial)
+const siteRowIcon = (url) => `<span class="sb-fav">${siteIcon(url)}</span>`;
 
 function renderSub() {
   const list = $('#sb-list');

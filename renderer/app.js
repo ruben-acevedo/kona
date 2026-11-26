@@ -148,6 +148,12 @@ document.addEventListener('error', (e) => {
   if (img.dataset.fallback) {
     img.src = img.dataset.fallback;
     delete img.dataset.fallback;
+  } else if (img.closest('.sb-fav')) {
+    // no menu lateral, a inicial fica no quadradinho de sempre
+    const m = document.createElement('span');
+    m.className = 'mono';
+    m.textContent = img.dataset.letter;
+    img.replaceWith(m);
   } else {
     img.replaceWith(document.createTextNode(img.dataset.letter));
   }
