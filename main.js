@@ -14,6 +14,7 @@ const { registerAutofill, importAddresses } = require('./autofill');
 const { watchReader, registerReader } = require('./reader');
 const { installShare, registerShare, shareEndedFrom } = require('./screen-share');
 const { watchMedia, registerMedia } = require('./media');
+const apps = require('./apps');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -61,8 +62,12 @@ function openTargets(list) {
   for (const url of list) w.webContents.send('tab:external', url);
 }
 app.on('second-instance', (_e, argv) => {
+  // atalho de um app instalado (N11): abre (ou traz para a frente) a janela dele
+  const appId = apps.appIdFrom(argv);
+  if (appId) { launchApp(appId); return; }
   const w = focusedWin();
-  if (!w) return;
+  // só janelas de app abertas: abrir o Kona abre uma janela do navegador
+  if (!w) { pendingTargets.push(...targetsFrom(argv)); if (app.isReady()) createWindow(); return; }
   if (w.isMinimized()) w.restore();
   w.show();
   w.focus();
@@ -94,6 +99,7 @@ app.userAgentFallback = app.userAgentFallback.replace(/\s(Electron|kona)\/\S+/gi
    O Kona pode ter várias janelas (Ctrl+N, arrastar uma aba para fora). A primeira é a "principal":
    ela guarda a sessão e os grupos de abas. Se fechar com outras abertas, a mais antiga assume. */
 const windows = []; // em ordem de abertura
+const appWins = new Map(); // janelas de apps instalados (N11) → id do app; ficam fora da sessão e dos grupos
 let lastFocused = null;
 let primaryWin = null;
 const alive = (w) => w && !w.isDestroyed();
@@ -103,27 +109,29 @@ const focusedWin = () => (alive(lastFocused) ? lastFocused : windows.find(alive)
 const winFor = (wc) => {
   const host = wc && !wc.isDestroyed() ? (wc.hostWebContents || wc) : null;
   const w = host && BrowserWindow.fromWebContents(host);
-  return (w && windows.includes(w) ? w : null) || focusedWin();
+  return (w && (windows.includes(w) || appWins.has(w)) ? w : null) || focusedWin();
 };
-const isUiContents = (wc) => windows.some((w) => alive(w) && w.webContents === wc);
-/** Avisa todas as janelas (downloads, senhas, extensões…). */
-const broadcast = (channel, data) => { for (const w of windows) if (alive(w)) w.webContents.send(channel, data); };
+const isUiContents = (wc) => windows.some((w) => alive(w) && w.webContents === wc) || [...appWins.keys()].some((w) => alive(w) && w.webContents === wc);
+/** Avisa todas as janelas (downloads, senhas, extensões…), inclusive as dos apps. */
+const broadcast = (channel, data) => { for (const w of [...windows, ...appWins.keys()]) if (alive(w)) w.webContents.send(channel, data); };
 
 /**
  * opts: { adopt (aba vinda de outra janela), bounds, maximize }.
  * Sem opts é a abertura do app (maximizada, como sempre).
  */
 function createWindow(opts = {}) {
-  const first = !windows.length;
+  const appRec = opts.app || null; // janela de um app instalado (N11)
+  const first = !windows.length && !appRec;
   const win = new BrowserWindow({
-    width: opts.bounds?.width || 1360,
-    height: opts.bounds?.height || 860,
+    width: opts.bounds?.width || (appRec ? 1180 : 1360),
+    height: opts.bounds?.height || (appRec ? 800 : 860),
     ...(opts.bounds && opts.bounds.x != null ? { x: opts.bounds.x, y: opts.bounds.y } : {}),
     minWidth: 760,
     minHeight: 480,
     frame: false,
     show: false,
-    icon: APP_ICON,
+    icon: appRec ? nativeImage.createFromPath(apps.iconPaths(appRec.id).png) : APP_ICON,
+    title: appRec ? appRec.name : 'Kona',
     backgroundColor: bgColor(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -133,15 +141,28 @@ function createWindow(opts = {}) {
       nodeIntegration: false,
     },
   });
-  windows.push(win);
-  if (first || !alive(primaryWin)) primaryWin = win;
-  lastFocused = win;
-  win.on('focus', () => { lastFocused = win; });
+  if (appRec) {
+    appWins.set(win, appRec.id);
+    // identidade própria na barra de tarefas: ícone do app, agrupado à parte e fixável (o atalho usa o mesmo id)
+    if (process.platform === 'win32') {
+      win.setAppDetails({
+        appId: apps.appUserModelId(appRec.id), appIconPath: apps.iconPaths(appRec.id).ico, appIconIndex: 0,
+        relaunchCommand: `"${process.execPath}" ${apps.launchArgs(appRec.id)}`, relaunchDisplayName: appRec.name,
+      });
+    }
+    win.on('closed', () => appWins.delete(win));
+  } else {
+    windows.push(win);
+    if (first || !alive(primaryWin)) primaryWin = win;
+    lastFocused = win;
+    win.on('focus', () => { lastFocused = win; });
+  }
   // A interface nunca sai do index.html nem abre janelas próprias
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   const winId = win.id;
   win.on('closed', () => {
+    if (appRec) return;
     windows.splice(windows.indexOf(win), 1);
     recovery.windowClosed(winId, { quitting: !windows.length });
     if (lastFocused === win) lastFocused = null;
@@ -159,6 +180,7 @@ function createWindow(opts = {}) {
   const query = { state: first ? process.env.KONA_STATE || '' : '' };
   query.syslang = app.getPreferredSystemLanguages?.()[0] || app.getLocale(); // idioma "automático"
   if (!first) { query.role = 'secondary'; query.nowelcome = '1'; } // as ofertas do primeiro uso só na 1ª janela
+  if (appRec) Object.assign(query, { app: appRec.id, partition: appRec.partition, url: opts.appUrl || appRec.startUrl, scope: appRec.scope, name: appRec.name, apptheme: appRec.themeColor || '' });
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
   if (process.env.KONA_WALLPAPER) query.wallpaper = process.env.KONA_WALLPAPER;
   // testes automáticos (pasta de dados própria) não recebem as ofertas do primeiro uso, a não ser que peçam
@@ -167,7 +189,7 @@ function createWindow(opts = {}) {
   win.once('ready-to-show', () => {
     // a abertura do app é sempre maximizada (restaurar volta a 1360×860); as outras janelas seguem
     // a de onde vieram (Ctrl+N) ou abrem onde a aba foi solta
-    if (first || opts.maximize) win.maximize();
+    if ((first || opts.maximize) && !appRec) win.maximize();
     win.show();
     win.webContents.send('win:shown');
   });
@@ -211,6 +233,43 @@ function newWindowFrom(src, adopt) {
   const b = alive(src) ? src.getNormalBounds() : null;
   return createWindow({ adopt, maximize: !!src?.isMaximized(), bounds: b && { x: b.x + 30, y: b.y + 30, width: b.width, height: b.height } });
 }
+
+/* ───────────── Apps instalados (N11) ───────────── */
+/** Abre a janela do app (ou traz a que já existe para a frente; com url, ela vai para lá). */
+async function openAppWindow(rec, url) {
+  const open = [...appWins].find(([w, id]) => alive(w) && id === rec.id)?.[0];
+  if (open) {
+    if (open.isMinimized()) open.restore();
+    open.show(); open.focus();
+    if (url && url !== rec.startUrl) open.webContents.send('app:navigate', url);
+    return open;
+  }
+  await prepareSession(rec.partition).catch(() => {});
+  return createWindow({ app: rec, appUrl: url || rec.startUrl });
+}
+function launchApp(id) {
+  const rec = apps.get(id);
+  if (rec) openAppWindow(rec);
+  else if (!focusedWin()) createWindow(); // app desinstalado: o atalho velho abre o Kona
+  else focusedWin().focus();
+}
+/** Um endereço que sai do app (link em nova janela, "Abrir no Kona"): vai para uma janela do navegador. */
+function openInBrowser(url) {
+  const ok = /^https?:\/\//i.test(url) || url === 'kona://settings';
+  const w = focusedWin();
+  if (w) {
+    if (w.isMinimized()) w.restore();
+    w.show(); w.focus();
+    if (ok) w.webContents.send('tab:external', url);
+    return;
+  }
+  if (ok) pendingTargets.push(url);
+  createWindow();
+}
+apps.register({
+  openAppWindow, openInBrowser, broadcast,
+  appWindows: (id) => [...appWins].filter(([w, x]) => alive(w) && x === id).map(([w]) => w),
+});
 
 /* ───────────── Extensões (Chrome Web Store) ───────────── */
 const browserSession = (partition = currentPartition) => session.fromPartition(partition);
@@ -815,7 +874,10 @@ app.whenReady().then(async () => {
     console.error('Failed to set up extensions:', err);
   }
   applySecureDns();
-  createWindow();
+  // aberto pelo atalho de um app (N11): só a janela dele; sem app válido, o Kona normal
+  const appId = apps.appIdFrom(process.argv);
+  if (appId && apps.get(appId)) await openAppWindow(apps.get(appId));
+  else createWindow();
   startUpdater(focusedWin);
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow());
 });

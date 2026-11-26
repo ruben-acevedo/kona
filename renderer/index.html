@@ -32,6 +32,7 @@
       <button class="tb" id="btn-media" data-icon="music" title="Media playing" hidden></button>
       <button class="tb" id="btn-new" data-icon="plus" title="New tab (Ctrl+T)"></button>
       <button class="tb" id="btn-overview" data-icon="grid" title="All tabs (Alt+V)"></button>
+      <button class="tb" id="btn-appmenu" data-icon="more" title="App menu" hidden></button>
     </div>
 
     <div class="winctl" id="winctl">
@@ -406,6 +407,22 @@
     </footer>
   </section>
 
+  <!-- Instalar um site como app (N11) -->
+  <section id="app-sheet" class="sheet small" role="dialog" aria-label="Install app">
+    <div class="confirm-body">
+      <div class="app-icon-big" id="app-icon"></div>
+      <h2>Install app</h2>
+      <input class="app-name" id="app-name" maxlength="60" spellcheck="false" aria-label="App name" />
+      <p class="ask-text" id="app-origin"></p>
+      <label class="app-check"><input type="checkbox" id="app-desktop" /> <span>Also create a shortcut on the desktop</span></label>
+      <p class="ask-text app-hint">Opens in its own window, with its own icon in the Start menu and on the taskbar.</p>
+    </div>
+    <footer class="confirm-actions">
+      <button class="btn-secondary" id="app-cancel">Cancel</button>
+      <button class="btn-primary" id="app-install" disabled>Install</button>
+    </footer>
+  </section>
+
   <div id="toast" class="glass"></div>
 
   <!-- Enquanto compartilha a tela -->
@@ -450,6 +467,7 @@
   <script src="sidebar.js"></script>
   <script src="settings.js"></script>
   <script src="site-info.js"></script>
+  <script src="app-mode.js"></script>
   <script src="downloads.js"></script>
   <script src="page-tools.js"></script>
   <script src="reader-ui.js"></script>

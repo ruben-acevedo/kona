@@ -21,6 +21,7 @@ const ST_SECTIONS = [
   ['downloads', /*i18n*/'Downloads', 'download'],
   ['perfis', /*i18n*/'Profiles', 'user'],
   ['extensoes', /*i18n*/'Extensions', 'puzzle'],
+  ['apps', /*i18n*/'Apps', 'installApp'],
   ['sobre', /*i18n*/'About Kona', 'info'],
 ];
 
@@ -72,7 +73,7 @@ const settingsPage = {
     const scroll = $('#st-scroll').scrollTop;
     $('#st-main').innerHTML = [
       this.general(), this.appearance(), this.passwords(), typeof afSettingsSection === 'function' ? afSettingsSection() : '', this.privacy(), this.permissions(),
-      this.downloads(), this.profiles(), this.extensions(), this.about(),
+      this.downloads(), this.profiles(), this.extensions(), typeof appsSettingsSection === 'function' ? appsSettingsSection() : '', this.about(),
     ].join('');
     $('#st-scroll').scrollTop = scroll;
   },
@@ -275,6 +276,8 @@ $('#st-main').addEventListener('click', async (e) => {
     }
     case 'reset-folder': settings.downloadDir = null; afterSetting('downloadDir'); break;
     case 'site-forget': delete settings.sites[b.dataset.origin]; afterSetting('sites'); break;
+    case 'app-open': api?.apps.open(b.dataset.app); break;
+    case 'app-uninstall': uninstallApp(b.dataset.app); break;
     case 'rule-forget': delete settings.siteRules[b.dataset.site]; afterSetting('siteRules'); break;
     case 'profile-use': switchProfile(b.dataset.id); break;
     case 'profile-edit': openProfileSheet('edit', b.dataset.id); break;

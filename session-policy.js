@@ -303,9 +303,24 @@ function createPolicy(ctx) {
     });
   }
 
+  // Os ajustes também ficam no disco: um app instalado (N11) aberto pelo atalho, com o Kona fechado,
+  // já nasce com os ajustes do perfil dele (antes de qualquer interface mandar os seus)
+  const prefsFile = path.join(app.getPath('userData'), 'site-prefs.json');
+  try {
+    const saved = JSON.parse(fs.readFileSync(prefsFile, 'utf8'));
+    for (const [part, pr] of Object.entries(saved || {})) if (/^persist:kona(-[a-z0-9]{4,32})?$/.test(part)) prefsByPartition.set(part, sanitize(pr));
+  } catch { /* primeira vez */ }
+  let saveTimer = null;
+  const savePrefs = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { fs.writeFileSync(prefsFile, JSON.stringify(Object.fromEntries(prefsByPartition))); } catch { /* sem espaço: segue na memória */ }
+    }, 500);
+  };
   onUi('prefs:set', (_e, partition, prefs) => {
     if (typeof partition === 'string' && /^persist:kona(-[a-z0-9]{4,32})?$/.test(partition)) {
       prefsByPartition.set(partition, sanitize(prefs));
+      savePrefs();
       ctx.onPrefs?.(partition);
     }
   });

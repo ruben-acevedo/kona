@@ -1307,3 +1307,41 @@ body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
 .ss-row .pf-input { width: 100%; min-width: 0; }
 .ss-tools { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
 #ss-sheet { width: min(780px, calc(100vw - 48px)); }
+
+/* ───────────── Sites como app (N11) ───────────── */
+.tab .appbtn { display: grid; width: 24px; height: 24px; border-radius: 999px; place-items: center; color: var(--text-2); flex: none; }
+.tab .appbtn[hidden] { display: none; }
+.tab .appbtn .ic { width: 16px; height: 16px; }
+.tab .appbtn:hover { background: var(--glass-hover); color: var(--text); }
+.tab.editing .appbtn { display: none; }
+#app-sheet .confirm-body { align-items: center; text-align: center; }
+.app-icon-big { width: 72px; height: 72px; margin: 4px auto 10px; display: grid; place-items: center; }
+.app-icon-big img { width: 72px; height: 72px; border-radius: 16px; }
+.app-spin { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid var(--glass-press); border-top-color: var(--accent); animation: app-spin .8s linear infinite; }
+@keyframes app-spin { to { transform: rotate(360deg); } }
+.app-name {
+  width: 100%; height: 36px; margin: 10px 0 4px; padding: 0 12px; border-radius: 10px; text-align: center;
+  border: 0.5px solid var(--stroke); background: var(--glass); color: var(--text); font: inherit; font-size: 14px; font-weight: 600;
+}
+.app-name:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.app-check { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 2px; font-size: 13px; }
+.app-hint { font-size: 12px; margin-top: 6px; }
+.st-app { gap: 12px; justify-content: flex-start; }
+.st-app .st-text { flex: 1; min-width: 0; }
+.st-app-ic { width: 32px; height: 32px; flex: none; }
+.st-app-ic img { width: 32px; height: 32px; border-radius: 8px; }
+.st-app .st-ctrl { display: flex; align-items: center; gap: 6px; }
+
+/* A janela do app: uma faixa fina com ícone, título e ⋮ (sem abas, barra de endereço nem barra lateral) */
+body.app-mode #toolbar > .group:first-child,
+body.app-mode :is(#btn-new, #btn-overview, #btn-ext, #ext-pinned) { display: none !important; }
+body.app-mode .tab { pointer-events: none; }
+body.app-mode .tab.active {
+  max-width: none; min-width: 0; background: none; border-color: transparent; box-shadow: none; cursor: default;
+}
+body.app-mode .tab.active .title { display: block; font-size: 13px; font-weight: 600; color: var(--text); -webkit-mask-image: none; text-overflow: ellipsis; }
+body.app-mode .tab.outscope .title::before { content: attr(data-host) "  ·  "; font-weight: 500; color: var(--text-2); }
+body.app-mode .tab :is(.addr, .x, .bm, .reload, .appbtn, .popupind, .jsind, .readerbtn, .aabtn, .snd) { display: none !important; }
+body.app-mode .tab:hover .tfav { opacity: 1; }
+body.app-mode #tabs, body.app-mode #tabs .tab { -webkit-app-region: drag; }
+body.app-mode #tabs { padding-left: 6px !important; }

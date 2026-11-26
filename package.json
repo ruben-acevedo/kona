@@ -47,6 +47,7 @@
       "page-preload.js",
       "ipc.js",
       "session-policy.js",
+      "apps.js",
       "updater.js",
       "importer.js",
       "downloads.js",

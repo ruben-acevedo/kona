@@ -248,6 +248,15 @@ const tabSets = {
   removeGroup(id) { this.data.groups = this.data.groups.filter((g) => g.id !== id); this.save(); },
 };
 
+/* ───────────── Modo app (N11) ─────────────
+   A janela de um site instalado como aplicativo: uma aba só, no perfil onde o app foi instalado,
+   fora da sessão e dos grupos. Os dados chegam no endereço da janela (ver createWindow no main.js). */
+const APP_MODE = (() => {
+  const q = new URLSearchParams(location.search);
+  if (!q.get('app')) return null;
+  return { id: q.get('app'), partition: q.get('partition'), url: q.get('url'), scope: q.get('scope'), name: q.get('name') || '', theme: q.get('apptheme') || '' };
+})();
+
 /* ───────────── Orquestração (usa o app.js, chamado depois que tudo carregou) ───────────── */
 const library = {
   private: null, // partição da sessão privada ativa (ou null)
@@ -259,7 +268,7 @@ const library = {
 
   isPrivate() { return !!this.private; },
   /** Sessão onde as abas novas abrem: a privada (se ativa) ou a do perfil. */
-  partition() { return this.private || PROFILES.currentProfile().partition; },
+  partition() { return APP_MODE?.partition || this.private || PROFILES.currentProfile().partition; },
   currentKey() { return this.private ? 'private' : tabSets.data.current; },
   onChange(fn) { this.listeners.add(fn); },
   changed(what) { for (const fn of this.listeners) fn(what); },
@@ -288,7 +297,7 @@ const library = {
    * fecha as que saíram, na ordem da lista. No modo privado não há abas fixadas.
    */
   syncPinned(fix = true) {
-    const want = this.private ? [] : pinnedTabs.list;
+    const want = this.private || APP_MODE ? [] : pinnedTabs.list;
     const live = tabs.filter((t) => t.pinned);
     const keep = want.map((p) => {
       const t = live.find((x) => x.pinId === p.id);
@@ -357,6 +366,7 @@ const library = {
   },
   /** Para recuperar depois de um travamento: as abas desta janela (nada do modo privado). */
   reportSession() {
+    if (APP_MODE) return; // a janela do app não entra na recuperação de sessão
     const own = this.private ? [] : tabs.filter((t) => !t.pinned && t.url && t.url !== START && !/^(data|about|view-source):/i.test(t.url));
     api?.sessionUpdate?.({ set: this.currentKey(), tabs: own.map((t) => ({ url: t.url, title: t.title })), active: Math.max(0, own.indexOf(active())) });
   },
@@ -380,7 +390,7 @@ const library = {
 
   /** Troca o conjunto de abas: 'default', id de um grupo ou 'private'. */
   async switchTo(target) {
-    if (target === this.currentKey()) return;
+    if (APP_MODE || target === this.currentKey()) return;
     if (!this.private) this.saveCurrent();
     if (target === 'private') {
       this.private = (await api?.privateOpen()) || `kona-private-${'0'.repeat(12)}`;
@@ -415,6 +425,7 @@ const library = {
   boot() {
     this.loadProfileData();
     document.body.classList.toggle('secondary', !this.primary);
+    if (APP_MODE) { document.body.classList.add('app-mode'); this.openSnapshot({ tabs: [{ url: APP_MODE.url, title: APP_MODE.name }] }); return; }
     if (!this.primary) { this.openSnapshot(null); return; } // janela nova: uma aba nova (ou a aba que chegou)
     const cur = tabSets.data.current;
     if (cur !== 'default') this.openSnapshot(tabSets.group(cur));

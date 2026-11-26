@@ -223,8 +223,15 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Cartões: número criptografado pelo Windows (DPAPI), lista só com bandeira e 4 últimos dígitos, CVV nunca salvo nem preenchido, só preenche em https e depois do Windows Hello.
   - Configurações › Addresses and cards: ligar/desligar, adicionar, editar, apagar. Importação: endereços do Chrome/Edge/Brave (cartões não: o Chrome os tranca).
   - `page-autofill.js`, `autofill.js`, `renderer/autofill-ui.js`. Testado: `tests/debug/autofill.js` (precisa do certificado de teste em `tests/fixtures/tls/`, ignorado pelo git) + importação (4 endereços lidos do Chrome do usuário) + senhas.
-- [ ] **N10. Traduzir páginas.**
-- [ ] **N11. Instalar sites como aplicativo (PWA).**
+- [ ] **N10. Traduzir páginas.** (adiado pelo usuário em 2026-11-26)
+- [x] **N11. Instalar sites como aplicativo (PWA).**
+  - Site com manifest: ícone "Instalar app" na barra de endereço; qualquer site: botão direito na página › "Instalar como app…" (sem ícone que sirva, o app ganha um com a inicial). A janela de instalar mostra o ícone, o nome (editável) e "Criar também um atalho na área de trabalho" (desligado). Ao instalar, a página passa para a janela do app e a aba fecha (como no Chrome).
+  - A janela do app é a interface do Kona no "modo app": uma aba só, faixa fina com voltar/avançar, ícone, título e ⋮ (Recarregar, Copiar link, Localizar, Imprimir, Zoom, Abrir no Kona, Desinstalar). Senhas, preenchimento, permissões e downloads funcionam como no navegador. Usa o perfil onde foi instalado. Fora do site do app, o endereço aparece antes do título; links em nova aba/janela e Ctrl+T vão para uma janela do navegador.
+  - Windows: atalho em menu Iniciar › Kona Apps (e na área de trabalho, se marcado) com `--kona-app=<id>`, ícone .ico próprio e identidade própria na barra de tarefas (dá para fixar). Abre o app direto, mesmo com o Kona fechado; com ele aberto, só a janela do app (uma por app).
+  - Já instalado: o ícone da barra vira "Abrir no app". Configurações › Apps: lista, Abrir, Desinstalar (apaga atalhos e ícones; os dados do site ficam no perfil).
+  - Os ajustes de privacidade de cada perfil agora ficam também no disco (`site-prefs.json`), para o app aberto pelo atalho já nascer com eles.
+  - `apps.js`, `renderer/app-mode.js`, `main.js`, `renderer/library.js`. Testado: `tests/debug/apps.js` (atalhos numa pasta de teste via `KONA_SHORTCUT_DIR`) + crash-recovery (2 aberturas).
+  - Fora por enquanto: abrir tipos de arquivo pelo app, links especiais e "compartilhar com".
 - [x] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.
   - Contas: calculadora própria (nada é executado como código): + − × ÷ ^ %, parênteses, "15% de 80", "200 + 10%"; vírgula decimal em pt/es. A resposta aparece no topo; Enter continua pesquisando; escolher a resposta copia.
   - "Ir para a aba": abas desta janela e das outras (a outra janela vem para a frente); janelas privadas não entram. Favoritos aparecem na lista (estrela) antes do histórico.
@@ -237,7 +244,7 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Sem o serviço de reputação do Google (Safe Browsing pede chave/acordo), avisa sempre para esses tipos (opção (a), escolhida pelo usuário).
   - Antivírus: o Windows já examina todo download ao salvar (o Chromium pede); se barra, a lista mostra "Blocked by Windows: virus or unwanted program detected".
   - Testado: `tests/debug/download-danger.js` + downloads. Falta testar o bloqueio do antivírus (com o arquivo de teste EICAR, que faz o Windows Defender mostrar um alerta) — só com o usuário avisado.
-- [ ] **N15. Barra de favoritos (opcional).**
+- [-] **N15. Barra de favoritos.** (descartado pelo usuário em 2026-11-26)
 - [~] **N16. Controle de mídia global e teclas de mídia.**
   - Feito: botão ♪ na barra (só quando alguma aba, de qualquer janela, tem mídia; azul enquanto toca). Painel "Playing now": capa, título e artista (do `navigator.mediaSession` do site), tocar/pausar, faixa anterior/seguinte (quando o site oferece), clicar leva à aba (troca de janela se preciso). Abas privadas só aparecem na própria janela. `media.js` + `page-media.js` (captura os botões de mídia do site com função de cara nativa). Testado: `tests/debug/media.js` + ua/smoke.
   - Falta: teste manual do usuário das teclas de mídia do teclado e do painel de mídia do Windows (não testado automaticamente para não mexer na mídia de outros programas), e com YouTube/Spotify de verdade.

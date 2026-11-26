@@ -54,6 +54,9 @@ const ICONS = {
   nextTrack: '<path d="M6 6.6v10.8a.6.6 0 0 0 .9.5l7.5-5.4a.6.6 0 0 0 0-1L6.9 6.1a.6.6 0 0 0-.9.5z"/><path d="M17.5 6v12"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
   cookie: '<path d="M20.5 12.5A8.5 8.5 0 1 1 11.5 3.5a3 3 0 0 0 3.6 3.4 3 3 0 0 0 3.3 3.6 2.5 2.5 0 0 0 2.1 2z"/><circle cx="9" cy="10" r=".9"/><circle cx="14" cy="15" r=".9"/><circle cx="9.5" cy="15.5" r=".9"/>',
+  installApp: '<rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8.5 20h7M12 7.5v5.5M9.5 10.5 12 13l2.5-2.5"/>',
+  openApp: '<rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8.5 20h7M10 12.5l4-4M10.5 8.5H14V12"/>',
+  more: '<circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/>',
   codeOff: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/><path d="M4 4l16 16"/>',
   code: '<path d="m8.5 7.5-4.5 4.5 4.5 4.5M15.5 7.5l4.5 4.5-4.5 4.5"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
@@ -474,6 +477,7 @@ function ensureWebview(t) {
   on('leave-html-full-screen', () => document.body.classList.remove('page-fullscreen'));
   // zoom do site (ou o padrão) e busca na página (renderer/page-tools.js, carregado depois deste arquivo)
   on('dom-ready', () => { if (typeof applyZoom === 'function') applyZoom(t); else if (settings.zoom !== 1) wv.setZoomFactor(settings.zoom); });
+  on('did-finish-load', () => { if (typeof checkApp === 'function') checkApp(t); });
   if (typeof findBar !== 'undefined') findBar.watch(t, wv);
   // o código-fonte (view-source:) chega como o endereço da página: mantém o prefixo e não entra no histórico
   const viewSource = (url) => (t.url.startsWith('view-source:') && !url.startsWith('view-source:') ? `view-source:${url}` : url);
@@ -481,6 +485,7 @@ function ensureWebview(t) {
     t.reader = null; // o modo leitura vale por página
     t.blockedPopups = null; // e os pop-ups bloqueados também
     t.siteRulesLoaded = null; // a página nova já vem com as configurações do site escolhidas agora
+    t.appState = null; // "Instalar app": conferido de novo quando a página carregar
     t.url = viewSource(e.url); t.favicon = null; sync(); render();
     if (!t.url.startsWith('view-source:')) browseHistory.addVisit(e.url, t.title);
     if (t.pinned) library.pinnedNavigated(t);
@@ -537,6 +542,8 @@ function activate(id) {
 }
 
 function newTab(url = START, focus = true) {
+  // janela de app (N11): abas novas e links que pedem janela nova vão para o navegador
+  if (APP_MODE) { api?.apps.toBrowser(url === START ? '' : url); return active(); }
   const t = makeTab(url, { index: active()?.pinned ? tabs.length : tabs.indexOf(active()) + 1 });
   sfx.play('tabOpen');
   activate(t.id);
@@ -565,7 +572,10 @@ function closeTab(id, { moved = false, force = false } = {}) {
   t.wv?.remove();
   discardParked(t);
   mru = mru.filter((x) => x !== id);
-  if (!tabs.length) makeTab();
+  if (!tabs.length) {
+    if (APP_MODE) { api?.close(); return; } // fechar a página do app fecha a janela
+    makeTab();
+  }
   if (activeId === id) activeId = (tabs[i] || tabs[i - 1]).id;
   ensureWebview(active());
   render();
@@ -610,6 +620,7 @@ function createTabEl(t) {
     <form class="addr"><button type="button" class="lock" title="${tl('View site information')}">${icon('lock')}</button><input spellcheck="false" autocomplete="off" placeholder="${tl('Search or enter address')}" /></form>
     <button class="popupind" title="${tl('Pop-ups blocked')}" hidden></button>
     <button class="jsind" title="${tl('JavaScript blocked on this site')}" hidden></button>
+    <button class="appbtn" hidden></button>
     <button class="readerbtn" title="${tl('Show Reader (Ctrl+Shift+R)')}" hidden></button>
     <button class="aabtn" title="${tl('Reader options')}" hidden>Aa</button>
     <button class="zoomind" title="${tl('Reset zoom (Ctrl+0)')}" hidden></button>
@@ -630,7 +641,8 @@ function createTabEl(t) {
   // É feito no "click" (e não cancelando o mousedown): assim o clique tira o foco de uma
   // página aberta antes, e o campo consegue recebê-lo. Clicar numa aba inativa só a ativa.
   el.addEventListener('click', (e) => {
-    if (wasActive && t.id === activeId && !e.target.closest('.x, .reload, .bm, .lock, .jsind, input')) input.focus();
+    if (APP_MODE) return; // a janela do app não tem barra de endereço
+    if (wasActive && t.id === activeId && !e.target.closest('.x, .reload, .bm, .lock, .jsind, .appbtn, input')) input.focus();
   });
   $('.x', el).addEventListener('click', (e) => { e.stopPropagation(); closeTab(t.id); });
   $('.reload', el).addEventListener('click', () => { if (t.wv) (t.loading ? t.wv.stop() : t.wv.reload()); });
@@ -638,6 +650,7 @@ function createTabEl(t) {
   $('.zoomind', el).addEventListener('click', () => zoomReset());
   $('.readerbtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReader(t); });
   $('.lock', el).addEventListener('click', (e) => { e.stopPropagation(); toggleSitePop(t, e.currentTarget); });
+  $('.appbtn', el).addEventListener('click', (e) => { e.stopPropagation(); appButton(t); });
   $('.jsind', el).addEventListener('click', (e) => { e.stopPropagation(); toggleSitePop(t, $('.lock', el)); });
   $('.popupind', el).addEventListener('click', (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); popupMenu(t, r.left, r.bottom + 6); });
   $('.aabtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReaderPop(e.currentTarget); });
@@ -685,6 +698,7 @@ function go(t, choice) {
 /** Liga/desliga o favorito da página da aba. */
 /** Abre as Configurações (reaproveita a aba delas, ou uma nova aba vazia). */
 function openSettings(section) {
+  if (APP_MODE) { api?.apps.toBrowser(SETTINGS); return; }
   const existing = tabs.find((x) => x.url === SETTINGS);
   const a = active();
   if (existing) activate(existing.id);
@@ -728,6 +742,14 @@ function paintTab(t, el) {
   const ji = $('.jsind', el);
   ji.hidden = !(isActive && t.jsBlockedFor && t.jsBlockedFor === t.url);
   if (!ji.hidden && !ji.firstChild) ji.innerHTML = icon('codeOff');
+  // site que pode virar app (N11): "Instalar app"; já instalado: "Abrir no app"
+  const ab = $('.appbtn', el), as = isActive && !APP_MODE && t.appState?.url === t.url ? t.appState : null;
+  ab.hidden = !(as && (as.installed || as.manifest));
+  if (!ab.hidden) {
+    const k = as.installed ? 'openApp' : 'installApp';
+    if (ab.dataset.ic !== k) { ab.dataset.ic = k; ab.innerHTML = icon(k); }
+    ab.title = as.installed ? tl('Open in app') : tl('Install app');
+  }
   el.classList.toggle('bookmarked', isActive && t.url !== START && !!bookmarks.find(t.url));
   // pop-ups bloqueados nesta página: ícone na barra (clicar mostra a lista e "sempre permitir")
   const pi = $('.popupind', el);
@@ -760,6 +782,12 @@ function paintTab(t, el) {
   if (bm) bm.title = el.classList.contains('bookmarked') ? tl('Remove from Favorites (Ctrl+D)') : tl('Add to Favorites (Ctrl+D)');
   el.title = isActive ? '' : tabTitle(t);
   $('.title', el).textContent = tabTitle(t);
+  // janela de app (N11): fora do site do app, o endereço aparece antes do título (como no Chrome)
+  if (APP_MODE) {
+    const out = /^https?:\/\//.test(t.url) && !t.url.startsWith(APP_MODE.scope);
+    el.classList.toggle('outscope', out);
+    $('.title', el).dataset.host = out ? hostOf(t.url) : '';
+  }
 
   const f = favHtml(t);
   const fav = $('.tfav', el);
@@ -901,7 +929,7 @@ function render() {
   if (!onStart) { toggleCustomize(false); closeFolderPop(); }
   $('#back').disabled = !(a.canBack || (a.fromStart && !onStart));
   $('#fwd').disabled = !a.canFwd;
-  document.title = onStart || !a.title ? 'Kona' : `${a.title} — Kona`;
+  document.title = APP_MODE ? (a.title || APP_MODE.name) : onStart || !a.title ? 'Kona' : `${a.title} — Kona`;
 }
 
 function goBack() {
@@ -1178,7 +1206,7 @@ function toggleSidebar(force) {
 }
 
 // Clicar fora do menu lateral fecha o menu. Painéis abertos a partir dele não contam como "fora".
-const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #import-sheet, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #scrim, #toast';
+const SIDEBAR_INSIDE = '#sidebar, #btn-sidebar, #import-sheet, #profile-pop, #profile-sheet, #ask-sheet, #ext-sheet, #confirm-sheet, #clear-sheet, #sites-sheet, #perm-sheet, #app-sheet, #scrim, #toast';
 document.addEventListener('mousedown', (e) => {
   if (document.body.classList.contains('sidebar-open') && !e.target.closest(SIDEBAR_INSIDE)) toggleSidebar(false);
 }, true);
@@ -1221,8 +1249,17 @@ api?.on('page:mousedown', () => {
   if (document.body.classList.contains('sidebar-open')) toggleSidebar(false);
 });
 
+// janela de app (N11): sem barra de endereço, abas, barra lateral, favoritos nem grupos
+const APP_BLOCKED = new Set(['l', 'd', 'h', 'j', '\\', '|', 'tab', 'pageup', 'pagedown']);
 function shortcut(key, shift) {
   const a = active();
+  if (APP_MODE) {
+    if (key === 'w') { api?.close(); return true; }
+    if (key === 't' && shift) return true;
+    if (key === 'n' && shift) return true;
+    if (APP_BLOCKED.has(key) || (/^[1-9]$/.test(key) && !shift)) return true;
+    if (key === ',') { api?.apps.toBrowser(SETTINGS); return true; }
+  }
   if (key === 't' && shift) reopenClosedTab();
   else if (key === 't') newTab();
   else if (key === 'w') { if (tabs.length === 1 && !a.pinned) api?.close(); else closeTab(activeId); }
@@ -1279,7 +1316,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
-    for (const id of ['#ss-sheet', '#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    for (const id of ['#ss-sheet', '#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet', '#app-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
     if (findBar.close()) return;
     if (closeProfileLayers()) return;

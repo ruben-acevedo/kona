@@ -101,6 +101,7 @@ const copyText = (text) => { api?.clipboardWrite(text); toast(tl('Copied')); };
 
 /** Abre um endereço numa aba nova, sem sair da aba atual (como no Chrome). */
 function openInBackground(url) {
+  if (APP_MODE) { api?.apps.toBrowser(url); return active(); } // janela de app: vai para o navegador
   const t = makeTab(url, { index: tabs.indexOf(active()) + 1 });
   ensureWebview(t);
   sfx.play('tabOpen');
@@ -197,6 +198,7 @@ api?.on('ctx:page', ({ id, params: p }) => {
     ], [
       { label: tl('Save page as…'), key: 'Ctrl+S', run: doPage('savePage') },
       { label: tl('Print…'), key: 'Ctrl+P', run: doPage('print') },
+      ...appMenuItems(t),
     ], [
       { label: tl('View page source'), key: 'Ctrl+U', run: () => openInBackground(`view-source:${p.pageURL}`), disabled: !/^https?:/i.test(p.pageURL) },
     ]);
