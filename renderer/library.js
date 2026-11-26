@@ -149,6 +149,39 @@ const bookmarks = {
   },
 };
 
+/* ───────────── Downloads (lista por perfil) ─────────────
+   Cada item: { key, id (do processo principal, só nesta sessão), url, name, path, received, total,
+   state: 'progressing' | 'completed' | 'cancelled' | 'interrupted', paused, t, priv }.
+   Os do modo privado ficam só na memória. Guarda os 100 mais recentes. */
+const downloadsList = {
+  items: [],
+  MAX: 100,
+  load() {
+    const d = readJSON(profileKey('downloads'));
+    this.items = Array.isArray(d) ? d : [];
+  },
+  save() {
+    // um download em andamento não sobrevive ao fechar o Kona: fica salvo como interrompido
+    const keep = this.items.filter((x) => !x.priv).slice(0, this.MAX)
+      .map((x) => (x.state === 'progressing' ? { ...x, state: 'interrupted', paused: false, id: null } : { ...x, id: null }));
+    writeJSON(profileKey('downloads'), keep);
+    library.changed('downloads');
+  },
+  byId(id) { return this.items.find((x) => x.id === id); },
+  get(key) { return this.items.find((x) => x.key === key); },
+  active() { return this.items.filter((x) => x.state === 'progressing'); },
+  add(d, priv) {
+    this.items.unshift({ key: uid(), ...d, priv: !!priv, t: d.start || Date.now() });
+    if (this.items.length > this.MAX) this.items.length = this.MAX;
+    this.save();
+  },
+  update(d) { const x = this.byId(d.id); if (x) Object.assign(x, d); return x; },
+  remove(key) { this.items = this.items.filter((x) => x.key !== key); this.save(); },
+  /** Limpa a lista (os arquivos ficam). Os em andamento continuam. */
+  clear() { this.items = this.items.filter((x) => x.state === 'progressing'); this.save(); },
+  dropPrivate() { this.items = this.items.filter((x) => !x.priv); library.changed('downloads'); },
+};
+
 /* ───────────── Lista de leitura ───────────── */
 const readingList = {
   items: [],
@@ -204,6 +237,7 @@ const library = {
   loadProfileData() {
     bookmarks.load();
     readingList.load();
+    downloadsList.load();
     tabSets.load();
   },
 
@@ -263,6 +297,7 @@ const library = {
     this.private = null;
     document.body.classList.remove('private');
     this.closeAllLive();
+    downloadsList.dropPrivate();
     await api?.privateClose(p);
   },
 

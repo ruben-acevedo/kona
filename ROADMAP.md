@@ -101,3 +101,11 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - No Kona de desenvolvimento (`npm run windows`, sem instalador) a barra não aparece.
   - Testado: segunda instância com link vira aba; a barra empurra a página sem cobrir (`tests/debug/default-browser.js`).
   - Corrigido (1º teste do usuário): no Windows 11 recente a escolha fica em `UserChoiceLatest\ProgId` e o `UserChoice` antigo fica desatualizado; a barra não sumia. Agora lê o novo primeiro e confirma com `app.getApplicationNameForProtocol` (`tests/debug/default-status.js`). Falta o reteste do usuário.
+
+## H. Downloads
+
+- [x] **H1. Downloads no menu lateral (12).** Alinhado em 2026-11-25: botão na barra como no Safari/Chrome, manter os dois avisos (início e fim), arrastar para fora, 100 mais recentes por perfil (sem custo de desempenho: a lista só é desenhada com o menu aberto).
+  - `downloads.js` (processo principal): progresso (até 5 avisos/s), pausar, continuar, cancelar, tentar de novo, abrir, mostrar na pasta, ícone do Windows por tipo de arquivo e arrastar (`startDrag`). Abrir/mostrar/arrastar só valem para arquivos que o Kona baixou (`downloads-known.json`).
+  - Menu lateral → Downloads (Ctrl+J, também com o foco numa página): ícone, nome, "12 MB of 80 MB" / "3.2 MB/s · 20 s left", barra de progresso, pausar/continuar e cancelar; concluído abre com um clique, "Show in folder", × tira da lista; cancelado/falhou tem Retry; apagado do disco aparece "Deleted"; "Clear list" (os arquivos ficam). Contador de downloads em andamento.
+  - Barra de ferramentas: botão com anel de progresso, aparece no primeiro download da sessão; quica ao terminar; clicar abre a lista.
+  - Lista por perfil (`downloadsList` em `renderer/library.js`); os do modo privado só na memória. Teste: `tests/debug/downloads.js`.

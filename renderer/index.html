@@ -23,6 +23,10 @@
     <div id="tabs"></div>
 
     <div class="glass group">
+      <button class="tb dl-btn" id="btn-downloads" title="Downloads (Ctrl+J)" hidden>
+        <svg class="dl-ring" viewBox="0 0 24 24" aria-hidden="true"><circle class="dl-track" cx="12" cy="12" r="10"/><circle class="dl-fill" cx="12" cy="12" r="10" pathLength="100"/></svg>
+        <span data-icon="download"></span>
+      </button>
       <button class="tb" id="btn-new" data-icon="plus" title="New tab (Ctrl+T)"></button>
       <button class="tb" id="btn-overview" data-icon="grid" title="All tabs (Alt+V)"></button>
     </div>
@@ -59,6 +63,7 @@
           <div class="sb-section">
             <button class="sb-item" data-view="bookmarks"><span data-icon="star"></span><span class="sb-label">Favorites</span><span class="sb-badge" id="sb-bm-count"></span><span class="sb-go" data-icon="forward"></span></button>
             <button class="sb-item" data-view="reading"><span data-icon="glasses"></span><span class="sb-label">Reading List</span><span class="sb-badge" id="sb-rl-count"></span><span class="sb-go" data-icon="forward"></span></button>
+            <button class="sb-item" data-view="downloads"><span data-icon="download"></span><span class="sb-label">Downloads</span><span class="sb-badge" id="sb-dl-count"></span><span class="sb-go" data-icon="forward"></span></button>
             <button class="sb-item" data-view="history"><span data-icon="clock"></span><span class="sb-label">History</span><span class="sb-go" data-icon="forward"></span></button>
             <button class="sb-item" id="sb-extensions"><span data-icon="puzzle"></span><span class="sb-label">Extensions</span><span class="sb-badge" id="sb-ext-count"></span></button>
           </div>
@@ -339,6 +344,7 @@
   <script src="profiles-ui.js"></script>
   <script src="sidebar.js"></script>
   <script src="settings.js"></script>
+  <script src="downloads.js"></script>
   <script src="import.js"></script>
   <script src="default-browser.js"></script>
 </body>

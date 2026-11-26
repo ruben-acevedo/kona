@@ -6,6 +6,7 @@ const { createPolicy } = require('./session-policy');
 const { onUi, handleUi } = require('./ipc');
 const { startUpdater } = require('./updater');
 const { registerImporter } = require('./importer');
+const { registerDownloads } = require('./downloads');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -291,6 +292,9 @@ handleUi('default:set', async () => {
   return true;
 });
 
+// Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
+registerDownloads({ win: () => mainWin, currentSession: () => browserSession() });
+
 // Importar de outro navegador: tudo entra no perfil em uso
 registerImporter(handleUi, {
   currentSession: () => browserSession(),
@@ -437,7 +441,7 @@ app.on('web-contents-created', (_e, contents) => {
     }
     if (!(input.control || input.meta)) return;
     const key = input.key.toLowerCase();
-    if (['t', 'w', 'l', 'r', 'd', 'h', 'n', 'tab', ',', '\\', '|'].includes(key)) {
+    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 'tab', ',', '\\', '|'].includes(key)) {
       event.preventDefault();
       contents.hostWebContents?.send('shortcut', { key, shift: input.shift });
     }

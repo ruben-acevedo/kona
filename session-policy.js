@@ -2,6 +2,7 @@
 // Global Privacy Control, permissões de sites e downloads. Os ajustes vêm da interface (prefs:set).
 const { app, dialog, shell, session } = require('electron');
 const { onUi, handleUi } = require('./ipc');
+const downloads = require('./downloads');
 const path = require('path');
 const fs = require('fs');
 
@@ -124,9 +125,7 @@ function createPolicy(ctx) {
   }
   onUi('perm:reply', (_e, { id, allow }) => { pending.get(id)?.(!!allow); pending.delete(id); });
 
-  // Downloads concluídos (só esses podem ser mostrados na pasta)
-  const completed = new Set();
-  let dlSeq = 0;
+  // Downloads: nome livre na pasta escolhida; o resto fica em downloads.js
   const uniquePath = (dir, name) => {
     const ext = path.extname(name);
     const base = path.basename(name, ext);
@@ -216,13 +215,7 @@ function createPolicy(ctx) {
         const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
         item.setSavePath(uniquePath(dir, item.getFilename()));
       }
-      const id = ++dlSeq;
-      ctx.win()?.webContents.send('download:start', { id, name: item.getFilename() });
-      item.once('done', (_e2, state) => {
-        const file = item.getSavePath();
-        if (state === 'completed' && file) completed.add(file);
-        ctx.win()?.webContents.send('download:done', { id, name: path.basename(file || item.getFilename()), path: file, state });
-      });
+      downloads.track(item);
     });
   }
 
@@ -232,7 +225,6 @@ function createPolicy(ctx) {
       ctx.onPrefs?.(partition);
     }
   });
-  handleUi('download:show', (_e, file) => { if (completed.has(file)) shell.showItemInFolder(file); });
   handleUi('dialog:folder', async () => {
     const r = await dialog.showOpenDialog(ctx.win(), { properties: ['openDirectory', 'createDirectory'] });
     return r.canceled ? null : r.filePaths[0];

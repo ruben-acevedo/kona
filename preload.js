@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
-  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external'];
+  'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -17,6 +17,14 @@ contextBridge.exposeInMainWorld('kona', {
   setPrefs: (partition, prefs) => ipcRenderer.send('prefs:set', partition, prefs),
   permReply: (id, allow) => ipcRenderer.send('perm:reply', { id, allow }),
   showDownload: (file) => ipcRenderer.invoke('download:show', file),
+  downloadPause: (id) => ipcRenderer.invoke('download:pause', id),
+  downloadResume: (id) => ipcRenderer.invoke('download:resume', id),
+  downloadCancel: (id) => ipcRenderer.invoke('download:cancel', id),
+  downloadRetry: (url) => ipcRenderer.invoke('download:retry', url),
+  downloadOpen: (file) => ipcRenderer.invoke('download:open', file),
+  downloadExists: (files) => ipcRenderer.invoke('download:exists', files),
+  downloadIcon: (file) => ipcRenderer.invoke('download:icon', file),
+  downloadDrag: (file) => ipcRenderer.send('download:drag', file),
   pickFolder: () => ipcRenderer.invoke('dialog:folder'),
   appInfo: () => ipcRenderer.invoke('app:info'),
   sitesList: (partition) => ipcRenderer.invoke('sites:list', partition),

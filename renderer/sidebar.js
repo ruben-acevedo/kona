@@ -66,6 +66,7 @@ function renderMain() {
 
   $('#sb-bm-count').textContent = bookmarks.count() || '';
   $('#sb-rl-count').textContent = readingList.unread() || '';
+  $('#sb-dl-count').textContent = downloadsList.active().length || '';
   focusEditor();
 }
 
@@ -78,6 +79,7 @@ function focusEditor() {
 const SUBVIEWS = {
   bookmarks: { title: 'Favorites', action: 'Add this page to Favorites' },
   reading: { title: 'Reading List', action: 'Save this page to Reading List' },
+  downloads: { title: 'Downloads', action: null },
   history: { title: 'History', action: null },
 };
 
@@ -96,7 +98,8 @@ function openSidebarView(view) {
     : view === 'history'
       ? `<input class="sb-search" id="hist-q" placeholder="Search history" spellcheck="false" value="${escapeHtml(sb.historyQuery)}" />`
       : '';
-  $('#sb-subfoot').innerHTML = view === 'history' ? `<button class="btn-secondary wide" data-act="clear-history">Clear history…</button>` : '';
+  $('#sb-subfoot').innerHTML = view === 'history' ? `<button class="btn-secondary wide" data-act="clear-history">Clear history…</button>`
+    : view === 'downloads' ? '<button class="btn-secondary wide" data-act="clear-downloads">Clear list</button>' : '';
   $('#sidebar').classList.add('sub-open');
   renderSub();
   if (view === 'history') requestAnimationFrame(() => $('#hist-q')?.focus());
@@ -141,6 +144,8 @@ function renderSub() {
       : empty('glasses', sb.readingFilter === 'unread' ? 'All caught up' : 'Your list is empty', 'Save pages to read later with Ctrl+Shift+D.');
   } else if (sb.view === 'history') {
     renderHistory(list);
+  } else if (sb.view === 'downloads') {
+    renderDownloads(list);
   }
 }
 
@@ -281,6 +286,7 @@ $('#sb-tools').addEventListener('input', (e) => {
 });
 $('#sb-subfoot').addEventListener('click', (e) => {
   if (e.target.closest('[data-act="clear-history"]')) openClearSheet({ historyOnly: true });
+  if (e.target.closest('[data-act="clear-downloads"]')) { downloadsList.clear(); sfx.play('close'); }
 });
 
 // Edição em linha (novo grupo, renomear grupo/favorito): Enter salva, Esc cancela, sair do campo salva

@@ -47,6 +47,7 @@
       "session-policy.js",
       "updater.js",
       "importer.js",
+      "downloads.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

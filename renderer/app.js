@@ -35,6 +35,8 @@ const ICONS = {
   clipboard: '<rect x="5.5" y="5" width="13" height="15.5" rx="2.5"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>',
   external: '<path d="M13.5 4.5h6v6M19.5 4.5l-8 8"/><path d="M17.5 13.5v4a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h4"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
+  play: '<path d="M8.5 6.2v11.6a.8.8 0 0 0 1.2.7l9.2-5.8a.8.8 0 0 0 0-1.4L9.7 5.5a.8.8 0 0 0-1.2.7z"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
   cookie: '<path d="M20.5 12.5A8.5 8.5 0 1 1 11.5 3.5a3 3 0 0 0 3.6 3.4 3 3 0 0 0 3.3 3.6 2.5 2.5 0 0 0 2.1 2z"/><circle cx="9" cy="10" r=".9"/><circle cx="14" cy="15" r=".9"/><circle cx="9.5" cy="15.5" r=".9"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
@@ -1076,6 +1078,7 @@ function shortcut(key, shift) {
   else if (key === 'd' && shift) addToReadingList();
   else if (key === 'd') toggleBookmark();
   else if (key === 'h') openSidebarView('history');
+  else if (key === 'j') openSidebarView('downloads');
   else if (key === 'n' && shift) library.switchTo(library.isPrivate() ? tabSets.data.current : 'private');
   else if (key === ',') openSettings();
   else if (key === '\\' || key === '|') toggleOverview();
