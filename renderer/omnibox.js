@@ -105,6 +105,39 @@ const browseHistory = {
       .sort((a, b) => b.s - a.s).slice(0, max).map((x) => x.e);
   },
   recentSearches(max) { return this.data.searches.slice(0, max); },
+  /**
+   * Autocompletar na própria barra (como o Chrome): o site já visitado mais de uma vez cujo endereço
+   * começa com o que foi digitado. Sem "/", completa o site (meet.google.com); com "/", o endereço
+   * completo já visitado. Entre vários, o mais visitado (e, empatando, o mais recente).
+   */
+  inlineFor(typed) {
+    const q = typed.toLowerCase();
+    if (!q || /\s/.test(q)) return null;
+    const www = q.startsWith('www.');
+    const strip = (s) => (www ? s : s.replace(/^www\./, ''));
+    let best = null;
+    const offer = (full, url, n, t) => {
+      if (n < 2 || full.length <= q.length || !full.toLowerCase().startsWith(q)) return;
+      if (!best || n > best.n || (n === best.n && t > best.t)) best = { full, url, n, t };
+    };
+    if (!q.includes('/')) {
+      const hosts = new Map();
+      for (const e of this.data.visits) {
+        let u; try { u = new URL(e.url); } catch { continue; }
+        const key = strip(u.host);
+        const h = hosts.get(key) || { n: 0, t: 0, url: `${u.protocol}//${u.host}/` };
+        h.n += e.n; h.t = Math.max(h.t, e.t);
+        hosts.set(key, h);
+      }
+      for (const [host, h] of hosts) offer(host, h.url, h.n, h.t);
+    } else {
+      for (const e of this.data.visits) {
+        const bare = strip(e.url.replace(/^https?:\/\//, '')).replace(/\/$/, '');
+        offer(bare, e.url, e.n, e.t);
+      }
+    }
+    return best && { full: best.full, url: best.url };
+  },
 };
 browseHistory.load();
 
@@ -147,6 +180,17 @@ const omnibox = {
     // Ao focar, o campo mostra o endereço atual (selecionado): não filtra por ele
     const value = focusing && this.tab.url !== START ? '' : this.input.value;
     this.typed = value;
+    // autocompletar na barra: o resto do endereço aparece selecionado (não ao apagar, nem ao focar)
+    this.inline = null;
+    if (!focusing && !this.deleting && value && this.input.selectionStart === value.length) {
+      const c = browseHistory.inlineFor(value);
+      if (c) {
+        this.inline = { typed: value, ...c };
+        this.input.value = value + c.full.slice(value.length);
+        this.input.setSelectionRange(value.length, this.input.value.length);
+      }
+    }
+    this.deleting = false;
     const q = value.trim();
     clearTimeout(this.timer);
     if (!q) {
@@ -173,7 +217,11 @@ const omnibox = {
   compose(q, suggestions) {
     const url = toUrl(q);
     const items = [];
-    if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: 'Go to site' });
+    // com o autocompletar na barra, o 1º item (o do Enter) é o site completado
+    const inline = this.inline && this.inline.typed.trim() === q ? this.inline : null;
+    if (inline) items.push({ kind: 'go', text: inline.full, url: inline.url, sub: 'Go to site' });
+    if (inline && url && !isSearchUrl(url)) { /* o digitado também é um endereço: o completado já cobre */ }
+    else if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: 'Go to site' });
     else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: `${engine().name} Search` });
     const seen = new Set([q.toLowerCase()]);
     for (const v of browseHistory.matchVisits(q, 3)) {
@@ -276,6 +324,13 @@ const omnibox = {
 };
 
 // Mouse: escolher sem tirar o foco da barra; remover item do histórico
+// Apagar (Backspace/Delete) tira o autocompletar e não o traz de volta enquanto se apaga, como no Chrome;
+// digitando com teclado de composição (acentos, IME), também não completa no meio da composição
+document.addEventListener('beforeinput', (e) => {
+  if (e.target !== omnibox.input) return;
+  omnibox.deleting = !!e.inputType?.startsWith('delete') || e.isComposing;
+}, true);
+
 omnibox.el.addEventListener('mousedown', (e) => {
   e.preventDefault();
   const row = e.target.closest('.om-row');
