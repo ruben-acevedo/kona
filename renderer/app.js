@@ -48,6 +48,7 @@ const ICONS = {
   play: '<path d="M8.5 6.2v11.6a.8.8 0 0 0 1.2.7l9.2-5.8a.8.8 0 0 0 0-1.4L9.7 5.5a.8.8 0 0 0-1.2.7z"/>',
   pause: '<path d="M9 6v12M15 6v12"/>',
   card: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3.5"/>',
+  calc: '<rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 7.5h7"/><path d="M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" stroke-width="2.4"/>',
   music: '<path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
   prevTrack: '<path d="M18 6.6v10.8a.6.6 0 0 1-.9.5L9.6 12.5a.6.6 0 0 1 0-1l7.5-5.4a.6.6 0 0 1 .9.5z"/><path d="M6.5 6v12"/>',
   nextTrack: '<path d="M6 6.6v10.8a.6.6 0 0 0 .9.5l7.5-5.4a.6.6 0 0 0 0-1L6.9 6.1a.6.6 0 0 0-.9.5z"/><path d="M17.5 6v12"/>',
@@ -659,6 +660,14 @@ function createTabEl(t) {
 
 /** Abre o que veio da barra de endereço (texto digitado ou sugestão escolhida). */
 function go(t, choice) {
+  // a resposta de uma conta: copia o resultado
+  if (choice.kind === 'calc') { copyText(choice.value); return; }
+  // "Ir para a aba": a aba que já estava aberta (nesta janela ou em outra)
+  if (choice.kind === 'tab') {
+    if (choice.winId != null) api?.focusTab(choice.winId, choice.tabId);
+    else if (tabs.some((x) => x.id === choice.tabId)) activate(choice.tabId);
+    return;
+  }
   const url = choice.url || toUrl(choice.text || '');
   if (!url) return;
   if (url === SETTINGS) { openSettings(); return; }
@@ -1256,7 +1265,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
-    for (const id of ['#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    for (const id of ['#ss-sheet', '#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
     if (findBar.close()) return;
     if (closeProfileLayers()) return;
@@ -1308,6 +1317,8 @@ api?.on('tab:adopt', ({ url, title, restore, screenX, fresh: forNewWindow }) => 
 });
 // a janela principal fechou: esta assume (um instante depois, para a sessão que ela guardou ao fechar chegar aqui)
 api?.on('win:promote', () => setTimeout(() => library.promote(), 300));
+// "Ir para a aba" vindo da barra de endereço de outra janela
+api?.on('tab:select', (id) => { if (tabs.some((t) => t.id === id)) activate(id); });
 // ao fechar a janela, a sessão é guardada na hora (sem esperar o intervalo)
 addEventListener('pagehide', () => library.flush());
 // outra janela mudou algo guardado: relê

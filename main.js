@@ -563,6 +563,30 @@ handleUi('win:others', async (e) => {
   }
   return out;
 });
+// Barra de endereço: abas das outras janelas ("Ir para a aba"); janelas privadas ficam de fora
+handleUi('win:tabs', async (e) => {
+  const me = BrowserWindow.fromWebContents(e.sender);
+  if (privateWins.has(me)) return [];
+  const out = [];
+  for (const w of windows) {
+    if (!alive(w) || w === me || privateWins.has(w)) continue;
+    const list = await w.webContents.executeJavaScript('typeof tabs === "object" ? tabs.map((t) => ({ id: t.id, url: t.url, title: t.title })) : []').catch(() => []);
+    for (const t of Array.isArray(list) ? list.slice(0, 200) : []) {
+      if (typeof t?.url === 'string' && /^https?:/.test(t.url)) out.push({ winId: w.id, id: Number(t.id), url: t.url.slice(0, 2000), title: String(t.title || '').slice(0, 300) });
+    }
+  }
+  return out;
+});
+handleUi('win:focus-tab', (_e, winId, tabId) => {
+  const w = windows.find((x) => alive(x) && x.id === Number(winId));
+  if (!w) return false;
+  if (w.isMinimized()) w.restore();
+  w.show();
+  w.focus();
+  w.webContents.send('tab:select', Number(tabId));
+  return true;
+});
+
 // Histórico das abas que estão mudando de janela, até a aba nova nascer (token → { index, entries })
 const pendingRestores = new Map();
 const attachQueues = new WeakMap();

@@ -348,6 +348,21 @@
     </footer>
   </section>
 
+  <!-- Busca em sites: atalhos da barra de endereço (Settings → General → Site search) -->
+  <section id="ss-sheet" class="sheet" role="dialog" aria-labelledby="ss-title">
+    <header class="sheet-head"><div><h2 id="ss-title">Site search</h2><p>Type the shortcut in the address bar and press Tab. Use %s where the search goes.</p></div></header>
+    <div class="pf-body">
+      <div class="ss-head"><span>Name</span><span>Shortcut</span><span>Search address</span></div>
+      <div class="ss-list" id="ss-list"></div>
+      <div class="ss-tools"><button class="btn-secondary" id="ss-add">Add site</button><button class="btn-link" id="ss-reset">Restore defaults</button></div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="spacer"></span>
+      <button class="btn-secondary" id="ss-cancel">Cancel</button>
+      <button class="btn-primary" id="ss-save">Save</button>
+    </footer>
+  </section>
+
   <!-- Editor de endereço / cartão (Settings → Addresses and cards) -->
   <section id="af-sheet" class="sheet" role="dialog" aria-labelledby="af-title">
     <header class="sheet-head"><div><h2 id="af-title"></h2></div></header>
@@ -428,6 +443,7 @@
   <script src="library.js"></script>
   <script src="sounds.js"></script>
   <script src="app.js"></script>
+  <script src="omnibox-smart.js"></script>
   <script src="omnibox.js"></script>
   <script src="profiles-ui.js"></script>
   <script src="sidebar.js"></script>

@@ -6,7 +6,7 @@ const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm
   'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked',
   'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
   'session:restore-tabs', 'tab:crashed', 'tab:responsive',
-  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed'];
+  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('kona', {
   windowRole: () => ipcRenderer.invoke('win:role'),
   otherWindows: () => ipcRenderer.invoke('win:others'),
   tabMove: (data) => ipcRenderer.invoke('tab:move', data),
+  otherTabs: () => ipcRenderer.invoke('win:tabs'),
+  focusTab: (winId, tabId) => ipcRenderer.invoke('win:focus-tab', winId, tabId),
   windowPrivate: (on) => ipcRenderer.send('win:private', !!on),
   tabPinned: (wcId, on) => ipcRenderer.send('tab:pinned', wcId, !!on),
   setLanguage: (lang) => ipcRenderer.send('lang:set', lang),

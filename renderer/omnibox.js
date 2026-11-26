@@ -158,10 +158,15 @@ const omnibox = {
     this.tab = tab;
     this.typed = '';
     this.sel = -1;
+    this.keyword = null;
+    // abas das outras janelas, para "Ir para a aba" (o modo privado não vê nem é visto)
+    this.otherTabs = [];
+    if (!library.isPrivate()) api?.otherTabs?.().then((l) => { this.otherTabs = Array.isArray(l) ? l : []; }).catch(() => {});
     this.update(true);
   },
   close() {
     this.el.classList.remove('show');
+    this.leaveKeyword(false);
     this.input = null;
     this.items = [];
     this.sel = -1;
@@ -180,9 +185,11 @@ const omnibox = {
     // Ao focar, o campo mostra o endereço atual (selecionado): não filtra por ele
     const value = focusing && this.tab.url !== START ? '' : this.input.value;
     this.typed = value;
+    // atalho exato + espaço ("yt ", "@abas "): entra no modo de busca no site
+    if (!this.keyword && !focusing && / $/.test(value) && keywordFor(value)?.exact) { this.enterKeyword(keywordFor(value)); return; }
     // autocompletar na barra: o resto do endereço aparece selecionado (não ao apagar, nem ao focar)
     this.inline = null;
-    if (!focusing && !this.deleting && value && this.input.selectionStart === value.length) {
+    if (!this.keyword && !focusing && !this.deleting && value && this.input.selectionStart === value.length) {
       const c = browseHistory.inlineFor(value);
       if (c) {
         this.inline = { typed: value, ...c };
@@ -193,12 +200,14 @@ const omnibox = {
     this.deleting = false;
     const q = value.trim();
     clearTimeout(this.timer);
+    if (this.keyword) { const items = this.composeKeyword(q); this.render(items, items.length ? 0 : -1); return; }
     if (!q) {
       const recent = browseHistory.recentSearches(6).map((e) => ({ kind: 'search', from: 'history', text: e.q, query: e.q }));
-      this.render(recent, -1, 'Recent searches');
+      this.render(recent, -1, tl('Recent searches'));
       return;
     }
-    this.render(this.compose(q, this.cache.get(q.toLowerCase()) || []), 0);
+    const first = this.compose(q, this.cache.get(q.toLowerCase()) || []);
+    this.render(first, this.defaultSel(first));
     if (this.cache.has(q.toLowerCase())) return;
     const mySeq = ++this.seq;
     this.timer = setTimeout(async () => {
@@ -207,24 +216,57 @@ const omnibox = {
       this.cache.set(q.toLowerCase(), list);
       if (this.cache.size > 200) this.cache.delete(this.cache.keys().next().value);
       if (mySeq !== this.seq || !this.input || this.input.value.trim() !== q) return; // já digitou outra coisa
+      if (this.keyword) return; // entrou no modo de busca no site enquanto esperava
       const keep = this.items[this.sel];
       const items = this.compose(q, list);
-      const idx = keep ? items.findIndex((x) => x.text === keep.text && x.kind === keep.kind) : 0;
-      this.render(items, idx >= 0 ? idx : 0);
+      const idx = keep ? items.findIndex((x) => x.text === keep.text && x.kind === keep.kind) : -1;
+      this.render(items, idx >= 0 ? idx : this.defaultSel(items));
     }, 160); // espera uma pausa na digitação: menos pedidos ao buscador (uma rajada parece robô)
   },
+
+  /** O item do Enter: o primeiro que não é a resposta de uma conta (Enter continua pesquisando). */
+  defaultSel(items) { const i = items.findIndex((x) => x.kind !== 'calc'); return i < 0 ? 0 : i; },
+
+  /** Abas que batem com o texto, desta janela e das outras: [{ tabId, winId?, title, url }]. */
+  matchTabs(q, max) {
+    q = q.toLowerCase();
+    const mine = tabs.filter((t) => t !== this.tab && /^https?:/.test(t.url)).map((t) => ({ tabId: t.id, title: t.title, url: t.url }));
+    const others = (this.otherTabs || []).map((t) => ({ tabId: t.id, winId: t.winId, title: t.title, url: t.url }));
+    return [...mine, ...others]
+      .map((t) => ({ t, s: browseHistory.score(t.url.replace(/^https?:\/\/(www\.)?/, ''), q, 1, Date.now()) || (q ? browseHistory.score(t.title || '', q, 1, Date.now()) : 1) }))
+      .filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, max).map((x) => x.t);
+  },
+  /** Favoritos que batem com o texto. */
+  matchFavorites(q, max) {
+    q = q.toLowerCase();
+    return bookmarks.all()
+      .map((b) => ({ b, s: q ? Math.max(browseHistory.score(b.title || '', q, 2, Date.now()), browseHistory.score(b.url.replace(/^https?:\/\/(www\.)?/, ''), q, 2, Date.now())) : 1 }))
+      .filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, max).map((x) => x.b);
+  },
+  tabItem: (t) => ({ kind: 'tab', text: t.title || hostOf(t.url), url: t.url, tabId: t.tabId, winId: t.winId, sub: tl('Switch to this tab') }),
+  favItem: (b) => ({ kind: 'fav', text: b.title || hostOf(b.url), url: b.url, sub: b.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') }),
 
   compose(q, suggestions) {
     const url = toUrl(q);
     const items = [];
+    // contas: a resposta no topo (Enter continua pesquisando; escolher a resposta copia)
+    const calc = calcAnswer(q);
+    if (calc) items.push({ kind: 'calc', text: `= ${calc.text}`, value: calc.text, sub: q });
     // com o autocompletar na barra, o 1º item (o do Enter) é o site completado
     const inline = this.inline && this.inline.typed.trim() === q ? this.inline : null;
     if (inline) items.push({ kind: 'go', text: inline.full, url: inline.url, sub: tl('Go to site') });
     if (inline && url && !isSearchUrl(url)) { /* o digitado também é um endereço: o completado já cobre */ }
     else if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: tl('Go to site') });
     else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: tl('{engine} Search', { engine: engine().name }) });
+    // "Pressione Tab para pesquisar no YouTube" (ou @abas, @favoritos, @histórico)
+    const kw = keywordFor(q);
+    if (kw) items.push({ kind: 'keyword', kw, text: kw.kind === 'site' ? tl('Search {name}', { name: kw.site.name }) : tl(kw.scope.label), sub: tl('press Tab') });
     const seen = new Set([q.toLowerCase()]);
+    const shown = new Set();
+    for (const t of this.matchTabs(q, 2)) { items.push(this.tabItem(t)); shown.add(t.url); }
+    for (const b of this.matchFavorites(q, 2)) { if (shown.has(b.url)) continue; items.push(this.favItem(b)); shown.add(b.url); }
     for (const v of browseHistory.matchVisits(q, 3)) {
+      if (shown.has(v.url)) continue;
       items.push({ kind: 'visit', text: v.title || hostOf(v.url), url: v.url, sub: v.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') });
     }
     for (const s of browseHistory.matchSearches(q, 3)) {
@@ -238,6 +280,45 @@ const omnibox = {
       items.push({ kind: 'search', from: 'suggest', text: s, query: s });
     }
     return items;
+  },
+
+  /* ── Modo "pesquisar no site" / só abas, favoritos ou histórico ── */
+  enterKeyword(kw) {
+    if (!this.input || !kw) return;
+    this.keyword = kw;
+    this.input.value = '';
+    this.typed = '';
+    this.inline = null;
+    const form = this.input.closest('form');
+    form?.querySelector('.kw-chip')?.remove();
+    const chip = document.createElement('span');
+    chip.className = 'kw-chip';
+    chip.innerHTML = `${icon(kw.kind === 'site' ? 'search' : kw.scope.icon)}<span></span>`;
+    chip.lastChild.textContent = kw.kind === 'site' ? kw.site.name : tl(kw.scope.label);
+    form?.insertBefore(chip, this.input);
+    form?.classList.add('kw-on');
+    sfx.play('tick');
+    this.update();
+  },
+  leaveKeyword(refresh = true) {
+    if (!this.keyword) return false;
+    this.keyword = null;
+    const form = this.input?.closest('form');
+    form?.querySelector('.kw-chip')?.remove();
+    form?.classList.remove('kw-on');
+    if (refresh && this.input) this.update();
+    return true;
+  },
+  composeKeyword(q) {
+    const kw = this.keyword;
+    if (kw.kind === 'site') {
+      const url = siteSearchUrl(kw.site, q);
+      return url ? [{ kind: 'go', text: q || kw.site.name, url, sub: q ? tl('Search {name}', { name: kw.site.name }) : siteHost(kw.site) }] : [];
+    }
+    if (kw.scope.id === 'tabs') return this.matchTabs(q, 8).map((t) => this.tabItem(t));
+    if (kw.scope.id === 'favorites') return this.matchFavorites(q, 8).map((b) => this.favItem(b));
+    const visits = q ? browseHistory.matchVisits(q, 8) : browseHistory.data.visits.slice(0, 8);
+    return visits.map((v) => ({ kind: 'visit', text: v.title || hostOf(v.url), url: v.url, sub: v.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') }));
   },
 
   /** Destaca em negrito o trecho que completa o que foi digitado (como no Chrome). */
@@ -254,10 +335,11 @@ const omnibox = {
     this.sel = sel;
     if (!items.length || !this.input) { this.el.classList.remove('show'); return; }
     const rows = items.map((it, i) => {
-      const ic = it.kind === 'visit' ? 'globe' : it.kind === 'go' ? 'globe' : it.from === 'history' ? 'clock' : 'search';
+      const ic = { visit: 'globe', go: this.keyword?.kind === 'site' ? 'search' : 'globe', calc: 'calc', tab: 'tabs', fav: 'star', keyword: 'search' }[it.kind]
+        || (it.from === 'history' ? 'clock' : 'search');
       const removable = it.from === 'history' || it.kind === 'visit';
       const sub = it.sub ? `<span class="om-sub">— ${escapeHtml(it.sub)}</span>` : '';
-      return `<div class="om-row${i === sel ? ' sel' : ''}" data-i="${i}" role="option">
+      return `<div class="om-row${i === sel ? ' sel' : ''} om-${it.kind}" data-i="${i}" role="option">
         <span class="om-ic">${icon(ic)}</span>
         <span class="om-text">${this.highlight(it.text)}${sub}</span>
         ${removable ? `<button class="om-x" title="${tl('Remove from history')}" tabindex="-1">${icon('x')}</button>` : ''}
@@ -285,11 +367,22 @@ const omnibox = {
     this.sel = (i + this.items.length) % this.items.length;
     if (this.sel !== prev) sfx.play('tick');
     $$('.om-row', this.el).forEach((row, j) => row.classList.toggle('sel', j === this.sel));
-    this.input.value = this.items[this.sel].kind === 'visit' ? this.items[this.sel].url : this.items[this.sel].text;
+    const it = this.items[this.sel];
+    // a linha "Pressione Tab…" e a resposta da conta não trocam o texto digitado
+    if (it.kind === 'keyword' || it.kind === 'calc') { this.input.value = this.typed; return; }
+    this.input.value = ['visit', 'tab', 'fav'].includes(it.kind) ? it.url : this.keyword?.kind === 'site' ? (this.typed || '') : it.text;
   },
 
   /** Teclado na barra: setas escolhem, Esc volta ao digitado / fecha. Retorna true se tratou. */
   key(e) {
+    // Tab: entra no modo de busca no site (ou @abas…) sugerido pelo texto
+    if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !this.keyword) {
+      const kw = keywordFor(this.typed.trim());
+      if (kw) { e.preventDefault(); this.enterKeyword(kw); return true; }
+    }
+    // Backspace com o campo vazio (ou Esc) sai do modo
+    if (this.keyword && ((e.key === 'Backspace' && !this.input.value) || e.key === 'Escape')) { e.preventDefault(); this.leaveKeyword(); return true; }
+    if (e.key === 'Enter' && this.isOpen() && this.items[this.sel]?.kind === 'keyword') { e.preventDefault(); this.enterKeyword(this.items[this.sel].kw); return true; }
     if (!this.isOpen()) return false;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -337,6 +430,7 @@ omnibox.el.addEventListener('mousedown', (e) => {
   if (!row || !omnibox.input) return;
   const it = omnibox.items[+row.dataset.i];
   if (e.target.closest('.om-x')) { omnibox.forget(it); return; }
+  if (it.kind === 'keyword') { omnibox.enterKeyword(it.kw); return; }
   const { input, tab } = omnibox;
   sfx.play('select');
   input.blur();

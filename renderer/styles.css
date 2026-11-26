@@ -1254,3 +1254,23 @@ body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
 .dl-row.danger { align-items: flex-start; }
 .dl-decide { display: flex; gap: 6px; margin-top: 8px; }
 .dl-decide button { height: 26px; padding: 0 12px; font-size: 12px; }
+
+/* ───────────── Barra de endereço mais esperta (N12) ───────────── */
+.addr .kw-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: none; height: 24px; padding: 0 9px 0 7px; margin-right: 6px;
+  border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+}
+.addr .kw-chip .ic { width: 13px; height: 13px; }
+.tab.active .addr.kw-on { justify-content: flex-start; }
+.tab.active .addr.kw-on input { text-align: left; }
+.om-row.om-calc .om-text { font-weight: 650; font-size: 15px; }
+.om-row.om-keyword .om-text { color: var(--accent); }
+.om-row.om-keyword.sel .om-text { color: inherit; }
+/* folha de atalhos */
+.ss-head, .ss-row { display: grid; grid-template-columns: 1.1fr 0.7fr 2.4fr 28px; gap: 8px; align-items: center; }
+.ss-head { font-size: 11.5px; font-weight: 600; color: var(--text-2); padding: 0 2px 6px; }
+.ss-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 320px)); overflow: auto; }
+.ss-row .pf-input { width: 100%; min-width: 0; }
+.ss-tools { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+#ss-sheet { width: min(780px, calc(100vw - 48px)); }

@@ -225,7 +225,12 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - `page-autofill.js`, `autofill.js`, `renderer/autofill-ui.js`. Testado: `tests/debug/autofill.js` (precisa do certificado de teste em `tests/fixtures/tls/`, ignorado pelo git) + importação (4 endereços lidos do Chrome do usuário) + senhas.
 - [ ] **N10. Traduzir páginas.**
 - [ ] **N11. Instalar sites como aplicativo (PWA).**
-- [ ] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.
+- [x] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.
+  - Contas: calculadora própria (nada é executado como código): + − × ÷ ^ %, parênteses, "15% de 80", "200 + 10%"; vírgula decimal em pt/es. A resposta aparece no topo; Enter continua pesquisando; escolher a resposta copia.
+  - "Ir para a aba": abas desta janela e das outras (a outra janela vem para a frente); janelas privadas não entram. Favoritos aparecem na lista (estrela) antes do histórico.
+  - Busca dentro do site: atalho + Tab (ou espaço), ou o começo do nome do site + Tab → etiqueta "YouTube" na barra; Enter pesquisa no site; Backspace com o campo vazio ou Esc sai. Prontos: YouTube (yt), Wikipedia (w, no idioma), Google Maps (maps), Amazon (amz), Mercado Livre (ml, em pt), GitHub (gh). @abas / @favoritos / @histórico buscam só ali. Configurações › Geral › Busca em sites: editar, apagar, adicionar, restaurar o padrão. Não aprende buscadores sozinho (decisão do usuário).
+  - `renderer/omnibox-smart.js` + `omnibox.js`. Testado: `tests/debug/omnibox-smart.js` + autocompletar, smoke, extensões.
+  - Corrigido no caminho (bug antigo): a biblioteca de extensões "selecionava" a 1ª aba que conhecia numa janela, e uma aba carregando em segundo plano roubava a vez da atual (ex.: ao abrir com várias abas).
 - [ ] **N13. Pré-visualização de impressão.**
 - [x] **N14. Aviso de download perigoso.**
   - Tipos que podem rodar programas (.exe, .msi, .bat, .ps1, .vbs, .js, .jar, .hta, .reg, .lnk, .iso… — a família que o Chrome trata como perigosa) e qualquer arquivo vindo por http de fora da máquina: o arquivo fica numa pasta à parte (`Downloads-holding`) e a lista mostra "This type of file can harm your computer" / "Insecure download" com **Discard** (destaque) e **Keep**. Manter leva à pasta de downloads (ou pergunta onde, se o ajuste pede) com a marca de internet (Zone.Identifier); descartar apaga. Sem decisão ao fechar o Kona = descartado.

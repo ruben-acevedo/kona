@@ -30,13 +30,17 @@ onUi('ext:tab-created', (_e, id, wcId) => { waiting.get(id)?.(Number(wcId)); wai
 /** A interface que hospeda a aba. Uma aba já destruída (ao fechar) não tem mais: nada a avisar. */
 const hostOf = (wc) => { try { return wc.isDestroyed() ? null : wc.hostWebContents; } catch { return null; } };
 
+let registering = false; // trackTab em andamento: a "seleção" que vem dele não é de uma extensão
+
 /** Cria o gerenciador de uma sessão de perfil (antes de carregar as extensões dela). */
 function attach(ses, partition) {
   if (managers.has(partition)) return managers.get(partition);
   const m = new ElectronChromeExtensions({
     session: ses,
     createTab: createTabFromExtension,
-    selectTab: (wc) => hostOf(wc)?.send('ext:tab-select', wc.id),
+    // só quando uma extensão pede (chrome.tabs.update); a biblioteca também "seleciona" a 1ª aba que
+    // conhece numa janela, e isso fazia uma aba carregando em segundo plano roubar a vez da atual
+    selectTab: (wc) => { if (!registering) hostOf(wc)?.send('ext:tab-select', wc.id); },
     removeTab: (wc) => hostOf(wc)?.send('ext:tab-remove', wc.id),
     createWindow: async (details) => { // a "janela nova" de uma extensão vira uma aba da janela em foco
       const url = Array.isArray(details.url) ? details.url[0] : details.url;
@@ -58,7 +62,9 @@ const managerOf = (ses) => ElectronChromeExtensions.fromSession(ses);
 function trackTab(contents) {
   const m = managerOf(contents.session);
   const w = winFor(contents);
-  if (m && w) m.addTab(contents, w);
+  if (!m || !w) return;
+  registering = true;
+  try { m.addTab(contents, w); } finally { registering = false; }
 }
 
 /** Itens que as extensões acrescentam ao menu do botão direito (chrome.contextMenus). */

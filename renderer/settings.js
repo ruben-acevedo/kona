@@ -89,6 +89,8 @@ const settingsPage = {
         stSelect('startup', [['newtab', tl('Open a new tab')], ['restore', tl('Restore tabs from last session')]])) +
       stRow(tl('Search engine'), tl('Used in the address bar.'),
         stSelect('searchEngine', Object.entries(ENGINES).map(([k, e]) => [k, e.name]))) +
+      stRow(tl('Site search'), tl('Type a shortcut like “yt” and press Tab to search right on that site. @tabs, @favorites and @history search only there.'),
+        stButton(tl('Manage…'), 'site-search')) +
       stRow(tl('Search suggestions'), tl('As you type in the address bar, your text is sent to {engine} to suggest searches.', { engine: escapeHtml(engine().name) }),
         stSwitch('suggestions')) +
       stRow(tl('Save browsing history'), tl('Visited sites and searches stay on this computer, in the current profile.'),
@@ -252,6 +254,7 @@ $('#st-main').addEventListener('click', async (e) => {
     case 'profile-new': openProfileSheet('new'); break;
     case 'extensions': openExtensions(); break;
     case 'store': newTab(STORE_URL, false); break;
+    case 'site-search': openSiteSearchSheet(); break;
     default:
   }
 });
@@ -346,3 +349,48 @@ api?.on('download:done', ({ name, path, state, discarded }) => {
 
 hydrateIcons($('#perm-sheet'));
 if (active()?.url === SETTINGS) settingsPage.render();
+
+/* ───────────── Busca em sites (atalhos da barra de endereço, N12) ───────────── */
+let ssDraft = [];
+function openSiteSearchSheet() {
+  ssDraft = siteSearches().map((x) => ({ ...x }));
+  renderSiteSearchSheet();
+  openSheet('#ss-sheet');
+}
+function renderSiteSearchSheet() {
+  $('#ss-list').innerHTML = ssDraft.map((x, i) => `<div class="ss-row" data-i="${i}">
+      <input class="pf-input ss-name" data-f="name" value="${escapeHtml(x.name)}" placeholder="${tl('Name')}" spellcheck="false" />
+      <input class="pf-input ss-key" data-f="keyword" value="${escapeHtml(x.keyword)}" placeholder="${tl('Shortcut')}" spellcheck="false" />
+      <input class="pf-input ss-url" data-f="url" value="${escapeHtml(x.url)}" placeholder="https://example.com/search?q=%s" spellcheck="false" />
+      <button class="sb-act" data-ss-del="${i}" title="${tl('Delete')}">${icon('x')}</button>
+    </div>`).join('') || `<p class="st-empty">${tl('No site searches.')}</p>`;
+}
+$('#ss-list').addEventListener('input', (e) => {
+  const row = e.target.closest('.ss-row');
+  if (row && e.target.dataset.f) ssDraft[+row.dataset.i][e.target.dataset.f] = e.target.value;
+});
+$('#ss-list').addEventListener('click', (e) => {
+  const d = e.target.closest('[data-ss-del]');
+  if (!d) return;
+  ssDraft.splice(+d.dataset.ssDel, 1);
+  renderSiteSearchSheet();
+});
+$('#ss-add').addEventListener('click', () => {
+  ssDraft.push({ id: Date.now().toString(36), name: '', keyword: '', url: '' });
+  renderSiteSearchSheet();
+  $$('#ss-list .ss-name').pop()?.focus();
+});
+$('#ss-reset').addEventListener('click', () => { ssDraft = defaultSiteSearches(); renderSiteSearchSheet(); });
+$('#ss-cancel').addEventListener('click', () => closeSheet('#ss-sheet'));
+$('#ss-save').addEventListener('click', () => {
+  const clean = ssDraft.map((x) => ({ id: x.id || Date.now().toString(36), name: x.name.trim(), keyword: x.keyword.trim().replace(/\s+/g, '').toLowerCase(), url: x.url.trim() }))
+    .filter((x) => x.name || x.keyword || x.url);
+  const bad = clean.find((x) => !x.name || !x.keyword || !/^https?:\/\/.+%s/.test(x.url));
+  if (bad) { toast(tl('Each site needs a name, a shortcut and an address with %s where the search goes')); return; }
+  const dup = clean.find((x, i) => clean.findIndex((y) => y.keyword === x.keyword) !== i);
+  if (dup) { toast(tl('The shortcut “{k}” is used twice', { k: dup.keyword })); return; }
+  settings.siteSearch = clean;
+  saveSettings();
+  closeSheet('#ss-sheet');
+  toast(tl('Site search saved'));
+});
