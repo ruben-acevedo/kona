@@ -4,7 +4,8 @@ const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
   'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked',
-  'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list'];
+  'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
+  'session:restore-tabs', 'tab:crashed', 'tab:responsive'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -22,6 +23,11 @@ contextBridge.exposeInMainWorld('kona', {
   windowPrivate: (on) => ipcRenderer.send('win:private', !!on),
   tabPinned: (wcId, on) => ipcRenderer.send('tab:pinned', wcId, !!on),
   setLanguage: (lang) => ipcRenderer.send('lang:set', lang),
+  sessionUpdate: (snap) => ipcRenderer.send('session:update', snap),
+  sessionRecovery: () => ipcRenderer.invoke('session:recovery'),
+  sessionRestore: () => ipcRenderer.invoke('session:restore'),
+  sessionDismiss: () => ipcRenderer.invoke('session:dismiss'),
+  tabKill: (wcId) => ipcRenderer.invoke('tab:kill', wcId),
   mediaList: () => ipcRenderer.invoke('media:list'),
   mediaControl: (wcId, action) => ipcRenderer.send('media:control', wcId, action),
   setPopupsAllowed: (list) => ipcRenderer.send('popups:allowed', list),

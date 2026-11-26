@@ -53,6 +53,13 @@
     <button class="tb small" id="ib-close" data-icon="x" title="Close"></button>
   </div>
 
+  <!-- Aba cuja página travou -->
+  <div id="crash-pane" hidden>
+    <span class="cp-ic" data-icon="info"></span>
+    <b>This page crashed</b>
+    <p>Something made the page stop working. Reload to try again.</p>
+    <button class="btn-primary" id="crash-reload">Reload</button>
+  </div>
   <!-- Barra lateral flutuante -->
   <aside id="sidebar" class="glass panel" tabindex="-1">
     <div class="sb-views">
@@ -422,5 +429,6 @@
   <script src="import.js"></script>
   <script src="passwords.js"></script>
   <script src="default-browser.js"></script>
+  <script src="session-ui.js"></script>
 </body>
 </html>

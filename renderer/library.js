@@ -350,8 +350,13 @@ const library = {
   },
   onTabsChanged() {
     clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.saveCurrent(), 400);
+    this.saveTimer = setTimeout(() => { this.saveCurrent(); this.reportSession(); }, 400);
     this.changed('tabs');
+  },
+  /** Para recuperar depois de um travamento: as abas desta janela (nada do modo privado). */
+  reportSession() {
+    const own = this.private ? [] : tabs.filter((t) => !t.pinned && t.url && t.url !== START && !/^(data|about|view-source):/i.test(t.url));
+    api?.sessionUpdate?.({ set: this.currentKey(), tabs: own.map((t) => ({ url: t.url, title: t.title })), active: Math.max(0, own.indexOf(active())) });
   },
 
   /** Fecha as abas do conjunto (as fixadas ficam, menos no modo privado). */
@@ -443,6 +448,7 @@ const library = {
   flush() {
     clearTimeout(this.saveTimer);
     if (this.primary) this.saveCurrent();
+    this.reportSession();
   },
 
   /**

@@ -1220,3 +1220,15 @@ body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
 .md-ctl { display: flex; align-items: center; gap: 2px; flex: none; }
 .md-ctl .ic { width: 16px; height: 16px; }
 .md-play .ic { fill: currentColor; }
+
+/* ───────────── Aba que travou (N6) ───────────── */
+#crash-pane {
+  position: absolute; inset: var(--top-h) 0 0 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: var(--bg, #161618); color: var(--text); text-align: center; padding: 24px;
+}
+#crash-pane[hidden] { display: none; }
+#crash-pane .cp-ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--glass-press); color: var(--text-2); }
+#crash-pane .cp-ic .ic { width: 22px; height: 22px; }
+#crash-pane b { font-size: 17px; font-weight: 650; }
+#crash-pane p { margin: 0 0 6px; color: var(--text-2); font-size: 13px; max-width: 360px; }

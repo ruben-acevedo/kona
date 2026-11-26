@@ -208,7 +208,10 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Como funciona: `tl('texto em inglês')` / `tln(n, singular, plural)` (`renderer/i18n.js`); dicionários em `renderer/i18n/pt-BR.js` e `es.js` (os mesmos servem ao processo principal, `i18n.js`); o HTML fixo é traduzido na abertura. `node scripts/i18n-check.js` lista o que falta traduzir (`--loose` mostra textos fora de `tl()`). 529 textos.
   - Fora por enquanto: o instalador. Os nomes de perfil já criados ficam como estão (são dados da pessoa).
   - Testado: `tests/debug/i18n.js` + smoke, barra lateral, pastas, menu de contexto, Configurações. Corrigido no caminho: o arrastar de link do N8 tinha uma função com o mesmo nome da do arrastar de favoritos (quebrava o arrasto na barra lateral).
-- [ ] **N6. Recuperar a sessão depois de um travamento.**
+- [x] **N6. Recuperar a sessão depois de um travamento.**
+  - As abas de todas as janelas ficam guardadas o tempo todo (`session-recovery.json`; nada do modo privado). Um marcador (`session.lock`) existe enquanto o Kona está aberto; se ainda estiver lá na abertura, o Kona fechou de forma errada → barra "Kona didn’t close properly · Restore tabs" (com "Restore tabs" ligado, restaura direto). Restaurar reabre cada janela com as abas dela. `session.js` + `renderer/session-ui.js`.
+  - Aba cuja página travou: aviso no lugar da página com "Reload". Página que parou de responder (~15 s sem atender o que a pessoa faz): "The page isn’t responding · Wait / Close page". Interface de uma janela que travou: recarrega sozinha, com as abas.
+  - Testado: `tests/debug/crash-recovery.js` (roda duas vezes: trava e reabre) + várias janelas e smoke.
 
 ### Esperado em qualquer navegador
 - [x] **N7. Fixar abas.** "Pin tab" / "Unpin tab" no menu da aba. A fixada fica no começo da barra, só com o ícone (a ativa abre o endereço, como as outras), e aparece em todas as janelas e em todos os grupos, como no Safari (não no modo privado). Link para outro site dentro dela abre numa aba nova; Ctrl+W e o botão do meio não a fecham (vai para a aba seguinte); "Close tab" no menu desafixa e fecha. Arrastar muda a ordem só entre as fixadas; não muda de janela. Guardadas por perfil (`kona:pinned:<perfil>`), com o endereço atual. Testado: `tests/debug/pinned.js`.

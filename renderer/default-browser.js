@@ -13,6 +13,7 @@ function showInfobar(on) {
 }
 
 async function checkDefault() {
+  if (typeof restoreBar !== 'undefined' && restoreBar.open) return; // "Restaurar abas" tem a vez
   if (defaultBar.dismissed || library.isPrivate?.()) { showInfobar(false); return; }
   const st = (await api?.defaultStatus?.()) || { registered: false };
   if (!st.registered || st.isDefault) {
@@ -29,12 +30,14 @@ async function checkDefault() {
 }
 
 $('#ib-yes').addEventListener('click', async () => {
+  if (typeof restoreBar !== 'undefined' && restoreBar.open) return;
   sfx.play('select');
   defaultBar.waiting = true;
   await api?.defaultSet();
   checkDefault();
 });
 $('#ib-close').addEventListener('click', () => {
+  if (typeof restoreBar !== 'undefined' && restoreBar.open) return;
   sfx.play('close');
   defaultBar.dismissed = true;
   showInfobar(false);

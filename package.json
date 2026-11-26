@@ -61,6 +61,7 @@
       "page-share.js",
       "media.js",
       "i18n.js",
+      "session.js",
       "page-media.js",
       "renderer/**/*",
       "assets/**/*",

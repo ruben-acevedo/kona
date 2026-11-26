@@ -3,10 +3,11 @@
 
 /* ───────────── Pergunta de confirmação (genérica) ───────────── */
 let askResolve = null;
-function ask({ title, text = '', ok = tl('Confirm'), danger = false }) {
+function ask({ title, text = '', ok = tl('Confirm'), cancel = tl('Cancel'), danger = false }) {
   if (askResolve) askResolve(false);
   $('#ask-title').textContent = title;
   $('#ask-text').textContent = text;
+  $('#ask-no').textContent = cancel;
   const yes = $('#ask-yes');
   yes.textContent = ok;
   yes.classList.toggle('danger', danger);

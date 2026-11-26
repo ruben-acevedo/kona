@@ -37,6 +37,11 @@ app.commandLine.appendSwitch('lang', ((l) => (l === 'en' ? 'en-US' : l))(i18nMai
 // os testes (KONA_USER_DATA) não esbarram no Kona aberto.
 if (!app.requestSingleInstanceLock()) app.exit(0);
 
+// Recuperar a sessão depois de um travamento (N6): marcador "aberto" + abas de todas as janelas
+const recovery = require('./session');
+if (app.hasSingleInstanceLock()) recovery.startSession();
+app.on('will-quit', () => recovery.endSession());
+
 /** Endereços e arquivos passados na linha de comando ("Kona.exe -- <link>", como o Windows chama). */
 function targetsFrom(argv) {
   const sep = argv.indexOf('--');
@@ -134,8 +139,10 @@ function createWindow(opts = {}) {
   // A interface nunca sai do index.html nem abre janelas próprias
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  const winId = win.id;
   win.on('closed', () => {
     windows.splice(windows.indexOf(win), 1);
+    recovery.windowClosed(winId, { quitting: !windows.length });
     if (lastFocused === win) lastFocused = null;
     // a principal fechou: a mais antiga das outras passa a guardar a sessão
     if (primaryWin === win) {
@@ -162,6 +169,15 @@ function createWindow(opts = {}) {
     if (first || opts.maximize) win.maximize();
     win.show();
     win.webContents.send('win:shown');
+  });
+  // janela reaberta depois de um travamento: as abas dela voltam
+  if (opts.restoreTabs) win.webContents.once('did-finish-load', () => win.webContents.send('session:restore-tabs', opts.restoreTabs));
+  // a interface da janela travou: recarrega e devolve as abas que ela tinha
+  win.webContents.on('render-process-gone', (_e, d) => {
+    if (d.reason === 'clean-exit' || win.isDestroyed()) return;
+    const snap = recovery.snapshotOf(win.id);
+    if (snap) win.webContents.once('did-finish-load', () => win.webContents.send('session:restore-tabs', snap));
+    win.webContents.reload();
   });
   // a janela foi aberta para receber esta aba: ela toma o lugar da nova aba vazia
   if (opts.adopt) win.webContents.once('did-finish-load', () => win.webContents.send('tab:adopt', { ...opts.adopt, fresh: true }));
@@ -378,6 +394,20 @@ registerReader();
 // Compartilhar a tela: seletor do Kona e "Stop sharing"
 registerShare({ winFor, broadcast });
 ipcMain.on('share:ended-page', (e) => { if (e.sender.getType() === 'webview') shareEndedFrom(e.sender.id); });
+
+// Recuperar a sessão (N6): abas de cada janela, "Restaurar abas" depois de um travamento
+recovery.registerSession({
+  windowOf: (wc) => { const w = BrowserWindow.fromWebContents(wc); return windows.includes(w) ? w : null; },
+  isPrimary: (w) => w === primaryWin,
+  createWindow: (o) => createWindow(o),
+});
+// Página que parou de responder: "Fechar página" encerra o processo dela
+handleUi('tab:kill', (e, wcId) => {
+  const wc = webContents.fromId(Number(wcId));
+  if (!wc || wc.hostWebContents !== e.sender) return false;
+  wc.forcefullyCrashRenderer();
+  return true;
+});
 
 // Controle de mídia global: o painel ♪ da interface (abas de todas as janelas)
 registerMedia({ broadcast, winFor });
@@ -647,6 +677,12 @@ app.on('web-contents-created', (_e, contents) => {
   contents.once('destroyed', () => pinnedTabs.delete(contents.id));
   watchReader(contents); // modo leitura: a página é um artigo?
   watchMedia(contents); // controle de mídia: o que toca nesta aba
+  // página que travou ou parou de responder: a interface mostra o aviso na aba
+  contents.on('render-process-gone', (_e, d) => {
+    if (d.reason !== 'clean-exit') contents.hostWebContents?.send('tab:crashed', { id: contents.id, reason: d.reason });
+  });
+  contents.on('unresponsive', () => contents.hostWebContents?.send('tab:responsive', { id: contents.id, ok: false }));
+  contents.on('responsive', () => contents.hostWebContents?.send('tab:responsive', { id: contents.id, ok: true }));
   // som: a aba mostra 🔊 enquanto toca (e permite silenciar)
   contents.on('audio-state-changed', (e) => contents.hostWebContents?.send('tab:audio', { id: contents.id, audible: !!e.audible }));
   extensionsApi.trackTab(contents); // a aba existe para as extensões (chrome.tabs)
