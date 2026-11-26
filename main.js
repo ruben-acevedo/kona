@@ -2,7 +2,7 @@ const { app, BrowserWindow, nativeTheme, nativeImage, Menu, session, shell, comp
 const path = require('path');
 const fs = require('fs');
 const { installChromeWebStore, uninstallExtension } = require('electron-chrome-web-store');
-const { createPolicy } = require('./session-policy');
+const { createPolicy, siteKeyOf } = require('./session-policy');
 const { onUi, handleUi } = require('./ipc');
 const { startUpdater } = require('./updater');
 const { registerImporter } = require('./importer');
@@ -421,13 +421,6 @@ registerMedia({ broadcast, winFor });
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
 extensionsApi.registerExtensions({ win: focusedWin, winFor });
 
-// Sites com pop-ups sempre permitidos (escolha da pessoa no aviso de pop-up bloqueado)
-const popupsAllowed = new Set();
-onUi('popups:allowed', (_e, list) => {
-  popupsAllowed.clear();
-  if (Array.isArray(list)) for (const o of list.slice(0, 1000)) if (typeof o === 'string' && /^https?:\/\//.test(o)) popupsAllowed.add(o);
-});
-
 // Menu de contexto (botão direito): ações nas páginas e nos campos da interface
 registerContextMenu({ win: focusedWin, askNextDownload: (url) => policy.askNext(url) });
 
@@ -727,14 +720,19 @@ app.on('web-contents-created', (_e, contents) => {
     // uma página não pode abrir arquivos locais nem esquemas estranhos
     if (!(['http:', 'https:'].includes(schemeOf(url)) || url === 'about:blank')) return { action: 'deny' };
     const origin = (() => { try { return new URL(contents.getURL()).origin; } catch { return ''; } })();
-    if (!(Date.now() - lastInput <= 5000 || popupsAllowed.has(origin))) {
-      contents.hostWebContents?.send('popup:blocked', { id: contents.id, url, origin });
+    // configurações por site (N17): "permitir" abre sempre; "bloquear" barra até o que vem de um clique
+    // (links com target=_blank clicados continuam abrindo como aba, mesmo com "bloquear")
+    const rule = policy.ruleForContents(contents, contents.getURL(), 'popups');
+    const isPopup = disposition === 'new-window' || url === 'about:blank' || /\b(width|height|popup)\b/i.test(features || '');
+    const recent = Date.now() - lastInput <= 5000;
+    if (rule === 'allow' ? false : rule === 'block' ? (isPopup || !recent) : !recent) {
+      contents.hostWebContents?.send('popup:blocked', { id: contents.id, url, origin, site: siteKeyOf(contents.getURL()) });
       return { action: 'deny' };
     }
     // Pop-up de verdade (janela com tamanho, ou em branco para a página preencher — os controles de
     // apresentação do Meet, o "Entrar com Google/Microsoft" de outros sites): janela pop-up ligada à
     // página que a abriu, como no Chrome. Virar aba quebraria esse vínculo (abria uma aba em branco).
-    if (disposition === 'new-window' || url === 'about:blank' || /\b(width|height|popup)\b/i.test(features || '')) {
+    if (isPopup) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {

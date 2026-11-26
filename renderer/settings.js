@@ -154,9 +154,28 @@ const settingsPage = {
           </div>
         </div>`).join('')
       : `<p class="st-empty">${tl('No saved choices yet. When a site asks for a permission, your answer will show up here.')}</p>`;
+    // os cartões "por site" ficam dentro da seção (o espaço até a próxima vem dela)
     return this.section('permissoes', /*i18n*/'Site permissions', rows,
-      tl('What sites can do without asking. Screen sharing always asks what to share.')) +
-      `<div class="st-card st-sites"><h3>${tl('Choices by site')}</h3>${list}</div>`;
+      tl('What sites can do without asking. Screen sharing always asks what to share.')).replace(/<\/section>$/,
+      `<div class="st-card st-sites"><h3>${tl('Choices by site')}</h3>${list}</div>${this.siteRules()}</section>`);
+  },
+
+  // Configurações por site (N17): JavaScript, pop-ups e cookies, pelo site inteiro
+  siteRules() {
+    const entries = Object.entries(settings.siteRules || {}).sort(([a], [b]) => a.localeCompare(b));
+    const opts = (k) => (k === 'js' ? [['', tl('Default')], ['block', tl('Block')]] : [['', tl('Default')], ['allow', tl('Allow')], ['block', tl('Block')]]);
+    const list = entries.length
+      ? entries.map(([site, r]) => `
+        <div class="st-site" data-rule-row="${escapeHtml(site)}">
+          <div class="st-site-head"><b>${escapeHtml(site)}</b>${stButton(tl('Forget'), 'rule-forget', 'btn-link', `data-site="${escapeHtml(site)}"`)}</div>
+          <div class="st-site-perms">${SITE_KINDS.map(([k, label, ic]) => `
+            <label class="st-chip"><span>${icon(ic)}${tl(label)}</span>
+              ${stSelect(null, opts(k), r[k] || '', `data-rule-site="${escapeHtml(site)}" data-rule-kind="${k}"`)}</label>`).join('')}
+          </div>
+        </div>`).join('')
+      : `<p class="st-empty">${tl('No site settings yet. Click the lock in the address bar to choose JavaScript, pop-ups and cookies for a site.')}</p>`;
+    const search = entries.length > 5 ? `<input class="sb-search st-rules-q" id="st-rules-q" placeholder="${tl('Search sites')}" spellcheck="false" />` : '';
+    return `<div class="st-card st-sites"><h3>${tl('JavaScript, pop-ups and cookies by site')}</h3>${search}${list}</div>`;
   },
 
   downloads() {
@@ -221,12 +240,19 @@ $('#st-main').addEventListener('change', (e) => {
   } else if (el.dataset.perm) {
     settings.permissions[el.dataset.perm] = el.value;
     afterSetting('permissions');
+  } else if (el.dataset.ruleSite) {
+    setSiteRule(el.dataset.ruleSite, el.dataset.ruleKind, el.value, { profile: true });
   } else if (el.dataset.site) {
     settings.sites[el.dataset.site][el.dataset.kind] = el.value;
     afterSetting('sites');
   }
 });
 
+$('#st-main').addEventListener('input', (e) => {
+  if (e.target.id !== 'st-rules-q') return;
+  const q = e.target.value.trim().toLowerCase();
+  $$('[data-rule-row]', $('#st-main')).forEach((row) => { row.hidden = !!q && !row.dataset.ruleRow.includes(q); });
+});
 $('#st-main').addEventListener('click', async (e) => {
   const sw = e.target.closest('[data-toggle]');
   if (sw) { const k = sw.dataset.toggle; settings[k] = !settings[k]; afterSetting(k); return; }
@@ -249,6 +275,7 @@ $('#st-main').addEventListener('click', async (e) => {
     }
     case 'reset-folder': settings.downloadDir = null; afterSetting('downloadDir'); break;
     case 'site-forget': delete settings.sites[b.dataset.origin]; afterSetting('sites'); break;
+    case 'rule-forget': delete settings.siteRules[b.dataset.site]; afterSetting('siteRules'); break;
     case 'profile-use': switchProfile(b.dataset.id); break;
     case 'profile-edit': openProfileSheet('edit', b.dataset.id); break;
     case 'profile-new': openProfileSheet('new'); break;

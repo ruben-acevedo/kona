@@ -241,7 +241,15 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [~] **N16. Controle de mídia global e teclas de mídia.**
   - Feito: botão ♪ na barra (só quando alguma aba, de qualquer janela, tem mídia; azul enquanto toca). Painel "Playing now": capa, título e artista (do `navigator.mediaSession` do site), tocar/pausar, faixa anterior/seguinte (quando o site oferece), clicar leva à aba (troca de janela se preciso). Abas privadas só aparecem na própria janela. `media.js` + `page-media.js` (captura os botões de mídia do site com função de cara nativa). Testado: `tests/debug/media.js` + ua/smoke.
   - Falta: teste manual do usuário das teclas de mídia do teclado e do painel de mídia do Windows (não testado automaticamente para não mexer na mídia de outros programas), e com YouTube/Spotify de verdade.
-- [ ] **N17. Configurações por site** (JavaScript, pop-ups, cookies).
+- [x] **N17. Configurações por site** (JavaScript, pop-ups, cookies).
+  - Clicar no cadeado (ou no ⓘ das páginas http) abre o painel do site: conexão segura ou não, JavaScript / Pop-ups / Cookies (Padrão · Permitir · Bloquear, com o padrão escrito embaixo), as permissões já respondidas (câmera, microfone…), quantos cookies o site guarda, "Apagar dados do site", "Recarregue para aplicar" (JavaScript e cookies) e o atalho para as Configurações.
+  - Vale para o site inteiro (domínio, com subdomínios); câmera/microfone etc. continuam pela origem exata. Na janela privada, o que se muda vale só até ela fechar.
+  - JavaScript bloqueado: regra de segurança da web (CSP `script-src 'none'`) na página e nos quadros dela; ícone na barra. O `<noscript>` não aparece (limitação).
+  - Pop-ups: "Permitir" abre até sem clique; "Bloquear" barra as janelas pop-up mesmo com clique (links com target=_blank clicados continuam abrindo como aba). Os "sempre permitir pop-ups" de antes passaram para cá.
+  - Cookies: "Bloquear" corta os cookies do site em todo lugar; "Permitir" libera também os de terceiros dentro dele (logins embutidos).
+  - Configurações › Permissões dos sites: cartão "JavaScript, pop-ups e cookies por site" (mudar, esquecer, buscar com mais de 5).
+  - `renderer/site-info.js`, `session-policy.js`, `main.js`. Testado: `tests/debug/site-settings.js` (usa o certificado de `tests/fixtures/tls/`) + popups-links e popup-window.
+  - Corrigido no caminho: dicas (title) das abas que apareciam como `tl("…")` em vez do texto traduzido.
 
 ### Grande, para depois
 - [ ] **N20. Acessibilidade completa.**

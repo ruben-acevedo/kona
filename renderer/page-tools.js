@@ -150,13 +150,14 @@ $('#toolbar').addEventListener('focusout', () => peek(false));
 
 /* ───────────── Pop-ups bloqueados (como o Chrome) ───────────── */
 const popupHost = (o) => { try { return new URL(o).host; } catch { return o; } };
-api?.on('popup:blocked', ({ id, url, origin }) => {
+api?.on('popup:blocked', ({ id, url, origin, site }) => {
   const t = tabs.find((x) => { try { return x.wv?.getWebContentsId() === id; } catch { return false; } });
   if (!t) return;
   t.blockedPopups ||= [];
   t.blockedPopupsOrigin = origin;
+  t.blockedPopupsSite = site;
   if (!t.blockedPopups.includes(url)) t.blockedPopups.push(url);
-  if (t.blockedPopups.length === 1 && t === active()) toast('Pop-up blocked');
+  if (t.blockedPopups.length === 1 && t === active()) toast(tl('Pop-up blocked'));
   render();
 });
 function popupMenu(t, x, y) {
@@ -167,13 +168,11 @@ function popupMenu(t, x, y) {
     '-',
     ...list.slice(-8).map((u) => ({ label: u.replace(/^https?:\/\//, '').slice(0, 60), run: () => { t.blockedPopups = t.blockedPopups.filter((x) => x !== u); newTab(u, false); } })),
     '-',
-    { label: tl('Always allow pop-ups from {host}', { host }), run: () => {
-      settings.popupsAllowed = [...new Set([...(settings.popupsAllowed || []), t.blockedPopupsOrigin])];
-      saveSettings(); api?.setPopupsAllowed(settings.popupsAllowed);
+    { label: tl('Always allow pop-ups from {host}', { host: t.blockedPopupsSite || host }), run: () => {
+      setSiteRule(t.blockedPopupsSite, 'popups', 'allow');
       t.blockedPopups = null; render();
-      toast(`Pop-ups allowed on ${host}`);
+      toast(tl('Pop-ups allowed on {host}', { host: t.blockedPopupsSite || host }));
     } },
+    { label: tl('Site settings…'), run: () => toggleSitePop(t, $('.lock', tabEl(t)), true) },
   ], x, y);
 }
-api?.setPopupsAllowed(settings.popupsAllowed || []);
-library.onChange((what) => { if (what === 'profile') api?.setPopupsAllowed(settings.popupsAllowed || []); });

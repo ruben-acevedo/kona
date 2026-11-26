@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
-  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked',
+  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked', 'site:jsblocked',
   'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
   'session:restore-tabs', 'tab:crashed', 'tab:responsive',
   'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select'];
@@ -44,7 +44,9 @@ contextBridge.exposeInMainWorld('kona', {
   tabKill: (wcId) => ipcRenderer.invoke('tab:kill', wcId),
   mediaList: () => ipcRenderer.invoke('media:list'),
   mediaControl: (wcId, action) => ipcRenderer.send('media:control', wcId, action),
-  setPopupsAllowed: (list) => ipcRenderer.send('popups:allowed', list),
+  siteInfo: (partition, url) => ipcRenderer.invoke('site:info', partition, url),
+  siteKey: (url) => ipcRenderer.invoke('site:key', url),
+  setPrivateSiteRules: (partition, rules) => ipcRenderer.send('siterules:private', partition, rules),
   shareChoice: (id, choice) => ipcRenderer.send('share:choice', id, choice),
   shareStop: (id) => ipcRenderer.send('share:stop', id),
   reader: {

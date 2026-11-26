@@ -12,6 +12,9 @@ const DEFAULT_PREFS = {
   clearOnExit: false,
   permissions: { camera: 'ask', microphone: 'ask', location: 'ask', notifications: 'ask', clipboard: 'ask', apps: 'ask' },
   sites: {}, // { "https://site.com": { camera: 'allow' | 'block', ... } }
+  // Configurações por site (N17), pelo site inteiro (domínio registrável, com subdomínios):
+  // { "site.com": { js: 'block', popups: 'allow' | 'block', cookies: 'allow' | 'block' } }
+  siteRules: {},
   downloadDir: null,
   downloadAsk: false,
   httpsFirst: true, // tenta HTTPS antes de HTTP (volta para HTTP se o site não tiver)
@@ -31,6 +34,7 @@ function sanitize(p = {}) {
     for (const k of PERM_KINDS) if (d?.[k] === 'allow' || d?.[k] === 'block') sites[origin][k] = d[k];
   }
   return {
+    siteRules: sanitizeRules(p.siteRules),
     cookies: ok(p.cookies, ['allow', 'block-third-party', 'block-all'], DEFAULT_PREFS.cookies),
     gpc: p.gpc !== false,
     clearOnExit: !!p.clearOnExit,
@@ -41,6 +45,19 @@ function sanitize(p = {}) {
     httpsFirst: p.httpsFirst !== false,
     secureDns: p.secureDns !== false,
   };
+}
+
+const RULE_VALUES = { js: ['allow', 'block'], popups: ['allow', 'block'], cookies: ['allow', 'block'] };
+function sanitizeRules(rules) {
+  const out = {};
+  if (!rules || typeof rules !== 'object') return out;
+  for (const [site, d] of Object.entries(rules).slice(0, 5000)) {
+    if (!/^[a-z0-9.-]{1,253}$|^\[[0-9a-f:.]+\]$/i.test(site) || !d || typeof d !== 'object') continue;
+    const r = {};
+    for (const [k, vals] of Object.entries(RULE_VALUES)) if (vals.includes(d[k])) r[k] = d[k];
+    if (Object.keys(r).length) out[site.toLowerCase()] = r;
+  }
+  return out;
 }
 
 /* ───────────── Terceiros ─────────────
@@ -57,15 +74,21 @@ function siteOf(host) {
   const last2 = parts.slice(-2).join('.');
   return parts.length >= 3 && MULTI.has(last2) ? parts.slice(-3).join('.') : last2;
 }
-function isThirdParty(details) {
-  if (details.resourceType === 'mainFrame') return false;
+/** O site da página que está na aba (o "de cima"), para um pedido de rede. */
+function topSiteOf(details) {
+  if (details.resourceType === 'mainFrame') return siteOf(hostOf(details.url));
   let top = '';
   try { top = details.webContents?.getURL() || ''; } catch { /* aba já fechada */ }
-  top = top || details.referrer || '';
+  return siteOf(hostOf(top || details.referrer || ''));
+}
+function isThirdParty(details) {
+  if (details.resourceType === 'mainFrame') return false;
   const a = siteOf(hostOf(details.url));
-  const b = siteOf(hostOf(top));
+  const b = topSiteOf(details);
   return !!a && !!b && a !== b;
 }
+/** O site (chave das configurações por site) de um endereço http(s). */
+const siteKeyOf = (url) => (/^https?:/i.test(url || '') ? siteOf(hostOf(url)).toLowerCase() : '');
 const originOf = (u) => { try { const x = new URL(u); return `${x.protocol}//${x.host}`; } catch { return ''; } };
 
 /* ───────────── Permissões ───────────── */
@@ -110,6 +133,35 @@ function createPolicy(ctx) {
   const prefsFor = (partition) => prefsByPartition.get(ctx.isPrivate(partition) ? ctx.currentPartition() : partition)
     || prefsByPartition.get(ctx.currentPartition()) || DEFAULT_PREFS;
 
+  // Configurações por site. Nas janelas privadas, o que se muda lá vale só para aquela sessão
+  // (fica aqui na memória, por cima das do perfil) e some quando ela fecha.
+  const privateRules = new Map(); // partição privada → { site: { js, popups, cookies } }
+  const partitionOfSession = new WeakMap();
+  onUi('siterules:private', (_e, partition, rules) => {
+    if (!ctx.isPrivate(partition)) return;
+    privateRules.set(partition, sanitizeRules(rules));
+  });
+  function ruleFor(partition, site, kind) {
+    if (!site) return null;
+    return privateRules.get(partition)?.[site]?.[kind] || prefsFor(partition).siteRules?.[site]?.[kind] || null;
+  }
+  /** A escolha do site para um conteúdo (aba): 'allow' | 'block' | null (o padrão). */
+  function ruleForContents(wc, url, kind) {
+    const partition = partitionOfSession.get(wc.session);
+    return partition ? ruleFor(partition, siteKeyOf(url), kind) : null;
+  }
+  // cookies de um pedido: a escolha do site do pedido vale primeiro; "permitir" no site aberto na
+  // aba libera também os de terceiros dentro dele (login embutido que quebra com o bloqueio)
+  function cookiesBlocked(partition, p, details) {
+    const own = ruleFor(partition, siteOf(hostOf(details.url)).toLowerCase(), 'cookies');
+    if (own === 'block') return true;
+    if (own === 'allow') return false;
+    const top = ruleFor(partition, (topSiteOf(details) || '').toLowerCase(), 'cookies');
+    if (top === 'block') return true;
+    if (top === 'allow') return false;
+    return p.cookies === 'block-all' || (p.cookies === 'block-third-party' && isThirdParty(details));
+  }
+
   // Pedido de permissão: pergunta na interface e espera a resposta
   const pending = new Map();
   let seq = 0;
@@ -137,7 +189,15 @@ function createPolicy(ctx) {
     return file;
   };
 
+  function storageAccessOk(partition, p, topUrl, reqUrl) {
+    const own = ruleFor(partition, siteKeyOf(reqUrl), 'cookies');
+    const top = ruleFor(partition, siteKeyOf(topUrl), 'cookies');
+    if (own === 'block' || top === 'block') return false;
+    return own === 'allow' || top === 'allow' || p.cookies === 'allow';
+  }
+
   function install(ses, partition) {
+    partitionOfSession.set(ses, partition);
     // Corretor ortográfico: os idiomas do Windows (Configurações → Idioma), na mesma ordem
     try {
       const avail = ses.availableSpellCheckerLanguages || [];
@@ -176,28 +236,38 @@ function createPolicy(ctx) {
         for (const [k, v] of Object.entries(hints)) if (!have.has(k)) h[k] = v;
       }
       if (p.gpc) h['Sec-GPC'] = '1';
-      if (p.cookies === 'block-all' || (p.cookies === 'block-third-party' && isThirdParty(details))) {
+      if (cookiesBlocked(partition, p, details)) {
         for (const k of Object.keys(h)) if (k.toLowerCase() === 'cookie') delete h[k];
       }
       callback({ requestHeaders: h });
     });
     // Cookies definidos por HTTP (a grande maioria dos cookies de rastreamento)
+    // + JavaScript bloqueado num site (N17): a página e os quadros dela recebem a regra de segurança
+    // da própria web (CSP) que proíbe todos os scripts, inclusive os escritos dentro da página
     ses.webRequest.onHeadersReceived((details, callback) => {
       const p = prefsFor(partition);
-      if (p.cookies === 'block-all' || (p.cookies === 'block-third-party' && isThirdParty(details))) {
-        const rh = { ...details.responseHeaders };
-        let changed = false;
+      const rh = { ...details.responseHeaders };
+      let changed = false;
+      if (cookiesBlocked(partition, p, details)) {
         for (const k of Object.keys(rh)) if (k.toLowerCase() === 'set-cookie') { delete rh[k]; changed = true; }
-        callback(changed ? { responseHeaders: rh } : {});
-        return;
       }
-      callback({});
+      const frame = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
+      if (frame && ruleFor(partition, (topSiteOf(details) || '').toLowerCase(), 'js') === 'block') {
+        const key = Object.keys(rh).find((k) => k.toLowerCase() === 'content-security-policy') || 'Content-Security-Policy';
+        rh[key] = [...[].concat(rh[key] || []), "script-src 'none'"];
+        changed = true;
+        if (details.resourceType === 'mainFrame') {
+          const wc = details.webContents;
+          try { wc?.hostWebContents?.send('site:jsblocked', { id: wc.id, url: details.url }); } catch { /* aba já fechada */ }
+        }
+      }
+      callback(changed ? { responseHeaders: rh } : {});
     });
 
     ses.setPermissionRequestHandler(async (wc, permission, callback, details) => {
       if (ALWAYS.has(permission)) { callback(true); return; }
       const p = prefsFor(partition);
-      if (permission === 'storage-access' || permission === 'top-level-storage-access') { callback(p.cookies === 'allow'); return; }
+      if (permission === 'storage-access' || permission === 'top-level-storage-access') { callback(storageAccessOk(partition, p, wc?.getURL?.(), details.requestingUrl)); return; }
       const kinds = kindsFor(permission, details);
       if (!kinds) { callback(false); return; }
       const origin = originOf(details.requestingUrl || wc.getURL());
@@ -211,7 +281,7 @@ function createPolicy(ctx) {
     ses.setPermissionCheckHandler((_wc, permission, requestingOrigin, details) => {
       if (ALWAYS.has(permission)) return true;
       const p = prefsFor(partition);
-      if (permission === 'storage-access' || permission === 'top-level-storage-access') return p.cookies === 'allow';
+      if (permission === 'storage-access' || permission === 'top-level-storage-access') return storageAccessOk(partition, p, _wc?.getURL?.(), requestingOrigin);
       const kinds = permission === 'media'
         ? [details?.mediaType === 'audio' ? 'microphone' : 'camera']
         : kindsFor(permission, details);
@@ -249,7 +319,15 @@ function createPolicy(ctx) {
   }));
 
   // Dados de sites (cookies agrupados por site)
-  const validPartition = (p) => typeof p === 'string' && /^persist:kona(-[a-z0-9]{4,32})?$/.test(p);
+  const validPartition = (p) => typeof p === 'string' && (/^persist:kona(-[a-z0-9]{4,32})?$/.test(p) || ctx.isPrivate(p));
+  // o painel do cadeado: o site (chave das configurações) e quantos cookies ele guarda
+  handleUi('site:info', async (_e, partition, url) => {
+    const site = siteKeyOf(typeof url === 'string' ? url : '');
+    if (!site || !validPartition(partition)) return { site, cookies: 0 };
+    const cookies = await session.fromPartition(partition).cookies.get({}).catch(() => []);
+    return { site, cookies: cookies.filter((c) => siteOf((c.domain || '').replace(/^\./, '')).toLowerCase() === site).length };
+  });
+  handleUi('site:key', (_e, url) => siteKeyOf(typeof url === 'string' ? url : ''));
   handleUi('sites:list', async (_e, partition) => {
     if (!validPartition(partition)) return [];
     const cookies = await session.fromPartition(partition).cookies.get({});
@@ -287,7 +365,7 @@ function createPolicy(ctx) {
       .finally(() => app.quit());
   });
 
-  return { install, prefsFor, askNext };
+  return { install, prefsFor, askNext, ruleForContents };
 }
 
-module.exports = { createPolicy, siteOf, isThirdParty, DEFAULT_PREFS };
+module.exports = { createPolicy, siteOf, siteKeyOf, isThirdParty, DEFAULT_PREFS };

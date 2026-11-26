@@ -1207,6 +1207,39 @@ body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
 #btn-media.playing { color: var(--accent); }
 #media-pop { width: 340px; transform-origin: top right; transform: translateY(-6px) scale(0.98); }
 #media-pop.show { transform: none; }
+
+/* ───────────── Painel do cadeado: configurações por site (N17) ───────────── */
+.tab .addr .lock { padding: 0; border: 0; background: none; width: 20px; height: 20px; border-radius: 999px; place-items: center; cursor: default; }
+.tab .addr .lock:hover { background: var(--glass-hover); color: var(--text); }
+.tab.insecure:not(.editing) .addr .lock { display: grid; }
+.tab .jsind { display: grid; width: 24px; height: 24px; border-radius: 999px; place-items: center; color: var(--text-2); flex: none; }
+.tab .jsind[hidden] { display: none; }
+.tab .jsind .ic { width: 15px; height: 15px; }
+.tab .jsind:hover { background: var(--glass-hover); color: var(--text); }
+#site-pop { width: 340px; padding: 10px; transform-origin: top left; transform: translateY(-6px) scale(0.98); }
+#site-pop.show { transform: none; }
+.si-head { display: flex; align-items: center; gap: 10px; padding: 2px 4px 6px; }
+.si-fav { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--glass-hover); overflow: hidden; }
+.si-fav img { width: 18px; height: 18px; }
+.si-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.si-title b { font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-conn { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
+.si-conn .ic { width: 12px; height: 12px; stroke-width: 2; }
+.si-conn.bad { color: #e5534b; }
+.si-note { font-size: 12px; color: var(--text-2); margin: 2px 4px 6px; line-height: 1.4; }
+.si-sep { height: 0.5px; background: var(--stroke); margin: 6px 2px; }
+.si-row { display: flex; align-items: center; gap: 10px; padding: 4px 4px; }
+.si-ic { display: grid; color: var(--text-2); flex: none; }
+.si-ic .ic { width: 16px; height: 16px; }
+.si-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; display: flex; flex-direction: column; }
+.si-label small { font-size: 11px; font-weight: 400; color: var(--text-2); }
+.si-row .st-select { min-width: 0; width: 132px; height: 28px; font-size: 12.5px; }
+.si-reload { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 2px 2px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); font-size: 12.5px; }
+.si-reload .btn-primary { height: 28px; padding: 0 12px; font-size: 12.5px; }
+.si-foot { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 4px; font-size: 12.5px; color: var(--text-2); }
+.si-cookies { display: flex; align-items: center; gap: 6px; }
+.si-cookies .ic { width: 14px; height: 14px; }
+.st-rules-q { width: 100%; margin: 0 0 8px; }
 .md-row { display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 12px; }
 .md-row:hover { background: var(--glass-hover); }
 .md-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; padding: 2px; border-radius: 10px; }

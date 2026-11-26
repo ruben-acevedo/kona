@@ -54,6 +54,8 @@ const ICONS = {
   nextTrack: '<path d="M6 6.6v10.8a.6.6 0 0 0 .9.5l7.5-5.4a.6.6 0 0 0 0-1L6.9 6.1a.6.6 0 0 0-.9.5z"/><path d="M17.5 6v12"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
   cookie: '<path d="M20.5 12.5A8.5 8.5 0 1 1 11.5 3.5a3 3 0 0 0 3.6 3.4 3 3 0 0 0 3.3 3.6 2.5 2.5 0 0 0 2.1 2z"/><circle cx="9" cy="10" r=".9"/><circle cx="14" cy="15" r=".9"/><circle cx="9.5" cy="15.5" r=".9"/>',
+  codeOff: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/><path d="M4 4l16 16"/>',
+  code: '<path d="m8.5 7.5-4.5 4.5 4.5 4.5M15.5 7.5l4.5 4.5-4.5 4.5"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5a7 7 0 0 1 14 0"/>',
   palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.3-1.3-1.5-1.3-2.8 0-1 .8-1.8 1.8-1.8h2.2a4 4 0 0 0 4-4C20.5 6.8 16.7 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.8" r="1"/>',
@@ -221,7 +223,8 @@ const DEFAULTS = {
   autofillAddresses: true, autofillCards: true, // salvar e preencher endereços e cartões
   reader: { size: 5, font: 'system', theme: null }, // modo leitura (theme null = segue o tema do Kona)
   readerAuto: {}, // sites em que o modo leitura abre sozinho
-  popupsAllowed: [], // sites com pop-ups sempre permitidos
+  popupsAllowed: [], // (antigo) sites com pop-ups sempre permitidos: passa para siteRules
+  siteRules: {}, // configurações por site (N17): { "site.com": { js, popups, cookies } } (ver site-info.js)
   // Downloads
   downloadDir: null, downloadAsk: false,
 };
@@ -231,7 +234,7 @@ function loadSettings() {
     const raw = localStorage.getItem(profileKey('settings'));
     const s = JSON.parse(raw || '{}');
     const base = structuredClone(DEFAULTS);
-    return { ...base, ...s, sections: { ...base.sections, ...(s.sections || {}) }, permissions: { ...base.permissions, ...(s.permissions || {}) }, sites: s.sites || {} };
+    return { ...base, ...s, sections: { ...base.sections, ...(s.sections || {}) }, permissions: { ...base.permissions, ...(s.permissions || {}) }, sites: s.sites || {}, siteRules: s.siteRules || {} };
   } catch {
     return structuredClone(DEFAULTS);
   }
@@ -245,7 +248,7 @@ function reloadSettings() {
   syncPrefs();
 }
 /** Envia ao processo principal os ajustes que ele aplica (cookies, GPC, permissões, downloads). */
-const PREF_KEYS = ['cookies', 'gpc', 'clearOnExit', 'httpsFirst', 'secureDns', 'permissions', 'sites', 'downloadDir', 'downloadAsk'];
+const PREF_KEYS = ['cookies', 'gpc', 'clearOnExit', 'httpsFirst', 'secureDns', 'permissions', 'sites', 'siteRules', 'downloadDir', 'downloadAsk'];
 function syncPrefs() {
   const p = {};
   for (const k of PREF_KEYS) p[k] = settings[k];
@@ -477,6 +480,7 @@ function ensureWebview(t) {
   on('did-navigate', (e) => {
     t.reader = null; // o modo leitura vale por página
     t.blockedPopups = null; // e os pop-ups bloqueados também
+    t.siteRulesLoaded = null; // a página nova já vem com as configurações do site escolhidas agora
     t.url = viewSource(e.url); t.favicon = null; sync(); render();
     if (!t.url.startsWith('view-source:')) browseHistory.addVisit(e.url, t.title);
     if (t.pinned) library.pinnedNavigated(t);
@@ -600,16 +604,17 @@ function createTabEl(t) {
   el.className = 'tab';
   el.dataset.id = t.id;
   el.innerHTML = `
-    <span class="slot"><span class="tfav"></span><button class="x" title="Close tab">${icon('x')}</button></span>
+    <span class="slot"><span class="tfav"></span><button class="x" title="${tl('Close tab')}">${icon('x')}</button></span>
     <span class="title"></span>
-    <button class="snd" title=tl("Mute tab") hidden></button>
-    <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder=tl("Search or enter address") /></form>
-    <button class="popupind" title="Pop-ups blocked" hidden></button>
-    <button class="readerbtn" title=tl("Show Reader (Ctrl+Shift+R)") hidden></button>
-    <button class="aabtn" title="Reader options" hidden>Aa</button>
-    <button class="zoomind" title="Reset zoom (Ctrl+0)" hidden></button>
-    <button class="bm" title=tl("Add to Favorites (Ctrl+D)")>${icon('star')}</button>
-    <button class="reload" title="Reload">${icon('reload')}</button>
+    <button class="snd" title="${tl('Mute tab')}" hidden></button>
+    <form class="addr"><button type="button" class="lock" title="${tl('View site information')}">${icon('lock')}</button><input spellcheck="false" autocomplete="off" placeholder="${tl('Search or enter address')}" /></form>
+    <button class="popupind" title="${tl('Pop-ups blocked')}" hidden></button>
+    <button class="jsind" title="${tl('JavaScript blocked on this site')}" hidden></button>
+    <button class="readerbtn" title="${tl('Show Reader (Ctrl+Shift+R)')}" hidden></button>
+    <button class="aabtn" title="${tl('Reader options')}" hidden>Aa</button>
+    <button class="zoomind" title="${tl('Reset zoom (Ctrl+0)')}" hidden></button>
+    <button class="bm" title="${tl('Add to Favorites (Ctrl+D)')}">${icon('star')}</button>
+    <button class="reload" title="${tl('Reload')}">${icon('reload')}</button>
     <span class="progress"></span>`;
 
   const input = $('input', el);
@@ -625,13 +630,15 @@ function createTabEl(t) {
   // É feito no "click" (e não cancelando o mousedown): assim o clique tira o foco de uma
   // página aberta antes, e o campo consegue recebê-lo. Clicar numa aba inativa só a ativa.
   el.addEventListener('click', (e) => {
-    if (wasActive && t.id === activeId && !e.target.closest('.x, .reload, .bm, input')) input.focus();
+    if (wasActive && t.id === activeId && !e.target.closest('.x, .reload, .bm, .lock, .jsind, input')) input.focus();
   });
   $('.x', el).addEventListener('click', (e) => { e.stopPropagation(); closeTab(t.id); });
   $('.reload', el).addEventListener('click', () => { if (t.wv) (t.loading ? t.wv.stop() : t.wv.reload()); });
   $('.bm', el).addEventListener('click', () => toggleBookmark(t));
   $('.zoomind', el).addEventListener('click', () => zoomReset());
   $('.readerbtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReader(t); });
+  $('.lock', el).addEventListener('click', (e) => { e.stopPropagation(); toggleSitePop(t, e.currentTarget); });
+  $('.jsind', el).addEventListener('click', (e) => { e.stopPropagation(); toggleSitePop(t, $('.lock', el)); });
   $('.popupind', el).addEventListener('click', (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); popupMenu(t, r.left, r.bottom + 6); });
   $('.aabtn', el).addEventListener('click', (e) => { e.stopPropagation(); toggleReaderPop(e.currentTarget); });
   $('.snd', el).addEventListener('mousedown', (e) => e.stopPropagation()); // não troca de aba
@@ -714,6 +721,13 @@ function paintTab(t, el) {
   el.classList.toggle('web', !isInternal(t.url));
   el.classList.toggle('loading', t.loading);
   el.classList.toggle('secure', t.url.startsWith('https://'));
+  el.classList.toggle('insecure', t.url.startsWith('http://'));
+  const lk = $('.lock', el), lkIc = t.url.startsWith('http://') ? 'info' : 'lock';
+  if (lk.dataset.ic !== lkIc) { lk.dataset.ic = lkIc; lk.innerHTML = icon(lkIc); }
+  // JavaScript bloqueado neste site (configurações por site): ícone na barra
+  const ji = $('.jsind', el);
+  ji.hidden = !(isActive && t.jsBlockedFor && t.jsBlockedFor === t.url);
+  if (!ji.hidden && !ji.firstChild) ji.innerHTML = icon('codeOff');
   el.classList.toggle('bookmarked', isActive && t.url !== START && !!bookmarks.find(t.url));
   // pop-ups bloqueados nesta página: ícone na barra (clicar mostra a lista e "sempre permitir")
   const pi = $('.popupind', el);
