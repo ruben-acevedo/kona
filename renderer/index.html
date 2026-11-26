@@ -336,6 +336,16 @@
 
   <div id="toast" class="glass"></div>
 
+  <!-- Buscar na página (Ctrl+F) -->
+  <div id="find-bar" class="glass" role="search">
+    <span data-icon="search"></span>
+    <input id="fb-input" placeholder="Find in page" spellcheck="false" autocomplete="off" />
+    <span id="fb-count"></span>
+    <button class="tb small" id="fb-prev" data-icon="chevron" title="Previous (Shift+Enter)"></button>
+    <button class="tb small" id="fb-next" data-icon="chevron" title="Next (Enter)"></button>
+    <button class="tb small" id="fb-close" data-icon="x" title="Close (Esc)"></button>
+  </div>
+
   <!-- Menu de contexto (botão direito), desenhado pelo Kona -->
   <div id="ctx-menu" role="menu" tabindex="-1"></div>
 
@@ -348,6 +358,7 @@
   <script src="sidebar.js"></script>
   <script src="settings.js"></script>
   <script src="downloads.js"></script>
+  <script src="page-tools.js"></script>
   <script src="context-menu.js"></script>
   <script src="import.js"></script>
   <script src="default-browser.js"></script>

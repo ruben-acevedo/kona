@@ -97,6 +97,7 @@ Kona shows up in the Start menu and on the desktop. Updates arrive on their own.
 | --- | --- |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | New tab |
 | <kbd>Ctrl</kbd>+<kbd>W</kbd> | Close tab |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Reopen closed tab |
 | <kbd>Ctrl</kbd>+<kbd>Tab</kbd> | Next tab |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> | Go to the address bar |
 | <kbd>Alt</kbd>+<kbd>V</kbd> | Tab overview (arrows to choose, Enter to open) |
@@ -104,6 +105,10 @@ Kona shows up in the Start menu and on the desktop. Updates arrive on their own.
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Add the page to Favorites |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Save to Reading List |
 | <kbd>Ctrl</kbd>+<kbd>H</kbd> | History |
+| <kbd>Ctrl</kbd>+<kbd>J</kbd> | Downloads |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Find in page |
+| <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd> | Zoom in, out, reset (remembered per site) |
+| <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> | Back / Forward |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Private browsing |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Settings |
 

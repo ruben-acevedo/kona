@@ -215,6 +215,7 @@ function tabItems(t) {
     { label: fav ? 'Remove from Favorites' : 'Add to Favorites', key: 'Ctrl+D', run: () => toggleBookmark(t), disabled: !web },
     '-',
     { label: 'Close tab', key: 'Ctrl+W', run: () => closeTab(t.id) },
+    { label: 'Reopen closed tab', key: 'Ctrl+Shift+T', run: () => reopenClosedTab(), disabled: !closedTabs.length },
     { label: 'Close other tabs', run: () => { for (const o of [...tabs]) if (o.id !== t.id) closeTab(o.id); }, disabled: tabs.length < 2 },
   ];
 }

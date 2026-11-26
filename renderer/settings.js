@@ -174,7 +174,9 @@ const settingsPage = {
     const keys = [
       ['Ctrl+T', 'New tab'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'],
       ['Alt+Z', 'Sidebar'], ['Ctrl+D', 'Add page to Favorites'], ['Ctrl+Shift+D', 'Save to Reading List'],
-      ['Ctrl+H', 'History'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
+      ['Ctrl+H', 'History'], ['Ctrl+J', 'Downloads'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
+      ['Ctrl+F', 'Find in page'], ['Ctrl+Shift+T', 'Reopen closed tab'], ['Ctrl+ / Ctrl−', 'Zoom in / out'], ['Ctrl+0', 'Reset zoom'],
+      ['Alt+← / Alt+→', 'Back / Forward'], ['Ctrl+P', 'Print'],
     ];
     return this.section('sobre', 'About Kona',
       stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `Version ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
@@ -185,7 +187,7 @@ const settingsPage = {
 /* ───────────── Interações da página ───────────── */
 function afterSetting(key) {
   saveSettings();
-  if (key === 'zoom') for (const t of tabs) t.wv?.setZoomFactor(settings.zoom);
+  if (key === 'zoom') for (const t of tabs) applyZoom(t);
   if (key === 'searchEngine' || key === 'suggestions') omnibox.cache.clear();
   if (key === 'sounds') { applySections(); if (settings.sounds) sfx.play('select'); }
   settingsPage.refresh();

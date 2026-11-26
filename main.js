@@ -432,6 +432,8 @@ app.on('web-contents-created', (_e, contents) => {
   }
   if (contents.getType() !== 'webview') return;
   watchPage(contents); // botão direito → menu do Kona
+  // Ctrl + roda do mouse: zoom do site (o Kona guarda por site, como o Chrome)
+  contents.on('zoom-changed', (_e, dir) => contents.hostWebContents?.send('shortcut', { key: dir === 'in' ? 'zoomin' : 'zoomout' }));
   // Não revela os IPs da rede local por WebRTC (videochamadas continuam funcionando)
   contents.setWebRTCIPHandlingPolicy('default_public_interface_only');
   contents.setWindowOpenHandler(({ url }) => {
@@ -451,6 +453,12 @@ app.on('web-contents-created', (_e, contents) => {
       contents.hostWebContents?.send('shortcut', { key: input.key === 'ArrowLeft' ? 'back' : 'forward' });
       return;
     }
+    // F3 / Shift+F3: próxima/anterior ocorrência da busca na página
+    if (input.key === 'F3' && !input.control && !input.alt) {
+      event.preventDefault();
+      contents.hostWebContents?.send('shortcut', { key: 'f3', shift: input.shift });
+      return;
+    }
     // Ctrl+Shift+I: ferramentas de desenvolvedor da página
     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
       event.preventDefault();
@@ -465,7 +473,7 @@ app.on('web-contents-created', (_e, contents) => {
     }
     if (!(input.control || input.meta)) return;
     const key = input.key.toLowerCase();
-    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 's', 'p', 'u', 'tab', ',', '\\', '|'].includes(key)) {
+    if (['t', 'w', 'l', 'r', 'd', 'h', 'j', 'n', 's', 'p', 'u', 'f', 'g', '=', '+', '-', '_', '0', 'tab', ',', '\\', '|'].includes(key)) {
       event.preventDefault();
       contents.hostWebContents?.send('shortcut', { key, shift: input.shift });
     }

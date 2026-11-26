@@ -126,3 +126,11 @@ Alinhado com o usuário em 2026-11-25: ordem G1 → G2 → G3; sem abas abertas,
   - Reproduzido (`tests/debug/google-captcha.js`, perfil novo, digitando a busca). Antes da busca, o Kona fazia 26 pedidos de sugestão (um por letra) pela sessão do perfil, e o 1º deles criava o cookie do Google usado na busca.
   - Mudanças: sugestões numa sessão própria, só na memória e sem cookies (também mais privado); espera 160 ms de pausa na digitação (1 pedido em vez de 26 no teste); busca do Google no formato da barra do Chrome (`&oq=…&sourceid=chrome&ie=UTF-8`, função `searchUrl`).
   - Não deu para concluir: depois dos testes da noite, o Chrome de verdade com perfil novo também caiu na verificação (o Google marcou o IP; IPv6 de provedor brasileiro). Falta a comparação limpa, com o IP "frio": 1 busca com Chrome em perfil novo e 1 com Kona em perfil novo. Não repetir buscas automáticas seguidas do mesmo IP.
+
+## K. O básico do dia a dia
+
+- [x] **K1. Buscar na página, zoom e reabrir aba (15).** Pedido em 2026-11-25 antes de passar a usar o Kona de vez (senhas ficam para uma conversa à parte).
+  - Buscar na página: Ctrl+F (também com o foco na página) abre uma barra flutuante no estilo do Kona; "2 of 10", Enter/Shift+Enter, F3/Shift+F3, Ctrl+G, setas; "No results" em vermelho; Esc fecha e devolve o foco à página. Fecha ao trocar de aba ou navegar.
+  - Zoom: Ctrl+= / Ctrl++ / Ctrl+- / Ctrl+0 e Ctrl+roda do mouse, nos passos do Chrome (25%–500%). Guardado por site (`settings.siteZoom`), vale para todas as abas do site; quando não é o padrão, aparece na barra de endereço ("125%"; clicar volta ao padrão). O "Default page zoom" das configurações continua sendo o padrão.
+  - Reabrir aba fechada: Ctrl+Shift+T e no menu da aba; até 25 abas, na mesma posição; não guarda no modo privado; zera ao trocar de grupo/perfil.
+  - Atalhos atualizados em Settings → About Kona e no README. Teste: `tests/debug/page-tools.js`.

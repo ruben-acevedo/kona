@@ -195,6 +195,7 @@ const DEFAULTS = {
   cookies: 'block-third-party', clearOnExit: false, gpc: true, httpsFirst: true, secureDns: true,
   permissions: { camera: 'ask', microphone: 'ask', location: 'ask', notifications: 'ask', clipboard: 'ask', apps: 'ask' },
   sites: {},
+  siteZoom: {}, // zoom guardado por site (host → fator), como no Chrome
   // Downloads
   downloadDir: null, downloadAsk: false,
 };
@@ -430,7 +431,9 @@ function ensureWebview(t) {
     el?.classList.add('done');
     setTimeout(() => el?.classList.remove('done'), 600);
   });
-  on('dom-ready', () => { if (settings.zoom !== 1) wv.setZoomFactor(settings.zoom); });
+  // zoom do site (ou o padrão) e busca na página (renderer/page-tools.js, carregado depois deste arquivo)
+  on('dom-ready', () => { if (typeof applyZoom === 'function') applyZoom(t); else if (settings.zoom !== 1) wv.setZoomFactor(settings.zoom); });
+  if (typeof findBar !== 'undefined') findBar.watch(t, wv);
   // o código-fonte (view-source:) chega como o endereço da página: mantém o prefixo e não entra no histórico
   const viewSource = (url) => (t.url.startsWith('view-source:') && !url.startsWith('view-source:') ? `view-source:${url}` : url);
   on('did-navigate', (e) => {
@@ -478,6 +481,7 @@ const KEEP_RENDERED = 3;
 let mru = [];
 
 function activate(id) {
+  if (typeof findBar !== 'undefined' && findBar.tab && findBar.tab.id !== id) findBar.close(false);
   activeId = id;
   mru = [id, ...mru.filter((x) => x !== id)].slice(0, 12);
   ensureWebview(active());
@@ -498,6 +502,7 @@ function closeTab(id) {
   const i = tabs.findIndex((t) => t.id === id);
   if (i < 0) return;
   const [t] = tabs.splice(i, 1);
+  if (typeof rememberClosed === 'function') rememberClosed(t, i); // Ctrl+Shift+T
   sfx.play('tabClose');
   t.wv?.remove();
   discardParked(t);
@@ -530,6 +535,7 @@ function createTabEl(t) {
     <span class="slot"><span class="tfav"></span><button class="x" title="Close tab">${icon('x')}</button></span>
     <span class="title"></span>
     <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder="Search or enter address" /></form>
+    <button class="zoomind" title="Reset zoom (Ctrl+0)" hidden></button>
     <button class="bm" title="Add to Favorites (Ctrl+D)">${icon('star')}</button>
     <button class="reload" title="Reload">${icon('reload')}</button>
     <span class="progress"></span>`;
@@ -552,6 +558,7 @@ function createTabEl(t) {
   $('.x', el).addEventListener('click', (e) => { e.stopPropagation(); closeTab(t.id); });
   $('.reload', el).addEventListener('click', () => { if (t.wv) (t.loading ? t.wv.stop() : t.wv.reload()); });
   $('.bm', el).addEventListener('click', () => toggleBookmark(t));
+  $('.zoomind', el).addEventListener('click', () => zoomReset());
   input.addEventListener('focus', () => {
     el.classList.add('editing');
     input.value = t.url === START ? '' : t.url;
@@ -622,6 +629,11 @@ function paintTab(t, el) {
   el.classList.toggle('loading', t.loading);
   el.classList.toggle('secure', t.url.startsWith('https://'));
   el.classList.toggle('bookmarked', isActive && t.url !== START && !!bookmarks.find(t.url));
+  // zoom diferente do padrão: aparece na barra (clicar volta ao padrão)
+  const z = isActive && t.wv && typeof zoomFor === 'function' ? zoomFor(t.url) : settings.zoom;
+  const zi = $('.zoomind', el);
+  zi.hidden = Math.abs(z - (settings.zoom || 1)) < 0.001;
+  if (!zi.hidden) zi.textContent = `${Math.round(z * 100)}%`;
   const bm = $('.bm', el);
   if (bm) bm.title = el.classList.contains('bookmarked') ? 'Remove from Favorites (Ctrl+D)' : 'Add to Favorites (Ctrl+D)';
   el.title = isActive ? '' : t.title;
@@ -1089,7 +1101,8 @@ api?.on('page:mousedown', () => {
 
 function shortcut(key, shift) {
   const a = active();
-  if (key === 't') newTab();
+  if (key === 't' && shift) reopenClosedTab();
+  else if (key === 't') newTab();
   else if (key === 'w') { if (tabs.length === 1) api?.close(); else closeTab(activeId); }
   else if (key === 'l' && shift) toggleSidebar();
   else if (key === 'l') focusAddress();
@@ -1098,6 +1111,14 @@ function shortcut(key, shift) {
   else if (key === 'd') toggleBookmark();
   else if (key === 'h') openSidebarView('history');
   else if (key === 'j') openSidebarView('downloads');
+  else if (key === 'f' || key === 'g' || key === 'f3') {
+    if (key === 'f' || !findBar.isOpen()) findBar.open(); else findBar.search(true, !shift);
+  }
+  else if (key === '=' || key === '+') zoomStep(1);
+  else if (key === '-' || key === '_') zoomStep(-1);
+  else if (key === '0') zoomReset();
+  else if (key === 'zoomin') zoomStep(1);
+  else if (key === 'zoomout') zoomStep(-1);
   else if (key === 'back') goBack();
   else if (key === 'forward') a.wv?.goForward();
   else if (['s', 'p', 'u'].includes(key) && !shift) {
@@ -1124,6 +1145,7 @@ document.addEventListener('keydown', (e) => {
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
     for (const id of ['#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
+    if (findBar.close()) return;
     if (closeProfileLayers()) return;
     if ($('#confirm-sheet').classList.contains('show')) answerConfirm(false);
     else if ($('#ext-sheet').classList.contains('show')) closeSheet('#ext-sheet');
@@ -1141,6 +1163,7 @@ document.addEventListener('keydown', (e) => {
   if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest?.('input, textarea')) {
     shortcut(e.key === 'ArrowLeft' ? 'back' : 'forward'); e.preventDefault(); return;
   }
+  if (e.key === 'F3' && !e.ctrlKey && !e.altKey) { shortcut('f3', e.shiftKey); e.preventDefault(); return; }
   if (!(e.ctrlKey || e.metaKey)) return;
   if (shortcut(e.key.toLowerCase(), e.shiftKey)) e.preventDefault();
 });
