@@ -27,12 +27,12 @@ function renderSidebar() {
 
 function tabRows() {
   const rows = tabs.map((t) => `
-    <div class="sb-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}" title="${escapeHtml(t.title)}">
+    <div class="sb-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}" title="${escapeHtml(tabTitle(t))}">
       <span class="sb-fav">${favHtml(t).html}</span>
-      <span class="sb-tab-title">${escapeHtml(t.title)}</span>
-      <button class="sb-act" data-act="close-tab" title="Close tab">${icon('x')}</button>
+      <span class="sb-tab-title">${escapeHtml(tabTitle(t))}</span>
+      <button class="sb-act" data-act="close-tab" title="${tl('Close tab')}">${icon('x')}</button>
     </div>`).join('');
-  return `<div class="sb-tabs">${rows}<button class="sb-tab new" data-act="new-tab">${icon('plus')}<span class="sb-tab-title">New tab</span></button></div>`;
+  return `<div class="sb-tabs">${rows}<button class="sb-tab new" data-act="new-tab">${icon('plus')}<span class="sb-tab-title">${tl('New tab')}</span></button></div>`;
 }
 
 function setRow({ key, ic, label, count, actions = '' }) {
@@ -52,18 +52,18 @@ function renderMain() {
   const own = library.primary ? d.default.tabs.length : library.ownTabs?.tabs.length;
   const nDefault = library.currentKey() === 'default' ? tabs.length : own || 1;
   $('#sb-sets').innerHTML =
-    setRow({ key: 'default', ic: 'tabs', label: `${nDefault} ${nDefault === 1 ? 'Tab' : 'Tabs'}` }) +
-    setRow({ key: 'private', ic: 'hand', label: 'Private', count: library.isPrivate() ? tabs.length : null });
+    setRow({ key: 'default', ic: 'tabs', label: tln(nDefault, '{n} Tab', '{n} Tabs') }) +
+    setRow({ key: 'private', ic: 'hand', label: tl('Private'), count: library.isPrivate() ? tabs.length : null });
 
   const groupActions = `<span class="sb-acts">
-      <button class="sb-act" data-act="rename-group" title="Rename">${icon('pencil')}</button>
-      <button class="sb-act" data-act="delete-group" title="Delete group">${icon('x')}</button></span>`;
+      <button class="sb-act" data-act="rename-group" title="${tl('Rename')}">${icon('pencil')}</button>
+      <button class="sb-act" data-act="delete-group" title="${tl('Delete group')}">${icon('x')}</button></span>`;
   $('#sb-groups').innerHTML = d.groups.map((g) => setRow({
     key: g.id, ic: 'folder', label: g.name,
     count: library.currentKey() === g.id ? tabs.length : g.tabs.length, actions: groupActions,
   })).join('') + (sb.editing?.kind === 'newgroup'
-    ? `<div class="sb-item"><span data-icon="folder">${icon('folder')}</span><input class="sb-edit" data-edit="newgroup" placeholder="Group name" maxlength="40" spellcheck="false" /></div>`
-    : `<button class="sb-item muted" data-act="new-group"><span data-icon="plus">${icon('plus')}</span><span class="sb-label">New Tab Group</span></button>`);
+    ? `<div class="sb-item"><span data-icon="folder">${icon('folder')}</span><input class="sb-edit" data-edit="newgroup" placeholder="${tl('Group name')}" maxlength="40" spellcheck="false" /></div>`
+    : `<button class="sb-item muted" data-act="new-group"><span data-icon="plus">${icon('plus')}</span><span class="sb-label">${tl('New Tab Group')}</span></button>`);
 
   $('#sb-bm-count').textContent = bookmarks.count() || '';
   $('#sb-rl-count').textContent = readingList.unread() || '';
@@ -78,10 +78,10 @@ function focusEditor() {
 
 /* ───────────── Subtelas ───────────── */
 const SUBVIEWS = {
-  bookmarks: { title: 'Favorites', action: 'Add this page to Favorites' },
-  reading: { title: 'Reading List', action: 'Save this page to Reading List' },
-  downloads: { title: 'Downloads', action: null },
-  history: { title: 'History', action: null },
+  bookmarks: { title: /*i18n*/'Favorites', action: /*i18n*/'Add this page to Favorites' },
+  reading: { title: /*i18n*/'Reading List', action: /*i18n*/'Save this page to Reading List' },
+  downloads: { title: /*i18n*/'Downloads', action: null },
+  history: { title: /*i18n*/'History', action: null },
 };
 
 function openSidebarView(view) {
@@ -89,18 +89,18 @@ function openSidebarView(view) {
   sb.view = view;
   sb.editing = null;
   const v = SUBVIEWS[view];
-  $('#sb-subtitle').textContent = v.title;
+  $('#sb-subtitle').textContent = tl(v.title);
   $('#sb-subaction').hidden = !v.action;
-  $('#sb-subaction').title = v.action || '';
+  $('#sb-subaction').title = v.action ? tl(v.action) : '';
   $('#sb-tools').innerHTML = view === 'bookmarks'
-    ? `<div class="sb-bm-tools"><button class="btn-link" data-act="new-folder">${icon('plus')}New folder</button></div>`
+    ? `<div class="sb-bm-tools"><button class="btn-link" data-act="new-folder">${icon('plus')}${tl('New folder')}</button></div>`
     : view === 'reading'
-    ? `<div class="seg mini" id="rl-filter"><button data-f="unread">Unread</button><button data-f="all">All</button></div>`
+    ? `<div class="seg mini" id="rl-filter"><button data-f="unread">${tl('Unread')}</button><button data-f="all">${tl('All')}</button></div>`
     : view === 'history'
-      ? `<input class="sb-search" id="hist-q" placeholder="Search history" spellcheck="false" value="${escapeHtml(sb.historyQuery)}" />`
+      ? `<input class="sb-search" id="hist-q" placeholder="${tl('Search history')}" spellcheck="false" value="${escapeHtml(sb.historyQuery)}" />`
       : '';
-  $('#sb-subfoot').innerHTML = view === 'history' ? `<button class="btn-secondary wide" data-act="clear-history">Clear history…</button>`
-    : view === 'downloads' ? '<button class="btn-secondary wide" data-act="clear-downloads">Clear list</button>' : '';
+  $('#sb-subfoot').innerHTML = view === 'history' ? `<button class="btn-secondary wide" data-act="clear-history">${tl('Clear history…')}</button>`
+    : view === 'downloads' ? `<button class="btn-secondary wide" data-act="clear-downloads">${tl('Clear list')}</button>` : '';
   $('#sidebar').classList.add('sub-open');
   renderSub();
   if (view === 'history') requestAnimationFrame(() => $('#hist-q')?.focus());
@@ -126,11 +126,11 @@ function renderSub() {
   if (sb.view === 'bookmarks') {
     const newFolder = sb.editing?.kind === 'newfolder'
       ? `<div class="sb-row bm-folder" style="--depth:0"><span class="sb-chev"></span><span class="sb-fav">${icon('folder')}</span>
-          <div class="sb-row-text"><input class="sb-edit" data-edit="newfolder" placeholder="Folder name" maxlength="60" spellcheck="false" /></div></div>`
+          <div class="sb-row-text"><input class="sb-edit" data-edit="newfolder" placeholder="${tl('Folder name')}" maxlength="60" spellcheck="false" /></div></div>`
       : '';
     list.innerHTML = bookmarks.list.length || newFolder
       ? bmRows(bookmarks.list, 0) + newFolder + '<div class="bm-end" data-bm-end="1"></div>'
-      : empty('star', 'No favorites yet', 'Use the star in the address bar, or press Ctrl+D on a page.');
+      : empty('star', tl('No favorites yet'), tl('Use the star in the address bar, or press Ctrl+D on a page.'));
   } else if (sb.view === 'reading') {
     $$('#rl-filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === sb.readingFilter));
     const items = sb.readingFilter === 'unread' ? readingList.items.filter((x) => !x.read) : readingList.items;
@@ -139,11 +139,11 @@ function renderSub() {
         <span class="unread-dot"></span>
         <div class="sb-row-text"><b>${escapeHtml(x.title)}</b><span>${escapeHtml(hostOf(x.url))}</span></div>
         <span class="sb-acts">
-          <button class="sb-act" data-act="toggle-read" title="${x.read ? 'Mark as unread' : 'Mark as read'}">${icon(x.read ? 'glasses' : 'check')}</button>
-          <button class="sb-act" data-act="remove-rl" title="Remove from list">${icon('x')}</button>
+          <button class="sb-act" data-act="toggle-read" title="${x.read ? tl('Mark as unread') : tl('Mark as read')}">${icon(x.read ? 'glasses' : 'check')}</button>
+          <button class="sb-act" data-act="remove-rl" title="${tl('Remove from list')}">${icon('x')}</button>
         </span>
       </div>`).join('')
-      : empty('glasses', sb.readingFilter === 'unread' ? 'All caught up' : 'Your list is empty', 'Save pages to read later with Ctrl+Shift+D.');
+      : empty('glasses', sb.readingFilter === 'unread' ? tl('All caught up') : tl('Your list is empty'), tl('Save pages to read later with Ctrl+Shift+D.'));
   } else if (sb.view === 'history') {
     renderHistory(list);
   } else if (sb.view === 'downloads') {
@@ -165,35 +165,40 @@ function bmRows(items, depth) {
         <span class="sb-chev">${icon('forward')}</span><span class="sb-fav">${icon('folder')}</span>
         <div class="sb-row-text">${name || `<b>${escapeHtml(b.title)}</b>`}</div>
         ${editing ? '' : `${n ? `<span class="sb-badge">${n}</span>` : ''}<span class="sb-acts">
-          <button class="sb-act" data-act="rename-bm" title="Rename">${icon('pencil')}</button>
-          <button class="sb-act" data-act="remove-folder" title="Delete folder">${icon('x')}</button></span>`}
+          <button class="sb-act" data-act="rename-bm" title="${tl('Rename')}">${icon('pencil')}</button>
+          <button class="sb-act" data-act="remove-folder" title="${tl('Delete folder')}">${icon('x')}</button></span>`}
       </div>`;
       if (!open) return head;
       const inner = b.children.length
         ? bmRows(b.children, depth + 1)
-        : `<div class="sb-row bm-empty" data-bm-empty="${b.id}" style="--depth:${depth + 1}">Empty folder</div>`;
+        : `<div class="sb-row bm-empty" data-bm-empty="${b.id}" style="--depth:${depth + 1}">${tl('Empty folder')}</div>`;
       return head + inner;
     }
     return `<div class="sb-row" data-bm="${b.id}" data-url="${escapeHtml(b.url)}" draggable="${!editing}" style="--depth:${depth}" title="${escapeHtml(b.url)}">
         <span class="sb-chev"></span>${siteRowIcon(b.url)}
         <div class="sb-row-text">${name || `<b>${escapeHtml(b.title)}</b><span>${escapeHtml(hostOf(b.url))}</span>`}</div>
         ${editing ? '' : `<span class="sb-acts">
-          <button class="sb-act" data-act="rename-bm" title="Rename">${icon('pencil')}</button>
-          <button class="sb-act" data-act="remove-bm" title="Remove from Favorites">${icon('x')}</button></span>`}
+          <button class="sb-act" data-act="rename-bm" title="${tl('Rename')}">${icon('pencil')}</button>
+          <button class="sb-act" data-act="remove-bm" title="${tl('Remove from Favorites')}">${icon('x')}</button></span>`}
       </div>`;
   }).join('');
 }
 
 const empty = (ic, title, text) => `<div class="sb-empty"><span data-icon="${ic}">${icon(ic)}</span><b>${title}</b><p>${text}</p></div>`;
 
-const dayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-const timeFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+// datas no idioma da interface (refeitas se o idioma mudar)
+let dayFmt, timeFmt;
+const makeDateFormats = () => {
+  dayFmt = new Intl.DateTimeFormat(i18n.locale, { weekday: 'long', month: 'long', day: 'numeric' });
+  timeFmt = new Intl.DateTimeFormat(i18n.locale, { hour: 'numeric', minute: '2-digit' });
+};
+makeDateFormats();
 function dayLabel(t) {
   const d = new Date(t); d.setHours(0, 0, 0, 0);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diff = Math.round((today - d) / 864e5);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
+  if (diff === 0) return tl('Today');
+  if (diff === 1) return tl('Yesterday');
   const s = dayFmt.format(new Date(t));
   return s[0].toUpperCase() + s.slice(1);
 }
@@ -204,8 +209,8 @@ function renderHistory(list) {
   if (q) items = items.filter((v) => v.url.toLowerCase().includes(q) || (v.title || '').toLowerCase().includes(q));
   const MAX = 400;
   if (!items.length) {
-    list.innerHTML = q ? empty('search', 'No results', `Nothing in your history matches “${escapeHtml(sb.historyQuery)}”.`)
-      : empty('clock', 'No history', 'Pages you visit will show up here.');
+    list.innerHTML = q ? empty('search', tl('No results'), tl('Nothing in your history matches “{q}”.', { q: escapeHtml(sb.historyQuery) }))
+      : empty('clock', tl('No history'), tl('Pages you visit will show up here.'));
     return;
   }
   let html = ''; let lastDay = '';
@@ -215,10 +220,10 @@ function renderHistory(list) {
     html += `<div class="sb-row" data-hist="${escapeHtml(v.url)}" data-url="${escapeHtml(v.url)}" title="${escapeHtml(v.url)}">
       <span class="sb-time">${timeFmt.format(new Date(v.t))}</span>
       <div class="sb-row-text"><b>${escapeHtml(v.title || hostOf(v.url))}</b><span>${escapeHtml(hostOf(v.url))}</span></div>
-      <span class="sb-acts"><button class="sb-act" data-act="remove-hist" title="Remove from history">${icon('x')}</button></span>
+      <span class="sb-acts"><button class="sb-act" data-act="remove-hist" title="${tl('Remove from history')}">${icon('x')}</button></span>
     </div>`;
   }
-  if (items.length > MAX) html += `<p class="sb-more">Showing the ${MAX} most recent. Search to find the rest.</p>`;
+  if (items.length > MAX) html += `<p class="sb-more">${tl('Showing the {n} most recent. Search to find the rest.', { n: MAX })}</p>`;
   list.innerHTML = html;
 }
 
@@ -237,7 +242,7 @@ $('#sidebar').addEventListener('click', async (e) => {
   if (act === 'rename-group') { sb.editing = { kind: 'group', id: setEl.dataset.set }; renderMain(); return; }
   if (act === 'delete-group') { deleteGroup(setEl.dataset.set); return; }
   if (act === 'rename-bm') { sb.editing = { kind: 'bookmark', id: row.dataset.bm }; renderSub(); focusEditor(); return; }
-  if (act === 'remove-bm') { bookmarks.remove(row.dataset.bm); toast('Removed from Favorites'); return; }
+  if (act === 'remove-bm') { bookmarks.remove(row.dataset.bm); toast(tl('Removed from Favorites')); return; }
   if (act === 'remove-folder') { deleteFolder(row.dataset.bm); return; }
   if (act === 'new-folder') { sb.editing = { kind: 'newfolder' }; renderSub(); focusEditor(); return; }
   if (row?.dataset.folder) {
@@ -273,8 +278,8 @@ $('#sb-back').addEventListener('click', closeSidebarView);
 $('#sb-subaction').addEventListener('click', () => {
   if (sb.view === 'bookmarks') {
     const t = active();
-    if (!t || !/^https?:/.test(t.url)) { toast('Open a page to add it to Favorites'); return; }
-    toast(bookmarks.add(t.url, t.title) ? 'Added to Favorites' : 'This page is already in Favorites');
+    if (!t || !/^https?:/.test(t.url)) { toast(tl('Open a page to add it to Favorites')); return; }
+    toast(bookmarks.add(t.url, t.title) ? tl('Added to Favorites') : tl('This page is already in Favorites'));
   } else if (sb.view === 'reading') {
     addToReadingList();
   }
@@ -300,7 +305,7 @@ function commitEdit(input) {
   if (ed.kind === 'newgroup' && v) {
     const g = tabSets.createGroup(v);
     library.switchTo(g.id);
-    toast(`Group “${g.name}” created`);
+    toast(tl('Group “{name}” created', { name: g.name }));
   } else if (ed.kind === 'group' && v) {
     tabSets.renameGroup(ed.id, v);
   } else if (ed.kind === 'bookmark' && v) {
@@ -325,16 +330,16 @@ async function deleteGroup(id) {
   if (!g) return;
   const n = library.currentKey() === id ? tabs.length : g.tabs.length;
   const yes = await ask({
-    title: `Delete the group “${g.name}”?`,
-    text: n ? `${n === 1 ? 'The tab' : `All ${n} tabs`} in this group will be closed.` : 'The group is empty.',
-    ok: 'Delete group',
+    title: tl('Delete the group “{name}”?', { name: g.name }),
+    text: n ? tln(n, 'The tab in this group will be closed.', 'All {n} tabs in this group will be closed.') : tl('The group is empty.'),
+    ok: tl('Delete group'),
     danger: true,
   });
   if (!yes) return;
   if (library.currentKey() === id) await library.switchTo('default');
   tabSets.removeGroup(id);
   renderSidebar();
-  toast(`Group “${g.name}” deleted`);
+  toast(tl('Group “{name}” deleted', { name: g.name }));
 }
 
 async function deleteFolder(id) {
@@ -343,16 +348,16 @@ async function deleteFolder(id) {
   const n = bookmarks.count(f.children);
   if (f.children.length) {
     const yes = await ask({
-      title: `Delete the folder “${f.title}”?`,
-      text: n ? `${n === 1 ? 'The favorite' : `All ${n} favorites`} inside it will be deleted too.` : 'The folders inside it will be deleted too.',
-      ok: 'Delete folder',
+      title: tl('Delete the folder “{name}”?', { name: f.title }),
+      text: n ? tln(n, 'The favorite inside it will be deleted too.', 'All {n} favorites inside it will be deleted too.') : tl('The folders inside it will be deleted too.'),
+      ok: tl('Delete folder'),
       danger: true,
     });
     if (!yes) return;
   }
   sb.openFolders.delete(id);
   bookmarks.remove(id);
-  toast(`Folder “${f.title}” deleted`);
+  toast(tl('Folder “{name}” deleted', { name: f.title }));
 }
 
 /* ───────────── Arrastar favoritos (reordenar e mover entre pastas) ───────────── */
@@ -423,7 +428,7 @@ sbList.addEventListener('dragend', () => {
 
 /* ───────────── Limpar histórico / dados ───────────── */
 function openClearSheet({ historyOnly = false } = {}) {
-  $('#clear-title').textContent = historyOnly ? 'Clear history' : 'Clear browsing data';
+  $('#clear-title').textContent = historyOnly ? tl('Clear history') : tl('Clear browsing data');
   $('#clear-data').hidden = historyOnly;
   $$('#clear-data input').forEach((c) => { c.checked = c.value === 'history'; });
   openSheet('#clear-sheet');
@@ -444,7 +449,7 @@ $('#clear-yes').addEventListener('click', async () => {
     await api?.clearBrowsingData?.(PROFILES.currentProfile().partition, { cookies: what.includes('cookies'), cache: what.includes('cache') });
   }
   renderSidebar();
-  toast(historyOnly ? 'History cleared' : 'Browsing data cleared');
+  toast(historyOnly ? tl('History cleared') : tl('Browsing data cleared'));
 });
 
 /* ───────────── Ligações ───────────── */

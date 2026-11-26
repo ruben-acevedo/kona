@@ -5,6 +5,7 @@
 // internas de cada uma não vêm).
 const { app, nativeImage } = require('electron');
 const fs = require('fs');
+const { tl } = require('./i18n');
 const os = require('os');
 const path = require('path');
 const { installExtension } = require('electron-chrome-web-store');
@@ -63,7 +64,7 @@ function readBookmarks(dir) {
   if (!roots) return [];
   // a barra de favoritos vai para o nível principal; "Outros" e "Celular" viram pastas
   const list = (roots.bookmark_bar?.children || []).map(convert).filter(Boolean);
-  for (const [k, title] of [['other', 'Other favorites'], ['synced', 'Mobile favorites']]) {
+  for (const [k, title] of [['other', tl('Other favorites')], ['synced', tl('Mobile favorites')]]) {
     const f = roots[k] && convert(roots[k]);
     if (f?.children.length) { f.title = title; list.push(f); }
   }

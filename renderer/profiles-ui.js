@@ -3,7 +3,7 @@
 
 /* ───────────── Pergunta de confirmação (genérica) ───────────── */
 let askResolve = null;
-function ask({ title, text = '', ok = 'Confirm', danger = false }) {
+function ask({ title, text = '', ok = tl('Confirm'), danger = false }) {
   if (askResolve) askResolve(false);
   $('#ask-title').textContent = title;
   $('#ask-text').textContent = text;
@@ -37,7 +37,7 @@ function buildProfilePop() {
       <span class="pf-row-name">${escapeHtml(p.name)}</span>
       ${p.id === PROFILES.current ? `<span class="pf-check">${icon('check')}</span>` : ''}
     </button>`).join('');
-  $('#pf-edit-label').textContent = `Edit “${PROFILES.currentProfile().name}”`;
+  $('#pf-edit-label').textContent = tl('Edit “{name}”', { name: PROFILES.currentProfile().name });
 }
 
 function toggleProfilePop(force) {
@@ -79,9 +79,9 @@ async function switchProfile(id) {
   const p = PROFILES.byId(id);
   if (!p || id === PROFILES.current) return;
   // um perfil por vez em todas as janelas (cada janela de um perfil fica para depois)
-  if ((await api?.windowCount?.()) > 1) { toast('Close the other windows to switch profiles'); return; }
+  if ((await api?.windowCount?.()) > 1) { toast(tl('Close the other windows to switch profiles')); return; }
   const ok = await (api?.profileUse(p.partition) ?? Promise.resolve(true));
-  if (ok === false) { toast('Couldn’t open that profile'); return; }
+  if (ok === false) { toast(tl('Couldn’t open that profile')); return; }
   // As abas do perfil anterior ficam guardadas nele; o novo perfil reabre as dele
   await library.beforeProfileSwitch();
   PROFILES.setCurrent(id);
@@ -93,7 +93,7 @@ async function switchProfile(id) {
   buildCustomize();
   refreshExtensions();
   renderProfileUI();
-  toast(`Switched to “${p.name}”`);
+  toast(tl('Switched to “{name}”', { name: p.name }));
 }
 
 /* ───────────── Criar / editar ───────────── */
@@ -106,12 +106,12 @@ function openProfileSheet(mode, id) {
   draft = {
     mode,
     id: p?.id,
-    name: p?.name || `Profile ${PROFILES.list.length + 1}`,
+    name: p?.name || tl('Profile {n}', { n: PROFILES.list.length + 1 }),
     avatar: p ? { ...p.avatar } : { type: 'preset', id: fresh.id },
     photo: p?.photo || (p?.avatar?.type === 'image' ? p.avatar.data : null), // a foto enviada (só uma)
   };
-  $('#pf-title').textContent = mode === 'edit' ? 'Edit profile' : 'New profile';
-  $('#pf-save').textContent = mode === 'edit' ? 'Save' : 'Create profile';
+  $('#pf-title').textContent = mode === 'edit' ? tl('Edit profile') : tl('New profile');
+  $('#pf-save').textContent = mode === 'edit' ? tl('Save') : tl('Create profile');
   $('#pf-delete').hidden = mode !== 'edit' || PROFILES.list.length < 2;
   $('#pf-name').value = draft.name;
   renderProfileSheet();
@@ -125,9 +125,9 @@ function renderProfileSheet() {
   const isSel = (a) => draft.avatar.type === 'preset' && draft.avatar.id === a.id;
   const photoSel = draft.avatar.type === 'image';
   $('#pf-grid').innerHTML =
-    `<button class="pf-tile upload" id="pf-upload" title="Upload photo">${icon('camera')}<span>Photo</span></button>` +
-    (draft.photo ? `<button class="pf-tile${photoSel ? ' sel' : ''}" data-photo="1" title="Your photo">${avatarHtml({ type: 'image', data: draft.photo }, name, 'tile')}</button>` : '') +
-    AVATARS.map((a) => `<button class="pf-tile${isSel(a) ? ' sel' : ''}" data-av="${a.id}" title="${a.name}">${avatarHtml({ type: 'preset', id: a.id }, name, 'tile')}</button>`).join('');
+    `<button class="pf-tile upload" id="pf-upload" title="${tl('Upload photo')}">${icon('camera')}<span>${tl('Photo')}</span></button>` +
+    (draft.photo ? `<button class="pf-tile${photoSel ? ' sel' : ''}" data-photo="1" title="${tl('Your photo')}">${avatarHtml({ type: 'image', data: draft.photo }, name, 'tile')}</button>` : '') +
+    AVATARS.map((a) => `<button class="pf-tile${isSel(a) ? ' sel' : ''}" data-av="${a.id}" title="${tl(a.name)}">${avatarHtml({ type: 'preset', id: a.id }, name, 'tile')}</button>`).join('');
 }
 
 $('#pf-name').addEventListener('input', () => renderProfileSheet());
@@ -161,7 +161,7 @@ $('#avatar-file').addEventListener('change', async (e) => {
     draft.avatar = { type: 'image', data: draft.photo };
     renderProfileSheet();
   } catch {
-    toast('Couldn’t open that image');
+    toast(tl('Couldn’t open that image'));
   }
 });
 
@@ -169,13 +169,13 @@ async function saveProfile() {
   if (!draft) return;
   const name = $('#pf-name').value.trim().slice(0, 32) || draft.name;
   if (draft.mode === 'edit') {
-    if (!PROFILES.update(draft.id, { name, avatar: draft.avatar, photo: draft.photo })) { toast('Couldn’t save: the image is too large'); return; }
+    if (!PROFILES.update(draft.id, { name, avatar: draft.avatar, photo: draft.photo })) { toast(tl('Couldn’t save: the image is too large')); return; }
     closeSheet('#profile-sheet');
     renderProfileUI();
-    toast('Profile updated');
+    toast(tl('Profile updated'));
   } else {
     const p = PROFILES.create({ name, avatar: draft.avatar, photo: draft.photo });
-    if (!p) { toast('Couldn’t create the profile: the image is too large'); return; }
+    if (!p) { toast(tl('Couldn’t create the profile: the image is too large')); return; }
     closeSheet('#profile-sheet');
     await switchProfile(p.id);
   }
@@ -186,9 +186,9 @@ async function deleteProfile(id) {
   const p = PROFILES.byId(id);
   if (!p || PROFILES.list.length < 2) return;
   const yes = await ask({
-    title: `Delete the profile “${p.name}”?`,
-    text: 'This profile’s history, settings, sign-ins and extensions will be deleted from this computer. This can’t be undone.',
-    ok: 'Delete profile',
+    title: tl('Delete the profile “{name}”?', { name: p.name }),
+    text: tl('This profile’s history, settings, sign-ins and extensions will be deleted from this computer. This can’t be undone.'),
+    ok: tl('Delete profile'),
     danger: true,
   });
   if (!yes) return;
@@ -197,7 +197,7 @@ async function deleteProfile(id) {
   await api?.profileForget(p.partition);
   PROFILES.remove(id);
   renderProfileUI();
-  toast(`Profile “${p.name}” deleted`);
+  toast(tl('Profile “{name}” deleted', { name: p.name }));
 }
 
 $('#pf-save').addEventListener('click', saveProfile);

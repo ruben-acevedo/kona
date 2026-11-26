@@ -60,6 +60,7 @@
       "screen-share.js",
       "page-share.js",
       "media.js",
+      "i18n.js",
       "page-media.js",
       "renderer/**/*",
       "assets/**/*",

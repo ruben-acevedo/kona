@@ -97,7 +97,7 @@ api?.on('win:state', ({ focused }) => { if (!focused) closeMenu(); });
 
 /* ───────────── Ajudas ───────────── */
 const short = (s, n = 26) => { s = s.replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1)}…` : s; };
-const copyText = (text) => { api?.clipboardWrite(text); toast('Copied'); };
+const copyText = (text) => { api?.clipboardWrite(text); toast(tl('Copied')); };
 
 /** Abre um endereço numa aba nova, sem sair da aba atual (como no Chrome). */
 function openInBackground(url) {
@@ -123,32 +123,32 @@ api?.on('ctx:page', ({ id, params: p }) => {
     sections.push([
       ...(p.dictionarySuggestions.length
         ? p.dictionarySuggestions.map((w) => ({ label: w, bold: true, run: doPage('replace', { word: w }) }))
-        : [{ label: 'No spelling suggestions', disabled: true }]),
-      { label: 'Add to dictionary', run: doPage('learn', { word: p.misspelledWord }) },
+        : [{ label: tl('No spelling suggestions'), disabled: true }]),
+      { label: tl('Add to dictionary'), run: doPage('learn', { word: p.misspelledWord }) },
     ]);
   }
   if (p.linkURL && /^(https?|mailto|ftp):/i.test(p.linkURL)) {
     const web = /^https?:/i.test(p.linkURL);
     sections.push([
       ...(web ? [
-        { label: 'Open link in new tab', run: () => openInBackground(p.linkURL) },
-        ...(library.isPrivate() ? [] : [{ label: 'Open link in new window', run: () => api?.newWindow(p.linkURL) }]),
+        { label: tl('Open link in new tab'), run: () => openInBackground(p.linkURL) },
+        ...(library.isPrivate() ? [] : [{ label: tl('Open link in new window'), run: () => api?.newWindow(p.linkURL) }]),
       ] : []),
-      { label: 'Copy link address', run: () => copyText(p.linkURL) },
+      { label: tl('Copy link address'), run: () => copyText(p.linkURL) },
       ...(web ? [
-        { label: 'Save link as…', run: doPage('save', { url: p.linkURL }) },
-        { label: 'Add link to Favorites', run: () => toast(bookmarks.add(p.linkURL, short(p.linkText || '', 80) || hostOf(p.linkURL)) ? 'Added to Favorites' : 'That link is already in your Favorites') },
+        { label: tl('Save link as…'), run: doPage('save', { url: p.linkURL }) },
+        { label: tl('Add link to Favorites'), run: () => toast(bookmarks.add(p.linkURL, short(p.linkText || '', 80) || hostOf(p.linkURL)) ? tl('Added to Favorites') : tl('That link is already in your Favorites')) },
       ] : []),
     ]);
   }
   if (p.mediaType === 'image' && p.srcURL) {
     const web = /^https?:/i.test(p.srcURL);
     sections.push([
-      ...(web ? [{ label: 'Open image in new tab', run: () => openInBackground(p.srcURL) }] : []),
-      { label: 'Save image as…', run: doPage('save', { url: p.srcURL }) },
-      { label: 'Copy image', run: doPage('copyImage'), disabled: !p.hasImageContents },
-      { label: 'Copy image address', run: () => copyText(p.srcURL) },
-      ...(web ? [{ label: 'Search image with Google', run: () => openInBackground(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(p.srcURL)}`) }] : []),
+      ...(web ? [{ label: tl('Open image in new tab'), run: () => openInBackground(p.srcURL) }] : []),
+      { label: tl('Save image as…'), run: doPage('save', { url: p.srcURL }) },
+      { label: tl('Copy image'), run: doPage('copyImage'), disabled: !p.hasImageContents },
+      { label: tl('Copy image address'), run: () => copyText(p.srcURL) },
+      ...(web ? [{ label: tl('Search image with Google'), run: () => openInBackground(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(p.srcURL)}`) }] : []),
     ]);
   }
   if ((p.mediaType === 'video' || p.mediaType === 'audio') && p.srcURL !== undefined) {
@@ -156,49 +156,49 @@ api?.on('ctx:page', ({ id, params: p }) => {
     const kind = p.mediaType === 'video' ? 'video' : 'audio';
     const web = /^https?:/i.test(p.srcURL || '');
     sections.push([
-      { label: f.isPaused ? 'Play' : 'Pause', run: doPage('media', { what: 'play' }) },
-      { label: f.isMuted ? 'Unmute' : 'Mute', run: doPage('media', { what: 'mute' }), disabled: f.hasAudio === false },
-      { label: 'Loop', checked: !!f.isLooping, run: doPage('media', { what: 'loop' }) },
-      { label: 'Show controls', checked: !!f.isControlsVisible, run: doPage('media', { what: 'controls' }), disabled: f.canToggleControls === false },
-      ...(kind === 'video' ? [{ label: 'Picture in picture', checked: false, run: doPage('media', { what: 'pip' }), disabled: f.canShowPictureInPicture === false }] : []),
+      { label: f.isPaused ? tl('Play') : tl('Pause'), run: doPage('media', { what: 'play' }) },
+      { label: f.isMuted ? tl('Unmute') : tl('Mute'), run: doPage('media', { what: 'mute' }), disabled: f.hasAudio === false },
+      { label: tl('Loop'), checked: !!f.isLooping, run: doPage('media', { what: 'loop' }) },
+      { label: tl('Show controls'), checked: !!f.isControlsVisible, run: doPage('media', { what: 'controls' }), disabled: f.canToggleControls === false },
+      ...(kind === 'video' ? [{ label: tl('Picture in picture'), checked: false, run: doPage('media', { what: 'pip' }), disabled: f.canShowPictureInPicture === false }] : []),
     ]);
     if (web) {
       sections.push([
-        { label: `Open ${kind} in new tab`, run: () => openInBackground(p.srcURL) },
-        { label: `Save ${kind} as…`, run: doPage('save', { url: p.srcURL }), disabled: f.canSave === false },
-        { label: `Copy ${kind} address`, run: () => copyText(p.srcURL) },
+        { label: (kind === 'video' ? tl('Open video in new tab') : tl('Open audio in new tab')), run: () => openInBackground(p.srcURL) },
+        { label: (kind === 'video' ? tl('Save video as…') : tl('Save audio as…')), run: doPage('save', { url: p.srcURL }), disabled: f.canSave === false },
+        { label: (kind === 'video' ? tl('Copy video address') : tl('Copy audio address')), run: () => copyText(p.srcURL) },
       ]);
     }
   }
   if (p.isEditable) {
     sections.push([
-      { label: 'Undo', key: 'Ctrl+Z', run: doPage('undo'), disabled: !ef.canUndo },
-      { label: 'Redo', key: 'Ctrl+Y', run: doPage('redo'), disabled: !ef.canRedo },
+      { label: tl('Undo'), key: 'Ctrl+Z', run: doPage('undo'), disabled: !ef.canUndo },
+      { label: tl('Redo'), key: 'Ctrl+Y', run: doPage('redo'), disabled: !ef.canRedo },
     ], [
-      { label: 'Cut', key: 'Ctrl+X', run: doPage('cut'), disabled: !ef.canCut },
-      { label: 'Copy', key: 'Ctrl+C', run: doPage('copy'), disabled: !ef.canCopy },
-      { label: 'Paste', key: 'Ctrl+V', run: doPage('paste'), disabled: !ef.canPaste },
-      { label: 'Paste as plain text', key: 'Ctrl+Shift+V', run: doPage('pastePlain'), disabled: !ef.canPaste },
-      { label: 'Select all', key: 'Ctrl+A', run: doPage('selectAll'), disabled: !ef.canSelectAll },
+      { label: tl('Cut'), key: 'Ctrl+X', run: doPage('cut'), disabled: !ef.canCut },
+      { label: tl('Copy'), key: 'Ctrl+C', run: doPage('copy'), disabled: !ef.canCopy },
+      { label: tl('Paste'), key: 'Ctrl+V', run: doPage('paste'), disabled: !ef.canPaste },
+      { label: tl('Paste as plain text'), key: 'Ctrl+Shift+V', run: doPage('pastePlain'), disabled: !ef.canPaste },
+      { label: tl('Select all'), key: 'Ctrl+A', run: doPage('selectAll'), disabled: !ef.canSelectAll },
     ]);
   } else if (p.selectionText.trim()) {
     const q = p.selectionText.trim();
     sections.push([
-      { label: 'Copy', key: 'Ctrl+C', run: doPage('copy') },
-      { label: `Search ${engine().name} for “${short(q)}”`, run: () => openInBackground(searchUrl(q.slice(0, 500))) },
+      { label: tl('Copy'), key: 'Ctrl+C', run: doPage('copy') },
+      { label: tl('Search {engine} for “{q}”', { engine: engine().name, q: short(q) }), run: () => openInBackground(searchUrl(q.slice(0, 500))) },
     ]);
   }
   // a página em si: quando o clique não foi num link, imagem, vídeo, texto ou campo
   if (!sections.length || (sections.length === 1 && p.misspelledWord && !p.isEditable)) {
     sections.push([
-      { label: 'Back', key: 'Alt+←', run: () => goBack(), disabled: !(t.canBack || t.fromStart) },
-      { label: 'Forward', key: 'Alt+→', run: () => t.wv?.goForward(), disabled: !t.canFwd },
-      { label: 'Reload', key: 'Ctrl+R', run: () => t.wv?.reload() },
+      { label: tl('Back'), key: 'Alt+←', run: () => goBack(), disabled: !(t.canBack || t.fromStart) },
+      { label: tl('Forward'), key: 'Alt+→', run: () => t.wv?.goForward(), disabled: !t.canFwd },
+      { label: tl('Reload'), key: 'Ctrl+R', run: () => t.wv?.reload() },
     ], [
-      { label: 'Save page as…', key: 'Ctrl+S', run: doPage('savePage') },
-      { label: 'Print…', key: 'Ctrl+P', run: doPage('print') },
+      { label: tl('Save page as…'), key: 'Ctrl+S', run: doPage('savePage') },
+      { label: tl('Print…'), key: 'Ctrl+P', run: doPage('print') },
     ], [
-      { label: 'View page source', key: 'Ctrl+U', run: () => openInBackground(`view-source:${p.pageURL}`), disabled: !/^https?:/i.test(p.pageURL) },
+      { label: tl('View page source'), key: 'Ctrl+U', run: () => openInBackground(`view-source:${p.pageURL}`), disabled: !/^https?:/i.test(p.pageURL) },
     ]);
   }
   // itens das extensões (chrome.contextMenus): um nível, com o nome do grupo acima dos subitens
@@ -213,7 +213,7 @@ api?.on('ctx:page', ({ id, params: p }) => {
     }
     sections.push(flat);
   }
-  sections.push([{ label: 'Inspect', key: 'Ctrl+Shift+I', run: doPage('inspect') }]);
+  sections.push([{ label: tl('Inspect'), key: 'Ctrl+Shift+I', run: doPage('inspect') }]);
   const items = sections.flatMap((s) => ['-', ...s]);
   showMenu(items, r.left + p.x, r.top + p.y, () => t.wv?.focus());
 });
@@ -223,23 +223,23 @@ function tabItems(t) {
   const web = /^https?:/i.test(t.url);
   const fav = web && !!bookmarks.find(t.url);
   return [
-    { label: 'New tab', key: 'Ctrl+T', run: () => newTab() },
-    { label: 'New window', key: 'Ctrl+N', run: () => api?.newWindow() },
+    { label: tl('New tab'), key: 'Ctrl+T', run: () => newTab() },
+    { label: tl('New window'), key: 'Ctrl+N', run: () => api?.newWindow() },
     '-',
-    { label: 'Reload', key: 'Ctrl+R', run: () => t.wv?.reload(), disabled: !t.wv },
-    { label: 'Duplicate', run: () => (web ? openInBackground(t.url) : newTab(t.url, false)) },
-    { label: fav ? 'Remove from Favorites' : 'Add to Favorites', key: 'Ctrl+D', run: () => toggleBookmark(t), disabled: !web },
-    { label: t.muted ? 'Unmute tab' : 'Mute tab', run: () => toggleMute(t), disabled: !t.wv },
-    ...(library.isPrivate() ? [] : [{ label: t.pinned ? 'Unpin tab' : 'Pin tab', run: () => { if (t.pinned) library.unpin(t); else library.pin(t); render(); library.onTabsChanged(); } }]),
+    { label: tl('Reload'), key: 'Ctrl+R', run: () => t.wv?.reload(), disabled: !t.wv },
+    { label: tl('Duplicate'), run: () => (web ? openInBackground(t.url) : newTab(t.url, false)) },
+    { label: fav ? tl('Remove from Favorites') : tl('Add to Favorites'), key: 'Ctrl+D', run: () => toggleBookmark(t), disabled: !web },
+    { label: t.muted ? tl('Unmute tab') : tl('Mute tab'), run: () => toggleMute(t), disabled: !t.wv },
+    ...(library.isPrivate() ? [] : [{ label: t.pinned ? tl('Unpin tab') : tl('Pin tab'), run: () => { if (t.pinned) library.unpin(t); else library.pin(t); render(); library.onTabsChanged(); } }]),
     '-',
-    { label: 'Close tab', key: t.pinned ? '' : 'Ctrl+W', run: () => closeTab(t.id, { force: true }) },
-    { label: 'Reopen closed tab', key: 'Ctrl+Shift+T', run: () => reopenClosedTab(), disabled: !closedTabs.length },
-    { label: 'Close other tabs', run: () => { for (const o of [...tabs]) if (o.id !== t.id && !o.pinned) closeTab(o.id); }, disabled: !tabs.some((o) => o.id !== t.id && !o.pinned) },
+    { label: tl('Close tab'), key: t.pinned ? '' : 'Ctrl+W', run: () => closeTab(t.id, { force: true }) },
+    { label: tl('Reopen closed tab'), key: 'Ctrl+Shift+T', run: () => reopenClosedTab(), disabled: !closedTabs.length },
+    { label: tl('Close other tabs'), run: () => { for (const o of [...tabs]) if (o.id !== t.id && !o.pinned) closeTab(o.id); }, disabled: !tabs.some((o) => o.id !== t.id && !o.pinned) },
   ];
 }
 async function pasteAndGo(t) {
   const text = ((await api?.clipboardRead()) || '').trim();
-  if (!text) { toast('The clipboard is empty'); return; }
+  if (!text) { toast(tl('The clipboard is empty')); return; }
   $(`#tabs .tab[data-id="${t.id}"] input`)?.blur();
   go(t, { text });
 }
@@ -250,14 +250,14 @@ async function tabMenu(t, x, y, onInput) {
     // editando o endereço: menu de edição + colar e abrir
     const hasSel = input.selectionStart !== input.selectionEnd;
     showMenu([
-      { label: 'Undo', key: 'Ctrl+Z', run: () => api.ctxUi('undo') },
+      { label: tl('Undo'), key: 'Ctrl+Z', run: () => api.ctxUi('undo') },
       '-',
-      { label: 'Cut', key: 'Ctrl+X', run: () => api.ctxUi('cut'), disabled: !hasSel },
-      { label: 'Copy', key: 'Ctrl+C', run: () => api.ctxUi('copy'), disabled: !hasSel },
-      { label: 'Paste', key: 'Ctrl+V', run: () => api.ctxUi('paste') },
-      { label: 'Paste and go', run: () => pasteAndGo(t) },
+      { label: tl('Cut'), key: 'Ctrl+X', run: () => api.ctxUi('cut'), disabled: !hasSel },
+      { label: tl('Copy'), key: 'Ctrl+C', run: () => api.ctxUi('copy'), disabled: !hasSel },
+      { label: tl('Paste'), key: 'Ctrl+V', run: () => api.ctxUi('paste') },
+      { label: tl('Paste and go'), run: () => pasteAndGo(t) },
       '-',
-      { label: 'Select all', key: 'Ctrl+A', run: () => api.ctxUi('selectAll') },
+      { label: tl('Select all'), key: 'Ctrl+A', run: () => api.ctxUi('selectAll') },
     ], x, y, () => input.focus());
     return;
   }
@@ -266,8 +266,8 @@ async function tabMenu(t, x, y, onInput) {
   if (!tabs.includes(t)) return;
   showMenu([
     ...(t.id === activeId ? [
-      { label: 'Copy address', run: () => copyText(t.url), disabled: !web },
-      { label: 'Paste and go', run: () => pasteAndGo(t) },
+      { label: tl('Copy address'), run: () => copyText(t.url), disabled: !web },
+      { label: tl('Paste and go'), run: () => pasteAndGo(t) },
       '-',
     ] : []),
     ...tabItems(t),
@@ -296,22 +296,22 @@ document.addEventListener('contextmenu', (e) => {
       const id = tile.dataset.folder;
       const urls = bookmarks.all(bookmarks.get(id)?.children || []).map((b) => b.url);
       showMenu([
-        { label: 'Open', run: () => openFolderPop(id, tile.closest('#folder-pop') ? null : tile) },
-        { label: `Open all (${urls.length}) in new tabs`, run: () => urls.forEach((u) => openInBackground(u)), disabled: !urls.length },
+        { label: tl('Open'), run: () => openFolderPop(id, tile.closest('#folder-pop') ? null : tile) },
+        { label: tl('Open all ({n}) in new tabs', { n: urls.length }), run: () => urls.forEach((u) => openInBackground(u)), disabled: !urls.length },
         '-',
-        { label: 'Rename…', run: () => renameFavorite(id) },
-        { label: 'Delete folder', run: () => { closeFolderPop(); deleteFolder(id); } },
+        { label: tl('Rename…'), run: () => renameFavorite(id) },
+        { label: tl('Delete folder'), run: () => { closeFolderPop(); deleteFolder(id); } },
       ], e.clientX, e.clientY);
       return;
     }
     const url = tile.dataset.url;
     showMenu([
-      { label: 'Open', run: () => { closeFolderPop(); navigate(active(), url); } },
-      { label: 'Open in new tab', run: () => openInBackground(url) },
+      { label: tl('Open'), run: () => { closeFolderPop(); navigate(active(), url); } },
+      { label: tl('Open in new tab'), run: () => openInBackground(url) },
       '-',
-      { label: 'Copy address', run: () => copyText(url) },
-      { label: 'Rename…', run: () => renameFavorite(tile.dataset.bm) },
-      { label: 'Remove from Favorites', run: () => { bookmarks.remove(tile.dataset.bm); toast('Removed from Favorites'); } },
+      { label: tl('Copy address'), run: () => copyText(url) },
+      { label: tl('Rename…'), run: () => renameFavorite(tile.dataset.bm) },
+      { label: tl('Remove from Favorites'), run: () => { bookmarks.remove(tile.dataset.bm); toast(tl('Removed from Favorites')); } },
     ], e.clientX, e.clientY);
     return;
   }
@@ -322,13 +322,13 @@ document.addEventListener('contextmenu', (e) => {
     const hasSel = field.selectionStart !== field.selectionEnd;
     field.focus();
     showMenu([
-      { label: 'Undo', key: 'Ctrl+Z', run: () => api.ctxUi('undo') },
+      { label: tl('Undo'), key: 'Ctrl+Z', run: () => api.ctxUi('undo') },
       '-',
-      { label: 'Cut', key: 'Ctrl+X', run: () => api.ctxUi('cut'), disabled: !hasSel || field.readOnly },
-      { label: 'Copy', key: 'Ctrl+C', run: () => api.ctxUi('copy'), disabled: !hasSel },
-      { label: 'Paste', key: 'Ctrl+V', run: () => api.ctxUi('paste'), disabled: field.readOnly },
+      { label: tl('Cut'), key: 'Ctrl+X', run: () => api.ctxUi('cut'), disabled: !hasSel || field.readOnly },
+      { label: tl('Copy'), key: 'Ctrl+C', run: () => api.ctxUi('copy'), disabled: !hasSel },
+      { label: tl('Paste'), key: 'Ctrl+V', run: () => api.ctxUi('paste'), disabled: field.readOnly },
       '-',
-      { label: 'Select all', key: 'Ctrl+A', run: () => api.ctxUi('selectAll') },
+      { label: tl('Select all'), key: 'Ctrl+A', run: () => api.ctxUi('selectAll') },
     ], e.clientX, e.clientY, () => field.focus());
     return;
   }

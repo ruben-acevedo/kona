@@ -15,8 +15,8 @@ function tabDropIndex(x, skip = null) {
  * A aba sai desta janela só depois que a outra a aceitou.
  */
 async function moveTab(t, to) {
-  if (library.isPrivate()) { toast('Private tabs stay in their window'); return false; }
-  if (t.pinned) { toast('Pinned tabs are in every window'); return false; }
+  if (library.isPrivate()) { toast(tl('Private tabs stay in their window')); return false; }
+  if (t.pinned) { toast(tl('Pinned tabs are in every window')); return false; }
   let wcId = null;
   try { wcId = t.wv ? t.wv.getWebContentsId() : null; } catch { /* ainda não pronta */ }
   const ok = await api?.tabMove({ wcId, url: t.url, title: t.title, to });
@@ -31,8 +31,8 @@ async function moveItems(t) {
   if (library.isPrivate() || t.pinned) return [];
   const others = (await api?.otherWindows?.()) || [];
   return [
-    { label: 'Move to new window', run: () => moveTab(t, { newWindow: true }), disabled: tabs.length < 2 },
-    ...others.map((w) => ({ label: `Move to window: ${short(w.title || 'New Tab', 40)}`, run: () => moveTab(t, { window: w.id }) })),
+    { label: tl('Move to new window'), run: () => moveTab(t, { newWindow: true }), disabled: tabs.length < 2 },
+    ...others.map((w) => ({ label: tl('Move to window: {title}', { title: short(w.title || tl('New Tab'), 40) }), run: () => moveTab(t, { window: w.id }) })),
   ];
 }
 
@@ -157,7 +157,7 @@ function markDrop(el, mode) {
   el?.classList.add(`drop-${mode}`);
 }
 /** Onde o link cai: { t, into } (abrir na aba) ou { index } (aba nova ali). */
-function dropTarget(x) {
+function linkDropTarget(x) {
   const els = $$('#tabs .tab:not(.leaving)');
   for (const [i, el] of els.entries()) {
     const r = el.getBoundingClientRect();
@@ -175,7 +175,7 @@ $('#tabs').addEventListener('dragover', (e) => {
   if (!acceptsDrop(e.dataTransfer)) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'link';
-  const d = dropTarget(e.clientX);
+  const d = linkDropTarget(e.clientX);
   markDrop(d.el, d.mode);
 });
 $('#tabs').addEventListener('dragleave', (e) => { if (!e.currentTarget.contains(e.relatedTarget)) markDrop(null, null); });
@@ -185,7 +185,7 @@ $('#tabs').addEventListener('drop', (e) => {
   markDrop(null, null);
   const url = droppedUrl(e.dataTransfer);
   if (!url) return;
-  const d = dropTarget(e.clientX);
+  const d = linkDropTarget(e.clientX);
   if (d.t) { activate(d.t.id); navigate(d.t, url); return; }
   const t = makeTab(url, { index: d.index });
   sfx.play('tabOpen');

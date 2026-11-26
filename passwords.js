@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { handleUi } = require('./ipc');
+const { tl } = require('./i18n');
 const { siteOf } = require('./session-policy');
 
 let currentPartition = () => 'persist:kona';
@@ -78,7 +79,7 @@ $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
 function Await($op, [Type]$t) { $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait(-1) | Out-Null; $task.Result }
 $avail = Await ([Windows.Security.Credentials.UI.UserConsentVerifier]::CheckAvailabilityAsync()) ([Windows.Security.Credentials.UI.UserConsentVerifierAvailability])
 if ("$avail" -ne 'Available') { Write-Output "unavailable:$avail"; exit }
-$r = Await ([Windows.Security.Credentials.UI.UserConsentVerifier]::RequestVerificationAsync('Kona wants to show or export your saved passwords.')) ([Windows.Security.Credentials.UI.UserConsentVerificationResult])
+$r = Await ([Windows.Security.Credentials.UI.UserConsentVerifier]::RequestVerificationAsync($env:KONA_HELLO_MSG)) ([Windows.Security.Credentials.UI.UserConsentVerificationResult])
 Write-Output "$r"
 `;
 /** Pede o Windows Hello (PIN, digital ou rosto). Sem Windows Hello configurado, segue liberado. */
@@ -86,7 +87,7 @@ function verifyUser() {
   if (Date.now() < authUntil) return Promise.resolve(true);
   if (process.platform !== 'win32') return Promise.resolve(true);
   return new Promise((resolve) => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', HELLO_PS], { windowsHide: true, timeout: 120000 }, (err, out) => {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', HELLO_PS], { windowsHide: true, timeout: 120000, env: { ...process.env, KONA_HELLO_MSG: tl('Kona wants to show or export your saved passwords.') } }, (err, out) => {
       const r = String(out || '').trim();
       const ok = !err && (r === 'Verified' || r.startsWith('unavailable:'));
       if (ok) authUntil = Date.now() + 60000;
@@ -264,7 +265,7 @@ function registerPasswords(opts) {
   handleUi('pw:delete', (_e, id) => { const s = store(); s.entries = s.entries.filter((x) => x.id !== id); save(); return true; });
   handleUi('pw:never-remove', (_e, origin) => { const s = store(); s.never = s.never.filter((o) => o !== origin); save(); return true; });
   handleUi('pw:import', async () => {
-    const r = await dialog.showOpenDialog(win(), { title: 'Import passwords', filters: [{ name: 'CSV', extensions: ['csv'] }], properties: ['openFile'] });
+    const r = await dialog.showOpenDialog(win(), { title: tl('Import passwords'), filters: [{ name: 'CSV', extensions: ['csv'] }], properties: ['openFile'] });
     if (r.canceled || !r.filePaths[0]) return null;
     const rows = parseCsv(fs.readFileSync(r.filePaths[0], 'utf8').replace(/^﻿/, ''));
     const head = (rows.shift() || []).map((h) => h.trim().toLowerCase());
@@ -285,7 +286,7 @@ function registerPasswords(opts) {
   });
   handleUi('pw:export', async () => {
     if (!(await verifyUser())) return { error: 'auth' };
-    const r = await dialog.showSaveDialog(win(), { title: 'Export passwords', defaultPath: 'Kona Passwords.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
+    const r = await dialog.showSaveDialog(win(), { title: tl('Export passwords'), defaultPath: 'Kona Passwords.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
     if (r.canceled || !r.filePath) return null;
     const lines = ['name,url,username,password,note'];
     for (const e of store().entries) lines.push([hostOf(e.origin), `${e.origin}/`, e.username, dec(e.pass) || '', ''].map(csvCell).join(','));

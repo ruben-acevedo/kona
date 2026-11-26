@@ -21,13 +21,13 @@ function mediaRow(s) {
     : `<span class="md-art md-site">${siteIcon(s.url || '')}</span>`;
   const has = (a) => s.actions?.includes(a);
   return `<div class="md-row" data-wc="${s.wcId}">
-      <button class="md-open" data-act="focus" title="Go to tab">${art}
+      <button class="md-open" data-act="focus" title="${tl('Go to tab')}">${art}
         <span class="md-text"><span class="md-title">${escapeHtml(title)}</span><span class="md-sub">${escapeHtml(sub)}</span></span>
       </button>
       <span class="md-ctl">
-        ${has('previoustrack') ? `<button class="tb small" data-act="previoustrack" title="Previous">${icon('prevTrack')}</button>` : ''}
-        <button class="tb small md-play" data-act="toggle" title="${s.playing ? 'Pause' : 'Play'}">${icon(s.playing ? 'pause' : 'play')}</button>
-        ${has('nexttrack') ? `<button class="tb small" data-act="nexttrack" title="Next">${icon('nextTrack')}</button>` : ''}
+        ${has('previoustrack') ? `<button class="tb small" data-act="previoustrack" title="${tl('Previous')}">${icon('prevTrack')}</button>` : ''}
+        <button class="tb small md-play" data-act="toggle" title="${s.playing ? tl('Pause') : tl('Play')}">${icon(s.playing ? 'pause' : 'play')}</button>
+        ${has('nexttrack') ? `<button class="tb small" data-act="nexttrack" title="${tl('Next')}">${icon('nextTrack')}</button>` : ''}
       </span>
     </div>`;
 }
@@ -38,7 +38,7 @@ function renderMedia() {
   mediaBtn.classList.toggle('playing', list.some((s) => s.playing));
   if (!list.length) { toggleMediaPop(false); return; }
   if (!media.open) return;
-  mediaPop.innerHTML = `<div class="pp-head">Playing now</div>${list.map(mediaRow).join('')}`;
+  mediaPop.innerHTML = `<div class="pp-head">${tl('Playing now')}</div>${list.map(mediaRow).join('')}`;
   $$('img.md-art', mediaPop).forEach((img) => { img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'md-art md-site' })); });
 }
 

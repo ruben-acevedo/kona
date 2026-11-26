@@ -4,7 +4,7 @@
 // "Listen to Page" e "Use Reader automatically" por site. A montagem do artigo fica em reader.js.
 
 const READER_FONTS = [
-  ['system', 'System', '"Segoe UI Variable Text", "Segoe UI", sans-serif'],
+  ['system', /*i18n*/'System', '"Segoe UI Variable Text", "Segoe UI", sans-serif'],
   ['georgia', 'Georgia', 'Georgia, serif'],
   ['palatino', 'Palatino', '"Palatino Linotype", Palatino, serif'],
   ['times', 'Times New Roman', '"Times New Roman", serif'],
@@ -13,7 +13,7 @@ const READER_FONTS = [
   ['sitka', 'Sitka', '"Sitka Text", Georgia, serif'],
   ['candara', 'Candara', 'Candara, sans-serif'],
 ];
-const READER_THEMES = [['white', 'White', '#ffffff', '#1d1d1f'], ['sepia', 'Sepia', '#f8f1e3', '#4f321c'], ['gray', 'Gray', '#4a4a4d', '#e4e4e6'], ['night', 'Night', '#121214', '#c9c9cc']];
+const READER_THEMES = [['white', /*i18n*/'White', '#ffffff', '#1d1d1f'], ['sepia', /*i18n*/'Sepia', '#f8f1e3', '#4f321c'], ['gray', /*i18n*/'Gray', '#4a4a4d', '#e4e4e6'], ['night', /*i18n*/'Night', '#121214', '#c9c9cc']];
 const readerWcId = (t) => { try { return t?.wv?.getWebContentsId() ?? -1; } catch { return -1; } };
 const readerHost = (t) => { try { return new URL(t.url).hostname; } catch { return ''; } };
 /** Ajustes do leitor; sem fundo escolhido, segue o tema do Kona (claro → White, escuro → Night). */
@@ -27,7 +27,7 @@ async function openReader(t) {
   if (id < 0) return;
   const r = await api?.reader.open(id, readerSettings());
   if (r?.active) { t.reader = { ...(t.reader || {}), available: true, active: true }; sfx.play('open'); }
-  else toast('Reader isn’t available for this page');
+  else toast(tl('Reader isn’t available for this page'));
   render();
 }
 async function closeReader(t) {
@@ -42,7 +42,7 @@ function toggleReader(t = active()) {
   if (!t?.wv) return;
   if (t.reader?.active) closeReader(t);
   else if (t.reader?.available) openReader(t);
-  else toast('Reader isn’t available for this page');
+  else toast(tl('Reader isn’t available for this page'));
 }
 
 api?.on('reader:state', ({ id, available, active: isActive, host }) => {
@@ -68,18 +68,18 @@ async function renderReaderPop() {
       <button class="rp-size big" data-size="1" title="Larger text"${s.size >= 11 ? ' disabled' : ''}>A</button>
     </div>
     <div class="rp-fonts">${READER_FONTS.map(([k, name, css]) => `
-      <button class="rp-font${k === s.font ? ' on' : ''}" data-font="${k}" style="font-family:${css}">${name}<span class="rp-check">${k === s.font ? icon('check') : ''}</span></button>`).join('')}
+      <button class="rp-font${k === s.font ? ' on' : ''}" data-font="${k}" style="font-family:${css}">${k === 'system' ? tl(name) : name}<span class="rp-check">${k === s.font ? icon('check') : ''}</span></button>`).join('')}
     </div>
     <div class="rp-themes">${READER_THEMES.map(([k, name, bg, fg]) => `
-      <button class="rp-theme${k === s.theme ? ' on' : ''}" data-theme-r="${k}" title="${name}" style="background:${bg};color:${fg}">Aa</button>`).join('')}
+      <button class="rp-theme${k === s.theme ? ' on' : ''}" data-theme-r="${k}" title="${tl(name)}" style="background:${bg};color:${fg}">Aa</button>`).join('')}
     </div>
     <div class="pop-sep"></div>
     <button class="rp-row" data-speech="${sp.speaking ? (sp.paused ? 'resume' : 'pause') : 'play'}">
-      <span class="rp-ic">${icon(sp.speaking && !sp.paused ? 'pause' : 'play')}</span>${sp.speaking ? (sp.paused ? 'Resume Listening' : 'Pause Listening') : 'Listen to Page'}
+      <span class="rp-ic">${icon(sp.speaking && !sp.paused ? 'pause' : 'play')}</span>${sp.speaking ? (sp.paused ? tl('Resume Listening') : tl('Pause Listening')) : tl('Listen to Page')}
     </button>
-    ${sp.speaking ? `<button class="rp-row" data-speech="stop"><span class="rp-ic">${icon('x')}</span>Stop Listening</button>` : ''}
+    ${sp.speaking ? `<button class="rp-row" data-speech="stop"><span class="rp-ic">${icon('x')}</span>${tl('Stop Listening')}</button>` : ''}
     <button class="rp-row rp-auto" data-auto="1"${host ? '' : ' disabled'}>
-      <span class="rp-ic">${icon('reader')}</span><span class="rp-auto-text">Use Reader automatically on ${escapeHtml(host.replace(/^www\./, ''))}</span>
+      <span class="rp-ic">${icon('reader')}</span><span class="rp-auto-text">${tl('Use Reader automatically on {host}', { host: escapeHtml(host.replace(/^www\./, '')) })}</span>
       <span class="sw${settings.readerAuto?.[host] ? ' on' : ''}"><span></span></span>
     </button>`;
 }

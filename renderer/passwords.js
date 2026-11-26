@@ -21,13 +21,13 @@ api?.on('pw:suggest', (s) => {
   const box = $('#pw-suggest');
   const accounts = s.accounts.map((a) => `<div class="pw-opt" data-acc="${a.id}" role="option">
       <span class="pw-ic">${icon('key')}</span>
-      <span class="pw-txt"><b>${escapeHtml(a.username || '(no username)')}</b><small>${a.exact ? '••••••••' : `from ${escapeHtml(a.host)}`}</small></span>
+      <span class="pw-txt"><b>${escapeHtml(a.username || tl('(no username)'))}</b><small>${a.exact ? '••••••••' : tl('from {host}', { host: escapeHtml(a.host) })}</small></span>
     </div>`).join('');
   const gen = s.generate ? `<div class="pw-opt pw-gen" data-gen="1" role="option">
       <span class="pw-ic">${icon('key')}</span>
-      <span class="pw-txt"><b>Use suggested strong password</b><small class="pw-mono">${escapeHtml(s.generate)}</small></span>
-    </div><p class="pw-note">Kona saves this password for you. You can see it in Settings › Passwords.</p>` : '';
-  box.innerHTML = gen + accounts + `<div class="pop-sep"></div><div class="pw-opt pw-manage" data-manage="1" role="option"><span class="pw-ic">${icon('gear')}</span><span class="pw-txt"><b>Manage passwords…</b></span></div>`;
+      <span class="pw-txt"><b>${tl('Use suggested strong password')}</b><small class="pw-mono">${escapeHtml(s.generate)}</small></span>
+    </div><p class="pw-note">${tl('Kona saves this password for you. You can see it in Settings › Passwords.')}</p>` : '';
+  box.innerHTML = gen + accounts + `<div class="pop-sep"></div><div class="pw-opt pw-manage" data-manage="1" role="option"><span class="pw-ic">${icon('gear')}</span><span class="pw-txt"><b>${tl('Manage passwords…')}</b></span></div>`;
   // posição: logo abaixo do campo (no frame principal); em iframes, no topo da página
   const r = t.wv.getBoundingClientRect();
   const f = s.top && s.rect ? s.rect : { x: 16, y: 8, width: 300, height: 0 };
@@ -51,7 +51,7 @@ $('#pw-suggest').addEventListener('click', async (e) => {
   sfx.play('select');
   hideSuggest();
   active()?.wv?.focus();
-  if (!ok) toast('Couldn’t fill in the password');
+  if (!ok) toast(tl('Couldn’t fill in the password'));
 });
 document.addEventListener('mouseup', () => { setTimeout(() => { pwState.pressing = false; }, 0); });
 document.addEventListener('mousedown', (e) => { if (!e.target.closest('#pw-suggest')) hideSuggest(); }, true);
@@ -73,17 +73,17 @@ function closeBubble() {
 api?.on('pw:offer-save', (o) => {
   pwState.offer = o;
   const b = $('#pw-bubble');
-  b.innerHTML = `<div class="pwb-head"><span class="pw-ic">${icon('key')}</span><div><h3 id="pwb-title">${o.update ? 'Update password?' : 'Save password?'}</h3><p>${escapeHtml(o.host)}</p></div>
-      <button class="tb small" data-pwb="close" title="Close">${icon('x')}</button></div>
-    <label class="pf-label" for="pwb-user">Username</label>
+  b.innerHTML = `<div class="pwb-head"><span class="pw-ic">${icon('key')}</span><div><h3 id="pwb-title">${o.update ? tl('Update password?') : tl('Save password?')}</h3><p>${escapeHtml(o.host)}</p></div>
+      <button class="tb small" data-pwb="close" title="${tl('Close')}">${icon('x')}</button></div>
+    <label class="pf-label" for="pwb-user">${tl('Username')}</label>
     <input id="pwb-user" class="pf-input" value="${escapeHtml(o.username)}" spellcheck="false" autocomplete="off" />
-    <label class="pf-label">Password</label>
+    <label class="pf-label">${tl('Password')}</label>
     <div class="pf-input pwb-pass">••••••••••</div>
     <div class="pwb-actions">
-      ${o.update ? '' : '<button class="btn-secondary" data-pwb="never">Never</button>'}
+      ${o.update ? '' : `<button class="btn-secondary" data-pwb="never">${tl('Never')}</button>`}
       <span class="spacer"></span>
-      <button class="btn-secondary" data-pwb="close">Not now</button>
-      <button class="btn-primary" data-pwb="save">${o.update ? 'Update' : 'Save'}</button>
+      <button class="btn-secondary" data-pwb="close">${tl('Not now')}</button>
+      <button class="btn-primary" data-pwb="save">${o.update ? tl('Update') : tl('Save')}</button>
     </div>`;
   b.classList.add('show');
   sfx.play('open');
@@ -97,14 +97,14 @@ $('#pw-bubble').addEventListener('click', async (e) => {
   $('#pw-bubble').classList.remove('show');
   const r = await api.pw.answer(o.id, act, $('#pwb-user').value.trim());
   sfx.play('select');
-  if (r === 'saved' || r === 'updated') toast(r === 'saved' ? 'Password saved' : 'Password updated');
-  else if (r === 'never') toast(`Kona won’t offer to save passwords on ${o.host}`);
+  if (r === 'saved' || r === 'updated') toast(r === 'saved' ? tl('Password saved') : tl('Password updated'));
+  else if (r === 'never') toast(tl('Kona won’t offer to save passwords on {host}', { host: o.host }));
 });
 $('#pw-bubble').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); $('#pw-bubble [data-pwb="save"]')?.click(); }
   if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeBubble(); }
 });
-api?.on('pw:saved', ({ host }) => toast(`Password saved for ${host}`));
+api?.on('pw:saved', ({ host }) => toast(tl('Password saved for {host}', { host })));
 
 /* ───────────── Gerenciamento (Settings → Passwords) ───────────── */
 async function loadPasswords() {
@@ -118,30 +118,30 @@ function renderPasswordSheet() {
   if (!d) return;
   const q = $('#pw-q').value.trim().toLowerCase();
   const rows = d.entries.filter((e) => !q || e.host.includes(q) || e.username.toLowerCase().includes(q));
-  $('#pw-count').textContent = `${d.entries.length} ${d.entries.length === 1 ? 'password' : 'passwords'}${d.encryption ? '' : ' · encryption unavailable'}`;
+  $('#pw-count').textContent = `${tln(d.entries.length, '{n} password', '{n} passwords')}${d.encryption ? '' : ` · ${tl('encryption unavailable')}`}`;
   const row = (e) => {
     const ed = pwState.editing === e.id;
     const shown = pwState.revealed.get(e.id);
     return `<div class="pw-row${ed ? ' editing' : ''}" data-pw="${e.id}">
       <span class="sb-fav"><span class="mono">${escapeHtml((e.host.replace(/^www\./, '')[0] || '?').toUpperCase())}</span></span>
       ${ed ? `<div class="pw-edit">
-          <input class="pf-input" data-f="username" value="${escapeHtml(e.username)}" placeholder="Username" spellcheck="false" autocomplete="off" />
-          <input class="pf-input" data-f="password" type="password" placeholder="New password (leave empty to keep)" autocomplete="new-password" />
-          <div class="pw-edit-acts"><button class="btn-secondary" data-act="cancel">Cancel</button><button class="btn-primary" data-act="save">Save</button></div>
+          <input class="pf-input" data-f="username" value="${escapeHtml(e.username)}" placeholder="${tl('Username')}" spellcheck="false" autocomplete="off" />
+          <input class="pf-input" data-f="password" type="password" placeholder="${tl('New password (leave empty to keep)')}" autocomplete="new-password" />
+          <div class="pw-edit-acts"><button class="btn-secondary" data-act="cancel">${tl('Cancel')}</button><button class="btn-primary" data-act="save">${tl('Save')}</button></div>
         </div>`
-        : `<div class="sb-row-text"><b>${escapeHtml(e.host.replace(/^www\./, ''))}</b><span>${escapeHtml(e.username || '(no username)')}</span></div>
+        : `<div class="sb-row-text"><b>${escapeHtml(e.host.replace(/^www\./, ''))}</b><span>${escapeHtml(e.username || tl('(no username)'))}</span></div>
         <span class="pw-secret${shown ? ' shown' : ''}">${shown ? escapeHtml(shown) : '••••••••'}</span>
         <span class="pw-acts">
-          <button class="sb-act" data-act="reveal" title="${shown ? 'Hide' : 'Show password'}">${icon(shown ? 'eyeOff' : 'eye')}</button>
-          <button class="sb-act" data-act="copy" title="Copy password">${icon('copy')}</button>
-          <button class="sb-act" data-act="edit" title="Edit">${icon('pencil')}</button>
-          <button class="sb-act" data-act="delete" title="Delete">${icon('x')}</button>
+          <button class="sb-act" data-act="reveal" title="${shown ? tl('Hide') : tl('Show password')}">${icon(shown ? 'eyeOff' : 'eye')}</button>
+          <button class="sb-act" data-act="copy" title="${tl('Copy password')}">${icon('copy')}</button>
+          <button class="sb-act" data-act="edit" title="${tl('Edit')}">${icon('pencil')}</button>
+          <button class="sb-act" data-act="delete" title="${tl('Delete')}">${icon('x')}</button>
         </span>`}
     </div>`;
   };
   $('#pw-list').innerHTML = (rows.length ? rows.map(row).join('')
-    : `<p class="st-empty">${d.entries.length ? 'No passwords match your search.' : 'No saved passwords yet. Kona offers to save them when you sign in to a site.'}</p>`)
-    + (d.never.length && !q ? `<h4 class="pw-sub">Never saved</h4>${d.never.map((o) => `<div class="pw-row never"><div class="sb-row-text"><b>${escapeHtml(o.replace(/^https?:\/\//, ''))}</b></div><button class="btn-link" data-never="${escapeHtml(o)}">Remove</button></div>`).join('')}` : '');
+    : `<p class="st-empty">${d.entries.length ? tl('No passwords match your search.') : tl('No saved passwords yet. Kona offers to save them when you sign in to a site.')}</p>`)
+    + (d.never.length && !q ? `<h4 class="pw-sub">${tl('Never saved')}</h4>${d.never.map((o) => `<div class="pw-row never"><div class="sb-row-text"><b>${escapeHtml(o.replace(/^https?:\/\//, ''))}</b></div><button class="btn-link" data-never="${escapeHtml(o)}">${tl('Remove')}</button></div>`).join('')}` : '');
 }
 async function openPasswordSheet() {
   pwState.revealed.clear(); pwState.editing = null;
@@ -162,22 +162,22 @@ $('#pw-list').addEventListener('click', async (e) => {
   const id = rowEl.dataset.pw;
   if (act === 'reveal') {
     if (pwState.revealed.has(id)) pwState.revealed.delete(id);
-    else { const p = await api.pw.reveal(id); if (p == null) { toast('Windows Hello didn’t confirm it’s you'); return; } pwState.revealed.set(id, p); }
+    else { const p = await api.pw.reveal(id); if (p == null) { toast(tl('Windows Hello didn’t confirm it’s you')); return; } pwState.revealed.set(id, p); }
   } else if (act === 'copy') {
-    toast((await api.pw.copy(id)) ? 'Password copied' : 'Windows Hello didn’t confirm it’s you');
+    toast((await api.pw.copy(id)) ? tl('Password copied') : tl('Windows Hello didn’t confirm it’s you'));
     return;
   } else if (act === 'edit') pwState.editing = id;
   else if (act === 'cancel') pwState.editing = null;
   else if (act === 'save') {
     const username = $('[data-f="username"]', rowEl).value.trim();
     const password = $('[data-f="password"]', rowEl).value;
-    if (!(await api.pw.edit(id, { username, password }))) { toast('Windows Hello didn’t confirm it’s you'); return; }
+    if (!(await api.pw.edit(id, { username, password }))) { toast(tl('Windows Hello didn’t confirm it’s you')); return; }
     pwState.editing = null; pwState.revealed.delete(id);
-    await loadPasswords(); toast('Password updated');
+    await loadPasswords(); toast(tl('Password updated'));
   } else if (act === 'delete') {
     const entry = pwState.list.entries.find((x) => x.id === id);
-    if (!await ask({ title: `Delete the password for ${entry?.host.replace(/^www\./, '')}?`, text: entry?.username ? `Account: ${entry.username}` : '', ok: 'Delete', danger: true })) return;
-    await api.pw.remove(id); await loadPasswords(); toast('Password deleted');
+    if (!await ask({ title: tl('Delete the password for {host}?', { host: entry?.host.replace(/^www\./, '') }), text: entry?.username ? tl('Account: {name}', { name: entry.username }) : '', ok: tl('Delete'), danger: true })) return;
+    await api.pw.remove(id); await loadPasswords(); toast(tl('Password deleted'));
     openSheet('#pw-sheet');
   }
   renderPasswordSheet();
@@ -190,10 +190,10 @@ async function importPasswords() {
   await loadPasswords(); settingsPage.refresh?.();
 }
 async function exportPasswords() {
-  if (!await ask({ title: 'Export passwords?', text: 'The file isn’t encrypted: anyone who opens it can read all your passwords. Keep it safe and delete it when you’re done.', ok: 'Export' })) return;
+  if (!await ask({ title: tl('Export passwords?'), text: tl('The file isn’t encrypted: anyone who opens it can read all your passwords. Keep it safe and delete it when you’re done.'), ok: tl('Export') })) return;
   const r = await api?.pw.exportCsv();
   if (!r) return;
-  if (r.error === 'auth') { toast('Windows Hello didn’t confirm it’s you'); return; }
+  if (r.error === 'auth') { toast(tl('Windows Hello didn’t confirm it’s you')); return; }
   toast(`${r.count} ${r.count === 1 ? 'password' : 'passwords'} exported`);
 }
 api?.on('pw:changed', async () => {

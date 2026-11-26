@@ -219,10 +219,10 @@ const omnibox = {
     const items = [];
     // com o autocompletar na barra, o 1º item (o do Enter) é o site completado
     const inline = this.inline && this.inline.typed.trim() === q ? this.inline : null;
-    if (inline) items.push({ kind: 'go', text: inline.full, url: inline.url, sub: 'Go to site' });
+    if (inline) items.push({ kind: 'go', text: inline.full, url: inline.url, sub: tl('Go to site') });
     if (inline && url && !isSearchUrl(url)) { /* o digitado também é um endereço: o completado já cobre */ }
-    else if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: 'Go to site' });
-    else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: `${engine().name} Search` });
+    else if (url && !isSearchUrl(url)) items.push({ kind: 'go', text: q, url, sub: tl('Go to site') });
+    else items.push({ kind: 'search', from: 'typed', text: q, query: q, sub: tl('{engine} Search', { engine: engine().name }) });
     const seen = new Set([q.toLowerCase()]);
     for (const v of browseHistory.matchVisits(q, 3)) {
       items.push({ kind: 'visit', text: v.title || hostOf(v.url), url: v.url, sub: v.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') });
@@ -260,7 +260,7 @@ const omnibox = {
       return `<div class="om-row${i === sel ? ' sel' : ''}" data-i="${i}" role="option">
         <span class="om-ic">${icon(ic)}</span>
         <span class="om-text">${this.highlight(it.text)}${sub}</span>
-        ${removable ? `<button class="om-x" title="Remove from history" tabindex="-1">${icon('x')}</button>` : ''}
+        ${removable ? `<button class="om-x" title="${tl('Remove from history')}" tabindex="-1">${icon('x')}</button>` : ''}
       </div>`;
     }).join('');
     this.el.innerHTML = (heading ? `<div class="om-head">${heading}</div>` : '') + rows;

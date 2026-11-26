@@ -4,6 +4,7 @@
 // Também lê o artigo em voz alta com as vozes do Windows ("Listen to Page").
 const { webContents } = require('electron');
 const fs = require('fs');
+const { tl } = require('./i18n');
 const path = require('path');
 const { handleUi } = require('./ipc');
 
@@ -43,7 +44,7 @@ function watchReader(contents) {
 function registerReader() {
   const tab = (id) => { const wc = webContents.fromId(Number(id)); return isTab(wc) ? wc : null; };
   const opts = (s) => JSON.stringify(s && typeof s === 'object' ? s : {});
-  handleUi('reader:open', async (_e, id, settings) => run(tab(id), `__konaReader.open(${opts(settings)})`));
+  handleUi('reader:open', async (_e, id, settings) => run(tab(id), `__konaReader.open(${opts({ ...settings, minRead: tl('{n} min read') })})`));
   handleUi('reader:close', async (_e, id) => run(tab(id), '__konaReader.close()'));
   handleUi('reader:apply', async (_e, id, settings) => run(tab(id), `__konaReader.apply(${opts(settings)})`));
   handleUi('reader:speech', async (_e, id, cmd) => {

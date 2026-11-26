@@ -2,25 +2,25 @@
 // Configurações (kona://settings), pedido de permissão dos sites e avisos de download.
 
 const PERMS = [
-  ['camera', 'Camera', 'camera', 'use your camera'],
-  ['microphone', 'Microphone', 'mic', 'use your microphone'],
-  ['location', 'Location', 'pin', 'know your location'],
-  ['notifications', 'Notifications', 'bell', 'show notifications'],
-  ['clipboard', 'Read the clipboard', 'clipboard', 'read your clipboard'],
-  ['apps', 'Open external apps', 'external', 'open an app on your computer'],
+  ['camera', /*i18n*/'Camera', 'camera', /*i18n*/'use your camera'],
+  ['microphone', /*i18n*/'Microphone', 'mic', /*i18n*/'use your microphone'],
+  ['location', /*i18n*/'Location', 'pin', /*i18n*/'know your location'],
+  ['notifications', /*i18n*/'Notifications', 'bell', /*i18n*/'show notifications'],
+  ['clipboard', /*i18n*/'Read the clipboard', 'clipboard', /*i18n*/'read your clipboard'],
+  ['apps', /*i18n*/'Open external apps', 'external', /*i18n*/'open an app on your computer'],
 ];
 const PERM_INFO = Object.fromEntries(PERMS.map(([k, label, ic, verb]) => [k, { label, ic, verb }]));
 
 const ST_SECTIONS = [
-  ['geral', 'General', 'gear'],
-  ['aparencia', 'Appearance', 'palette'],
-  ['senhas', 'Passwords', 'key'],
-  ['privacidade', 'Privacy and security', 'shield'],
-  ['permissoes', 'Site permissions', 'hand'],
-  ['downloads', 'Downloads', 'download'],
-  ['perfis', 'Profiles', 'user'],
-  ['extensoes', 'Extensions', 'puzzle'],
-  ['sobre', 'About Kona', 'info'],
+  ['geral', /*i18n*/'General', 'gear'],
+  ['aparencia', /*i18n*/'Appearance', 'palette'],
+  ['senhas', /*i18n*/'Passwords', 'key'],
+  ['privacidade', /*i18n*/'Privacy and security', 'shield'],
+  ['permissoes', /*i18n*/'Site permissions', 'hand'],
+  ['downloads', /*i18n*/'Downloads', 'download'],
+  ['perfis', /*i18n*/'Profiles', 'user'],
+  ['extensoes', /*i18n*/'Extensions', 'puzzle'],
+  ['sobre', /*i18n*/'About Kona', 'info'],
 ];
 
 /* ───────────── Controles ───────────── */
@@ -46,7 +46,7 @@ const settingsPage = {
   build() {
     this.built = true;
     $('#st-nav').innerHTML = ST_SECTIONS.map(([id, label, ic]) =>
-      `<button class="st-nav-item" data-go="${id}"><span data-icon="${ic}">${icon(ic)}</span>${label}</button>`).join('');
+      `<button class="st-nav-item" data-go="${id}"><span data-icon="${ic}">${icon(ic)}</span>${tl(label)}</button>`).join('');
     this.refresh();
     // navegação acompanha a seção visível
     const io = new IntersectionObserver((entries) => {
@@ -77,122 +77,124 @@ const settingsPage = {
   },
 
   section(id, title, body, intro = '') {
-    return `<section class="st-sec" id="st-${id}"><h2>${title}</h2>${intro ? `<p class="st-intro">${intro}</p>` : ''}<div class="st-card">${body}</div></section>`;
+    return `<section class="st-sec" id="st-${id}"><h2>${tl(title)}</h2>${intro ? `<p class="st-intro">${intro}</p>` : ''}<div class="st-card">${body}</div></section>`;
   },
 
   general() {
-    return this.section('geral', 'General',
-      stRow('When Kona starts', 'Tabs in groups are always kept.',
-        stSelect('startup', [['newtab', 'Open a new tab'], ['restore', 'Restore tabs from last session']])) +
-      stRow('Search engine', 'Used in the address bar.',
+    return this.section('geral', /*i18n*/'General',
+      stRow(tl('Language'), tl('Kona’s menus and messages. Follows Windows unless you pick one.'),
+        stSelect(null, [['auto', `${tl('Automatic')} (${LANGUAGES.find(([c]) => c === matchLanguage(i18n.system))[1]})`], ...LANGUAGES], i18n.choice, 'data-lang="1"')) +
+      stRow(tl('When Kona starts'), tl('Tabs in groups are always kept.'),
+        stSelect('startup', [['newtab', tl('Open a new tab')], ['restore', tl('Restore tabs from last session')]])) +
+      stRow(tl('Search engine'), tl('Used in the address bar.'),
         stSelect('searchEngine', Object.entries(ENGINES).map(([k, e]) => [k, e.name]))) +
-      stRow('Search suggestions', `As you type in the address bar, your text is sent to ${escapeHtml(engine().name)} to suggest searches.`,
+      stRow(tl('Search suggestions'), tl('As you type in the address bar, your text is sent to {engine} to suggest searches.', { engine: escapeHtml(engine().name) }),
         stSwitch('suggestions')) +
-      stRow('Save browsing history', 'Visited sites and searches stay on this computer, in the current profile.',
+      stRow(tl('Save browsing history'), tl('Visited sites and searches stay on this computer, in the current profile.'),
         stSwitch('saveHistory')) +
-      stRow('Import from another browser', 'Bring your favorites, history and extensions from Chrome, Edge or Brave.',
-        stButton('Import…', 'import')));
+      stRow(tl('Import from another browser'), tl('Bring your favorites, history and extensions from Chrome, Edge or Brave.'),
+        stButton(tl('Import…'), 'import')));
   },
 
   appearance() {
     const theme = settings.theme;
     const seg = ['light', 'dark', 'system'].map((t) =>
-      `<button class="${t === theme ? 'on' : ''}" data-theme-set="${t}">${{ light: 'Light', dark: 'Dark', system: 'System' }[t]}</button>`).join('');
-    return this.section('aparencia', 'Appearance',
-      stRow('Theme', 'Applies to Kona and to pages that follow the system theme.', `<div class="seg st-seg">${seg}</div>`) +
-      stRow('New tab background and sections', 'Pick a background, a color or your own photo, and choose what appears on the new tab.',
-        stButton('Customize…', 'customize')) +
-      stRow('Interface sounds', 'Short sounds when you open menus, move between tabs and hover over favorites.', stSwitch('sounds')) +
-      stRow('Default page zoom', null,
+      `<button class="${t === theme ? 'on' : ''}" data-theme-set="${t}">${{ light: tl('Light'), dark: tl('Dark'), system: tl('System') }[t]}</button>`).join('');
+    return this.section('aparencia', /*i18n*/'Appearance',
+      stRow(tl('Theme'), tl('Applies to Kona and to pages that follow the system theme.'), `<div class="seg st-seg">${seg}</div>`) +
+      stRow(tl('New tab background and sections'), tl('Pick a background, a color or your own photo, and choose what appears on the new tab.'),
+        stButton(tl('Customize…'), 'customize')) +
+      stRow(tl('Interface sounds'), tl('Short sounds when you open menus, move between tabs and hover over favorites.'), stSwitch('sounds')) +
+      stRow(tl('Default page zoom'), null,
         stSelect('zoom', [[0.75, '75%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.25, '125%'], [1.5, '150%']])));
   },
 
   passwords() {
     const n = typeof pwState !== 'undefined' ? pwState.count : null;
-    return this.section('senhas', 'Passwords',
-      stRow('Offer to save passwords', 'Kona asks to save the password when you sign in to a site, and fills it in next time.', stSwitch('offerPasswords', settings.offerPasswords !== false)) +
-      stRow('Saved passwords', n == null ? 'Stored on this computer, encrypted by Windows.' : `${n} ${n === 1 ? 'password' : 'passwords'} · stored on this computer, encrypted by Windows.`,
-        stButton('Manage…', 'pw-manage')) +
-      stRow('Import passwords', 'From a CSV file exported by Chrome, Edge, Firefox, Bitwarden or another password manager.', stButton('Import…', 'pw-import')) +
-      stRow('Export passwords', 'Saves all your passwords to a CSV file. Anyone with the file can read them.', stButton('Export…', 'pw-export')));
+    return this.section('senhas', /*i18n*/'Passwords',
+      stRow(tl('Offer to save passwords'), tl('Kona asks to save the password when you sign in to a site, and fills it in next time.'), stSwitch('offerPasswords', settings.offerPasswords !== false)) +
+      stRow(tl('Saved passwords'), n == null ? tl('Stored on this computer, encrypted by Windows.') : tln(n, '{n} password · stored on this computer, encrypted by Windows.', '{n} passwords · stored on this computer, encrypted by Windows.'),
+        stButton(tl('Manage…'), 'pw-manage')) +
+      stRow(tl('Import passwords'), tl('From a CSV file exported by Chrome, Edge, Firefox, Bitwarden or another password manager.'), stButton(tl('Import…'), 'pw-import')) +
+      stRow(tl('Export passwords'), tl('Saves all your passwords to a CSV file. Anyone with the file can read them.'), stButton(tl('Export…'), 'pw-export')));
   },
 
   privacy() {
-    return this.section('privacidade', 'Privacy and security',
-      stRow('Cookies', {
-        allow: 'All sites can save and read cookies.',
-        'block-third-party': 'Recommended. Blocks cookies that other sites (ads, trackers) use inside the page you’re viewing.',
-        'block-all': 'No site can save cookies sent over the network. Sign-ins and shopping carts will stop working.',
-      }[settings.cookies], stSelect('cookies', [['allow', 'Allow all'], ['block-third-party', 'Block third-party'], ['block-all', 'Block all']])) +
-      stRow('Delete cookies and site data when Kona closes', 'You’ll be signed out of every account each time you close Kona.', stSwitch('clearOnExit')) +
-      stRow('Ask sites not to sell or share your data', 'Sends the Global Privacy Control (GPC) signal. Some places require sites by law to honor it.', stSwitch('gpc')) +
-      stRow('Always use secure connections', 'Opens sites over HTTPS. If a site doesn’t support HTTPS, it loads normally without encryption.', stSwitch('httpsFirst')) +
-      stRow('Secure DNS', 'Encrypts DNS lookups (Quad9) and blocks known scam and malware sites. Turn it off if an address on your company network won’t open.', stSwitch('secureDns')) +
-      stRow('Site data', 'See which sites store cookies in this profile and delete the ones you want.', stButton('View site data…', 'sites')) +
-      stRow('Clear browsing data', 'History, cookies and cached files.', stButton('Clear…', 'clear-data')),
-      'These options apply to the current profile. Private browsing follows the same rules and also deletes everything when you leave it.');
+    return this.section('privacidade', /*i18n*/'Privacy and security',
+      stRow(tl('Cookies'), {
+        allow: tl('All sites can save and read cookies.'),
+        'block-third-party': tl('Recommended. Blocks cookies that other sites (ads, trackers) use inside the page you’re viewing.'),
+        'block-all': tl('No site can save cookies sent over the network. Sign-ins and shopping carts will stop working.'),
+      }[settings.cookies], stSelect('cookies', [['allow', tl('Allow all')], ['block-third-party', tl('Block third-party')], ['block-all', tl('Block all')]])) +
+      stRow(tl('Delete cookies and site data when Kona closes'), tl('You’ll be signed out of every account each time you close Kona.'), stSwitch('clearOnExit')) +
+      stRow(tl('Ask sites not to sell or share your data'), tl('Sends the Global Privacy Control (GPC) signal. Some places require sites by law to honor it.'), stSwitch('gpc')) +
+      stRow(tl('Always use secure connections'), tl('Opens sites over HTTPS. If a site doesn’t support HTTPS, it loads normally without encryption.'), stSwitch('httpsFirst')) +
+      stRow(tl('Secure DNS'), tl('Encrypts DNS lookups (Quad9) and blocks known scam and malware sites. Turn it off if an address on your company network won’t open.'), stSwitch('secureDns')) +
+      stRow(tl('Site data'), tl('See which sites store cookies in this profile and delete the ones you want.'), stButton(tl('View site data…'), 'sites')) +
+      stRow(tl('Clear browsing data'), tl('History, cookies and cached files.'), stButton(tl('Clear…'), 'clear-data')),
+      tl('These options apply to the current profile. Private browsing follows the same rules and also deletes everything when you leave it.'));
   },
 
   permissions() {
     const rows = PERMS.map(([k, label, ic]) => stRow(
-      `<span class="st-ic">${icon(ic)}</span>${label}`, null,
-      stSelect(null, [['ask', 'Ask'], ['allow', 'Allow'], ['block', 'Block']], settings.permissions[k], `data-perm="${k}"`),
+      `<span class="st-ic">${icon(ic)}</span>${tl(label)}`, null,
+      stSelect(null, [['ask', tl('Ask')], ['allow', tl('Allow')], ['block', tl('Block')]], settings.permissions[k], `data-perm="${k}"`),
     )).join('');
     const sites = Object.entries(settings.sites).filter(([, d]) => Object.keys(d).length);
     const list = sites.length
       ? sites.map(([origin, d]) => `
         <div class="st-site">
-          <div class="st-site-head"><b>${escapeHtml(origin.replace(/^https?:\/\//, ''))}</b>${stButton('Forget', 'site-forget', 'btn-link', `data-origin="${escapeHtml(origin)}"`)}</div>
+          <div class="st-site-head"><b>${escapeHtml(origin.replace(/^https?:\/\//, ''))}</b>${stButton(tl('Forget'), 'site-forget', 'btn-link', `data-origin="${escapeHtml(origin)}"`)}</div>
           <div class="st-site-perms">${Object.entries(d).map(([k, v]) => `
-            <label class="st-chip"><span>${icon(PERM_INFO[k]?.ic || 'info')}${PERM_INFO[k]?.label || k}</span>
-              ${stSelect(null, [['allow', 'Allow'], ['block', 'Block']], v, `data-site="${escapeHtml(origin)}" data-kind="${k}"`)}</label>`).join('')}
+            <label class="st-chip"><span>${icon(PERM_INFO[k]?.ic || 'info')}${PERM_INFO[k] ? tl(PERM_INFO[k].label) : k}</span>
+              ${stSelect(null, [['allow', tl('Allow')], ['block', tl('Block')]], v, `data-site="${escapeHtml(origin)}" data-kind="${k}"`)}</label>`).join('')}
           </div>
         </div>`).join('')
-      : '<p class="st-empty">No saved choices yet. When a site asks for a permission, your answer will show up here.</p>';
-    return this.section('permissoes', 'Site permissions', rows,
-      'What sites can do without asking. Screen sharing always asks what to share.') +
-      `<div class="st-card st-sites"><h3>Choices by site</h3>${list}</div>`;
+      : `<p class="st-empty">${tl('No saved choices yet. When a site asks for a permission, your answer will show up here.')}</p>`;
+    return this.section('permissoes', /*i18n*/'Site permissions', rows,
+      tl('What sites can do without asking. Screen sharing always asks what to share.')) +
+      `<div class="st-card st-sites"><h3>${tl('Choices by site')}</h3>${list}</div>`;
   },
 
   downloads() {
-    const dir = settings.downloadDir || appInfo?.downloads || 'System Downloads folder';
-    return this.section('downloads', 'Downloads',
-      stRow('Save files to', `<span class="st-path">${escapeHtml(dir)}</span>`,
-        stButton('Change…', 'pick-folder') + (settings.downloadDir ? stButton('Default', 'reset-folder', 'btn-link') : '')) +
-      stRow('Ask where to save each file', null, stSwitch('downloadAsk')));
+    const dir = settings.downloadDir || appInfo?.downloads || tl('System Downloads folder');
+    return this.section('downloads', /*i18n*/'Downloads',
+      stRow(tl('Save files to'), `<span class="st-path">${escapeHtml(dir)}</span>`,
+        stButton(tl('Change…'), 'pick-folder') + (settings.downloadDir ? stButton(tl('Default'), 'reset-folder', 'btn-link') : '')) +
+      stRow(tl('Ask where to save each file'), null, stSwitch('downloadAsk')));
   },
 
   profiles() {
     const rows = PROFILES.list.map((p) => `
       <div class="st-row">
-        <div class="st-text st-profile">${avatarHtml(p.avatar, p.name, 'md')}<b>${escapeHtml(p.name)}</b>${p.id === PROFILES.current ? '<span class="st-tag">in use</span>' : ''}</div>
-        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton('Use', 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton('Edit…', 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
+        <div class="st-text st-profile">${avatarHtml(p.avatar, p.name, 'md')}<b>${escapeHtml(p.name)}</b>${p.id === PROFILES.current ? `<span class="st-tag">${tl('in use')}</span>` : ''}</div>
+        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton(tl('Use'), 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton(tl('Edit…'), 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
       </div>`).join('');
-    return this.section('perfis', 'Profiles', rows + `<div class="st-row"><div class="st-text"></div><div class="st-ctrl">${stButton('New profile', 'profile-new', 'btn-primary')}</div></div>`,
-      'Each profile has its own history, favorites, settings, sign-ins and extensions.');
+    return this.section('perfis', /*i18n*/'Profiles', rows + `<div class="st-row"><div class="st-text"></div><div class="st-ctrl">${stButton(tl('New profile'), 'profile-new', 'btn-primary')}</div></div>`,
+      tl('Each profile has its own history, favorites, settings, sign-ins and extensions.'));
   },
 
   extensions() {
     const n = typeof extensions !== 'undefined' ? extensions.length : 0;
-    return this.section('extensoes', 'Extensions',
-      stRow(n ? `${n} ${n === 1 ? 'extension installed' : 'extensions installed'}` : 'No extensions installed',
-        'Extensions from the Chrome Web Store, per profile. Compatibility may vary.',
-        stButton('Manage…', 'extensions') + stButton('Chrome Web Store', 'store', 'btn-primary')));
+    return this.section('extensoes', /*i18n*/'Extensions',
+      stRow(n ? tln(n, '{n} extension installed', '{n} extensions installed') : tl('No extensions installed'),
+        tl('Extensions from the Chrome Web Store, per profile. Compatibility may vary.'),
+        stButton(tl('Manage…'), 'extensions') + stButton('Chrome Web Store', 'store', 'btn-primary')));
   },
 
   about() {
     const v = appInfo || {};
     const keys = [
-      ['Ctrl+T', 'New tab'], ['Ctrl+N', 'New window'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'], ['Ctrl+1…8 / Ctrl+9', 'Go to tab / last tab'],
-      ['Ctrl+PgUp / PgDn', 'Previous / next tab'], ['Ctrl+Shift+PgUp / PgDn', 'Move tab left / right'],
-      ['Alt+Z', 'Sidebar'], ['Ctrl+D', 'Add page to Favorites'], ['Ctrl+Shift+D', 'Save to Reading List'],
-      ['Ctrl+H', 'History'], ['Ctrl+J', 'Downloads'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
-      ['Ctrl+F', 'Find in page'], ['Ctrl+Shift+R', 'Reader'], ['F11', 'Full screen'], ['Ctrl+Shift+T', 'Reopen closed tab'], ['Ctrl+ / Ctrl−', 'Zoom in / out'], ['Ctrl+0', 'Reset zoom'],
-      ['Alt+← / Alt+→', 'Back / Forward'], ['Ctrl+P', 'Print'],
+      ['Ctrl+T', /*i18n*/'New tab'], ['Ctrl+N', /*i18n*/'New window'], ['Ctrl+W', /*i18n*/'Close tab'], ['Ctrl+L', /*i18n*/'Address bar'], ['Ctrl+Tab', /*i18n*/'Next tab'], ['Ctrl+1…8 / Ctrl+9', /*i18n*/'Go to tab / last tab'],
+      ['Ctrl+PgUp / PgDn', /*i18n*/'Previous / next tab'], ['Ctrl+Shift+PgUp / PgDn', /*i18n*/'Move tab left / right'],
+      ['Alt+Z', /*i18n*/'Sidebar'], ['Ctrl+D', /*i18n*/'Add page to Favorites'], ['Ctrl+Shift+D', /*i18n*/'Save to Reading List'],
+      ['Ctrl+H', /*i18n*/'History'], ['Ctrl+J', /*i18n*/'Downloads'], ['Ctrl+Shift+N', /*i18n*/'Private browsing'], ['Ctrl+,', /*i18n*/'Settings'], ['Alt+V', /*i18n*/'All tabs'],
+      ['Ctrl+F', /*i18n*/'Find in page'], ['Ctrl+Shift+R', /*i18n*/'Reader'], ['F11', /*i18n*/'Full screen'], ['Ctrl+Shift+T', /*i18n*/'Reopen closed tab'], ['Ctrl+ / Ctrl−', /*i18n*/'Zoom in / out'], ['Ctrl+0', /*i18n*/'Reset zoom'],
+      ['Alt+← / Alt+→', /*i18n*/'Back / Forward'], ['Ctrl+P', /*i18n*/'Print'],
     ];
-    return this.section('sobre', 'About Kona',
-      stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `Version ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
-      `<div class="st-keys">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`);
+    return this.section('sobre', /*i18n*/'About Kona',
+      stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `${tl('Version')} ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
+      `<div class="st-keys">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${tl(d)}</span></div>`).join('')}</div>`);
   },
 };
 
@@ -208,6 +210,7 @@ function afterSetting(key) {
 
 $('#st-main').addEventListener('change', (e) => {
   const el = e.target;
+  if (el.dataset.lang) { setLanguage(el.value); return; }
   if (el.dataset.set) {
     settings[el.dataset.set] = el.dataset.set === 'zoom' ? Number(el.value) : el.value;
     afterSetting(el.dataset.set);
@@ -261,21 +264,21 @@ let siteData = [];
 async function openSitesSheet() {
   openSheet('#sites-sheet');
   $('#sites-q').value = '';
-  $('#sites-list').innerHTML = '<p class="st-empty">Loading…</p>';
+  $('#sites-list').innerHTML = `<p class="st-empty">${tl('Loading…')}</p>`;
   siteData = (await api?.sitesList(PROFILES.currentProfile().partition)) || [];
   renderSites();
 }
 function renderSites() {
   const q = $('#sites-q').value.trim().toLowerCase();
   const list = siteData.filter((s) => s.site.includes(q));
-  $('#sites-count').textContent = `${siteData.length} ${siteData.length === 1 ? 'site' : 'sites'}`;
+  $('#sites-count').textContent = tln(siteData.length, '{n} site', '{n} sites');
   $('#sites-list').innerHTML = list.length ? list.map((s) => `
     <div class="sb-row" data-site="${escapeHtml(s.site)}">
       <span class="sb-fav"><span class="mono">${escapeHtml(s.site[0].toUpperCase())}</span></span>
-      <div class="sb-row-text"><b>${escapeHtml(s.site)}</b><span>${s.count} ${s.count === 1 ? 'cookie' : 'cookies'}</span></div>
-      <button class="btn-link" data-remove-site="${escapeHtml(s.site)}">Remove</button>
+      <div class="sb-row-text"><b>${escapeHtml(s.site)}</b><span>${tln(s.count, '{n} cookie', '{n} cookies')}</span></div>
+      <button class="btn-link" data-remove-site="${escapeHtml(s.site)}">${tl('Remove')}</button>
     </div>`).join('')
-    : `<p class="st-empty">${siteData.length ? 'No sites match your search.' : 'No sites store cookies in this profile.'}</p>`;
+    : `<p class="st-empty">${siteData.length ? tl('No sites match your search.') : tl('No sites store cookies in this profile.')}</p>`;
 }
 $('#sites-q').addEventListener('input', renderSites);
 $('#sites-list').addEventListener('click', async (e) => {
@@ -286,7 +289,7 @@ $('#sites-list').addEventListener('click', async (e) => {
   renderSites();
 });
 $('#sites-all').addEventListener('click', async () => {
-  const yes = await ask({ title: 'Remove data for all sites?', text: 'You’ll be signed out of the accounts you’re signed in to in this profile.', ok: 'Remove all', danger: true });
+  const yes = await ask({ title: tl('Remove data for all sites?'), text: tl('You’ll be signed out of the accounts you’re signed in to in this profile.'), ok: tl('Remove all'), danger: true });
   if (!yes) return;
   await api?.clearBrowsingData(PROFILES.currentProfile().partition, { cookies: true });
   siteData = [];
@@ -304,10 +307,10 @@ function nextPerm() {
   const { origin, kinds } = permCurrent;
   const host = origin.replace(/^https?:\/\//, '');
   $('#perm-icon').innerHTML = icon(PERM_INFO[kinds[0]]?.ic || 'info');
-  $('#perm-title').textContent = `“${host}” wants to ${kinds.map((k) => PERM_INFO[k]?.verb || k).join(' and ')}`;
+  $('#perm-title').textContent = tl('“{host}” wants to {what}', { host, what: kinds.map((k) => tl(PERM_INFO[k]?.verb || k)).join(tl(' and ')) });
   $('#perm-text').textContent = permCurrent.private
-    ? 'In private browsing, your answer only applies to this session.'
-    : 'Kona remembers your answer. You can change it later in Settings › Site permissions.';
+    ? tl('In private browsing, your answer only applies to this session.')
+    : tl('Kona remembers your answer. You can change it later in Settings › Site permissions.');
   openSheet('#perm-sheet');
 }
 function answerPerm(allow) {
@@ -329,11 +332,11 @@ $('#perm-yes').addEventListener('click', () => answerPerm(true));
 $('#perm-no').addEventListener('click', () => answerPerm(false));
 
 /* ───────────── Downloads ───────────── */
-api?.on('download:start', ({ name }) => toast(`Downloading “${name}”…`));
+api?.on('download:start', ({ name }) => toast(tl('Downloading “{name}”…', { name })));
 api?.on('download:done', ({ name, path, state }) => {
-  if (state === 'completed') toast(`“${name}” downloaded`, { label: 'Show in folder', run: () => api.showDownload(path) });
-  else if (state === 'cancelled') toast('Download canceled');
-  else toast(`Couldn’t download “${name}”`);
+  if (state === 'completed') toast(tl('“{name}” downloaded', { name }), { label: tl('Show in folder'), run: () => api.showDownload(path) });
+  else if (state === 'cancelled') toast(tl('Download canceled'));
+  else toast(tl('Couldn’t download “{name}”', { name }));
 });
 
 hydrateIcons($('#perm-sheet'));

@@ -27,6 +27,11 @@ if (process.platform === 'win32') app.setAppUserModelId('com.ruben-acevedo.kona'
 // Pasta de dados alternativa (útil para testes sem mexer no perfil real)
 if (process.env.KONA_USER_DATA) app.setPath('userData', process.env.KONA_USER_DATA);
 
+// Idioma (N5): o da interface vale também para as páginas do Chromium (erro, PDF, data) e para o
+// idioma que os sites recebem. Precisa ser definido antes do app ficar pronto.
+const i18nMain = require('./i18n');
+app.commandLine.appendSwitch('lang', ((l) => (l === 'en' ? 'en-US' : l))(i18nMain.startupLanguage()));
+
 // Uma instância só: abrir o Kona de novo (ou um link vindo de outro programa, quando ele é o
 // navegador padrão) abre uma aba na janela que já existe. O bloqueio é por pasta de dados, então
 // os testes (KONA_USER_DATA) não esbarram no Kona aberto.
@@ -144,6 +149,7 @@ function createWindow(opts = {}) {
   });
 
   const query = { state: first ? process.env.KONA_STATE || '' : '' };
+  query.syslang = app.getPreferredSystemLanguages?.()[0] || app.getLocale(); // idioma "automático"
   if (!first) { query.role = 'secondary'; query.nowelcome = '1'; } // as ofertas do primeiro uso só na 1ª janela
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
   if (process.env.KONA_WALLPAPER) query.wallpaper = process.env.KONA_WALLPAPER;
@@ -502,6 +508,7 @@ handleUi('win:new', (e, url) => {
   return true;
 });
 handleUi('win:count', () => windows.filter(alive).length);
+onUi('lang:set', (_e, lang) => i18nMain.setLanguage(lang));
 // janelas no modo privado não recebem abas de outras janelas (nem aparecem em "Mover para…")
 const privateWins = new WeakSet();
 onUi('win:private', (e, on) => {

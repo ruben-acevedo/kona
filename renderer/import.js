@@ -10,18 +10,18 @@ async function openImport({ welcome = false } = {}) {
   imp.phase = 'choose';
   imp.data = null;
   imp.welcome = welcome;
-  $('#imp-title').textContent = welcome ? 'Welcome to Kona' : 'Import from another browser';
+  $('#imp-title').textContent = welcome ? tl('Welcome to Kona') : tl('Import from another browser');
   $('#imp-sub').textContent = welcome
-    ? 'Bring your favorites, history and extensions from the browser you used before.'
-    : 'Bring your favorites, history and extensions to Kona.';
-  $('#imp-cancel').textContent = welcome ? 'Not now' : 'Cancel';
-  $('#imp-body').innerHTML = '<p class="st-empty">Looking for browsers…</p>';
+    ? tl('Bring your favorites, history and extensions from the browser you used before.')
+    : tl('Bring your favorites, history and extensions to Kona.');
+  $('#imp-cancel').textContent = welcome ? tl('Not now') : tl('Cancel');
+  $('#imp-body').innerHTML = `<p class="st-empty">${tl('Looking for browsers…')}</p>`;
   setImportFooter();
   openSheet('#import-sheet');
   imp.sources = (await api?.importSources()) || [];
   if (!imp.sources.length) {
     imp.phase = 'none';
-    $('#imp-body').innerHTML = '<p class="st-empty">No Chrome, Edge or Brave profile was found on this computer.</p>';
+    $('#imp-body').innerHTML = `<p class="st-empty">${tl('No Chrome, Edge or Brave profile was found on this computer.')}</p>`;
     setImportFooter();
     return;
   }
@@ -46,16 +46,15 @@ async function loadSource(id) {
 }
 
 const installedExtension = (id) => typeof extensions !== 'undefined' && extensions.some((x) => x.id === id);
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function renderImport() {
   const body = $('#imp-body');
   const from = imp.sources.length > 1
-    ? `<label class="imp-from"><span>From</span><select class="st-select" id="imp-source">${imp.sources.map((s) =>
+    ? `<label class="imp-from"><span>${tl('From')}</span><select class="st-select" id="imp-source">${imp.sources.map((s) =>
       `<option value="${escapeHtml(s.id)}"${s.id === imp.sel ? ' selected' : ''}>${escapeHtml(s.browser)} — ${escapeHtml(s.profile)}</option>`).join('')}</select></label>`
-    : `<p class="imp-one">From <b>${escapeHtml(imp.sources[0].browser)}</b> — ${escapeHtml(imp.sources[0].profile)}</p>`;
+    : `<p class="imp-one">${tl('From {browser}', { browser: `<b>${escapeHtml(imp.sources[0].browser)}</b>` })} — ${escapeHtml(imp.sources[0].profile)}</p>`;
   const d = imp.data;
-  if (!d) { body.innerHTML = from + '<p class="st-empty">Reading…</p>'; setImportFooter(); return; }
+  if (!d) { body.innerHTML = from + `<p class="st-empty">${tl('Reading…')}</p>`; setImportFooter(); return; }
   const h = d.history;
   const replacing = bookmarks.isDefaultList();
   const exts = d.extensions.map((e) => {
@@ -65,19 +64,19 @@ function renderImport() {
         <input type="checkbox" data-ext="${e.id}"${imp.pick.extensions.has(e.id) ? ' checked' : ''}${have || gone ? ' disabled' : ''} />
         <span class="imp-eicon">${e.icon ? `<img src="${e.icon}" alt="" />` : icon('puzzle')}</span>
         <span class="imp-ename">${escapeHtml(e.name)}</span>
-        ${have ? '<small>Already in Kona</small>' : gone ? '<small>No longer in the Web Store</small>' : e.enabled ? '' : `<small>Off in ${escapeHtml(d.browser.replace(/^(Google|Microsoft) /, ''))}</small>`}
+        ${have ? `<small>${tl('Already in Kona')}</small>` : gone ? `<small>${tl('No longer in the Web Store')}</small>` : e.enabled ? '' : `<small>${tl('Off in {browser}', { browser: escapeHtml(d.browser.replace(/^(Google|Microsoft) /, '')) })}</small>`}
       </label>`;
   }).join('');
   body.innerHTML = from + `
     <div class="check-list imp-list">
       <label${d.bookmarkCount ? '' : ' class="off"'}><input type="checkbox" data-pick="bookmarks"${imp.pick.bookmarks ? ' checked' : ''}${d.bookmarkCount ? '' : ' disabled'} />
-        <span><b>Favorites</b><small>${d.bookmarkCount ? `${plural(d.bookmarkCount, 'favorite', 'favorites')}, with folders${replacing ? ' · replaces Kona’s default favorites' : ' · added after yours'}` : 'None found'}</small></span></label>
+        <span><b>${tl('Favorites')}</b><small>${d.bookmarkCount ? `${tln(d.bookmarkCount, '{n} favorite, with folders', '{n} favorites, with folders')}${replacing ? ` · ${tl('replaces Kona’s default favorites')}` : ` · ${tl('added after yours')}`}` : tl('None found')}</small></span></label>
       <label${h.visits.length ? '' : ' class="off"'}><input type="checkbox" data-pick="history"${imp.pick.history ? ' checked' : ''}${h.visits.length ? '' : ' disabled'} />
-        <span><b>History</b><small>${h.visits.length ? `Your ${plural(h.visits.length, 'most recent and visited site', 'most recent and visited sites')} and ${plural(h.searches.length, 'search', 'searches')}` : 'None found'}</small></span></label>
-      <div class="imp-ext-head"><b>Extensions</b><small>${d.extensions.length ? 'Installed again from the Chrome Web Store. Their own settings don’t come along.' : 'None from the Chrome Web Store found'}</small></div>
+        <span><b>${tl('History')}</b><small>${h.visits.length ? `${tln(h.visits.length, 'Your most recent and visited site', 'Your {n} most recent and visited sites')} · ${tln(h.searches.length, '{n} search', '{n} searches')}` : tl('None found')}</small></span></label>
+      <div class="imp-ext-head"><b>${tl('Extensions')}</b><small>${d.extensions.length ? tl('Installed again from the Chrome Web Store. Their own settings don’t come along.') : tl('None from the Chrome Web Store found')}</small></div>
       ${exts ? `<div class="imp-exts">${exts}</div>` : ''}
     </div>
-    ${d.errors.length ? `<p class="imp-warn">Some data couldn’t be read (${escapeHtml(d.errors.join('; '))}). If ${escapeHtml(d.browser)} is open, close it and try again.</p>` : ''}`;
+    ${d.errors.length ? `<p class="imp-warn">${tl('Some data couldn’t be read ({errors}). If {browser} is open, close it and try again.', { errors: escapeHtml(d.errors.join('; ')), browser: escapeHtml(d.browser) })}</p>` : ''}`;
   setImportFooter();
 }
 
@@ -86,15 +85,15 @@ function setImportFooter() {
   hint.textContent = '';
   $('#imp-close').hidden = imp.phase === 'working'; // sem fechar no meio da importação
   if (imp.phase === 'done' || imp.phase === 'none') {
-    cancel.hidden = true; go.hidden = false; go.disabled = false; go.textContent = 'Done';
+    cancel.hidden = true; go.hidden = false; go.disabled = false; go.textContent = tl('Done');
     return;
   }
-  // importando: sem botões (só o progresso); voltam no fim como "Done"
-  if (imp.phase === 'working') { cancel.hidden = true; go.hidden = true; hint.textContent = 'This may take a moment. Keep Kona open.'; return; }
-  cancel.hidden = false; go.hidden = false; go.textContent = 'Import';
+  // importando: sem botões (só o progresso); voltam no fim como tl("Done")
+  if (imp.phase === 'working') { cancel.hidden = true; go.hidden = true; hint.textContent = tl('This may take a moment. Keep Kona open.'); return; }
+  cancel.hidden = false; go.hidden = false; go.textContent = tl('Import');
   const p = imp.pick;
   go.disabled = imp.busy || !imp.data || !(p.bookmarks || p.history || p.extensions.size);
-  if (imp.phase === 'choose' && imp.data) hint.textContent = 'Passwords and sign-ins can’t be imported.';
+  if (imp.phase === 'choose' && imp.data) hint.textContent = tl('Passwords and sign-ins can’t be imported.');
 }
 
 $('#imp-body').addEventListener('change', (e) => {
@@ -114,23 +113,23 @@ async function runImport() {
   const failed = [];
   const step = (text) => { $('#imp-body').innerHTML = `<div class="imp-progress"><span class="imp-spin"></span><span>${escapeHtml(text)}</span></div>`; };
   if (p.bookmarks) {
-    step('Importing favorites…');
+    step(tl('Importing favorites…'));
     const n = bookmarks.importTree(d.bookmarks);
-    done.push(plural(n, 'favorite', 'favorites'));
+    done.push(tln(n, '{n} favorite', '{n} favorites'));
   }
   if (p.history) {
-    step('Importing history…');
+    step(tl('Importing history…'));
     browseHistory.merge(d.history);
-    done.push(`${plural(d.history.visits.length, 'site', 'sites')} and ${plural(d.history.searches.length, 'search', 'searches')} in history`);
+    done.push(`${tln(d.history.visits.length, '{n} site in history', '{n} sites in history')} · ${tln(d.history.searches.length, '{n} search', '{n} searches')}`);
   }
   const ids = [...p.extensions];
   let ok = 0;
   for (let i = 0; i < ids.length; i++) {
     const e = d.extensions.find((x) => x.id === ids[i]);
-    step(`Installing ${e.name} (${i + 1} of ${ids.length})…`);
+    step(tl('Installing {name} ({i} of {n})…', { name: e.name, i: i + 1, n: ids.length }));
     if (await api?.importExtension(ids[i])) ok++; else failed.push(e.name);
   }
-  if (ids.length) done.push(plural(ok, 'extension', 'extensions'));
+  if (ids.length) done.push(tln(ok, '{n} extension', '{n} extensions'));
   imp.busy = false;
   imp.phase = 'done';
   sfx.play('select');
@@ -139,9 +138,9 @@ async function runImport() {
   if (typeof refreshExtensions === 'function') refreshExtensions();
   $('#imp-body').innerHTML = `<div class="imp-done">
       <span class="imp-check">${icon('check')}</span>
-      <b>Imported from ${escapeHtml(d.browser)}</b>
-      <p>${escapeHtml(done.join(' · ') || 'Nothing was selected.')}</p>
-      ${failed.length ? `<p class="imp-warn">Couldn’t install: ${escapeHtml(failed.join(', '))}. You can add them from the Chrome Web Store.</p>` : ''}
+      <b>${tl('Imported from {browser}', { browser: escapeHtml(d.browser) })}</b>
+      <p>${escapeHtml(done.join(' · ') || tl('Nothing was selected.'))}</p>
+      ${failed.length ? `<p class="imp-warn">${tl('Couldn’t install: {names}. You can add them from the Chrome Web Store.', { names: escapeHtml(failed.join(', ')) })}</p>` : ''}
     </div>`;
   setImportFooter();
 }

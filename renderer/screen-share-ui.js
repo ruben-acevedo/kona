@@ -4,7 +4,7 @@
 // Trocar de opção é animado: o indicador desliza, a grade sai para um lado e a nova entra do outro.
 
 const share = { req: null, kind: 'screen', pick: null, active: new Map() };
-const shareHost = (o) => { try { return new URL(o).host; } catch { return o || 'This site'; } };
+const shareHost = (o) => { try { return new URL(o).host; } catch { return o || tl('This site'); } };
 const SHARE_KINDS = ['screen', 'window', 'tab'];
 const SHARE_EASE = 'cubic-bezier(.32,.72,0,1)';
 
@@ -69,14 +69,14 @@ async function renderShareGrid() {
     }));
     if (share.req !== r || share.kind !== 'tab') return;
     items = r.tabItems;
-  } else if (!r.sources) { $('#share-grid').innerHTML = '<p class="st-empty share-loading">Loading…</p>'; $('#share-go').disabled = true; return; }
+  } else if (!r.sources) { $('#share-grid').innerHTML = `<p class="st-empty share-loading">${tl('Loading…')}</p>`; $('#share-go').disabled = true; return; }
   else items = r.sources.filter((s) => s.type === share.kind);
   $('#share-grid').innerHTML = items.length ? items.map((s, i) => `
     <button class="share-item${share.pick === s.id ? ' on' : ''}" data-src="${escapeHtml(s.id)}" title="${escapeHtml(s.name)}">
       <span class="share-thumb">${s.thumb ? `<img src="${s.thumb}" alt="" draggable="false" />` : ''}</span>
-      <span class="share-name">${s.icon ? `<img src="${escapeHtml(s.icon)}" alt="" />` : ''}${escapeHtml(share.kind === 'screen' ? (items.length > 1 ? `Screen ${i + 1}` : 'Entire screen') : s.name)}</span>
+      <span class="share-name">${s.icon ? `<img src="${escapeHtml(s.icon)}" alt="" />` : ''}${escapeHtml(share.kind === 'screen' ? (items.length > 1 ? tl('Screen {n}', { n: i + 1 }) : tl('Entire screen')) : s.name)}</span>
     </button>`).join('')
-    : `<p class="st-empty">${share.kind === 'tab' ? 'Open a page in another tab to share it.' : 'Nothing to share here.'}</p>`;
+    : `<p class="st-empty">${share.kind === 'tab' ? tl('Open a page in another tab to share it.') : tl('Nothing to share here.')}</p>`;
   $('#share-go').disabled = !share.pick;
 }
 
@@ -139,9 +139,10 @@ function renderShareBar() {
   bar.classList.toggle('show', list.length > 0);
   if (!list.length) return;
   const [id, a] = list[list.length - 1];
-  const what = { screen: 'your screen', window: 'a window', tab: 'a tab' }[a.what] || 'your screen';
-  bar.innerHTML = `<span class="share-dot"></span><span>${escapeHtml(shareHost(a.origin))} is sharing ${what}</span>
-    <button class="btn-primary danger" data-stop="${id}">Stop sharing</button>`;
+  const host = escapeHtml(shareHost(a.origin));
+  const text = { window: tl('{host} is sharing a window', { host }), tab: tl('{host} is sharing a tab', { host }) }[a.what] || tl('{host} is sharing your screen', { host });
+  bar.innerHTML = `<span class="share-dot"></span><span>${text}</span>
+    <button class="btn-primary danger" data-stop="${id}">${tl('Stop sharing')}</button>`;
 }
 api?.on('share:started', (a) => { share.active.set(a.id, a); renderShareBar(); });
 api?.on('share:ended', ({ id }) => {

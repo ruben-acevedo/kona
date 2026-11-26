@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('kona', {
   tabMove: (data) => ipcRenderer.invoke('tab:move', data),
   windowPrivate: (on) => ipcRenderer.send('win:private', !!on),
   tabPinned: (wcId, on) => ipcRenderer.send('tab:pinned', wcId, !!on),
+  setLanguage: (lang) => ipcRenderer.send('lang:set', lang),
   mediaList: () => ipcRenderer.invoke('media:list'),
   mediaControl: (wcId, action) => ipcRenderer.send('media:control', wcId, action),
   setPopupsAllowed: (list) => ipcRenderer.send('popups:allowed', list),

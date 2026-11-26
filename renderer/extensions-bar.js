@@ -83,12 +83,12 @@ function extMenu(id, x, y) {
   showMenu([
     { label: e.name, disabled: true },
     '-',
-    { label: 'Options', run: () => newTab(`chrome-extension://${id}/${e.options.replace(/^\//, '')}`, false), disabled: !e.options },
-    { label: pinned ? 'Unpin from toolbar' : 'Pin to toolbar', run: () => togglePin(id) },
+    { label: tl('Options'), run: () => newTab(`chrome-extension://${id}/${e.options.replace(/^\//, '')}`, false), disabled: !e.options },
+    { label: pinned ? tl('Unpin from toolbar') : tl('Pin to toolbar'), run: () => togglePin(id) },
     '-',
-    { label: 'Remove from Kona…', run: async () => {
-      if (!await ask({ title: `Remove “${e.name}”?`, text: 'Its settings and data in Kona will be deleted.', ok: 'Remove', danger: true })) return;
-      try { extensions = await api.extRemove(id); toast(`“${e.name}” removed`); } catch { toast('Couldn’t remove the extension'); }
+    { label: tl('Remove from Kona…'), run: async () => {
+      if (!await ask({ title: tl('Remove “{name}”?', { name: e.name }), text: tl('Its settings and data in Kona will be deleted.'), ok: tl('Remove'), danger: true })) return;
+      try { extensions = await api.extRemove(id); toast(`“${e.name}” removed`); } catch { toast(tl('Couldn’t remove the extension')); }
       renderExtBar(); renderExtensions?.();
     } },
   ], x, y);
@@ -109,14 +109,14 @@ $('#ext-pinned').addEventListener('contextmenu', (e) => {
 function renderExtPop() {
   const tab = activeWcId();
   const pins = pinnedIds();
-  $('#ext-pop').innerHTML = `<div class="pp-head">Extensions</div>
+  $('#ext-pop').innerHTML = `<div class="pp-head">${tl('Extensions')}</div>
     <div class="ext-pop-list">${extensions.map((e) => {
       const info = extInfo(e.id);
       const on = pins.includes(e.id);
       return `<div class="ext-pop-row" data-ext="${e.id}" role="menuitem" title="${escapeHtml(info.title || e.name)}">
           <span class="ext-pop-icon"><img src="${extIconUrl(e.id, tab)}" alt="" draggable="false" />${info.text ? `<span class="ext-badge" style="background:${escapeHtml(info.color)}">${escapeHtml(info.text)}</span>` : ''}</span>
           <span class="ext-pop-name">${escapeHtml(e.name)}</span>
-          <button class="ext-pin${on ? ' on' : ''}" data-pin="${e.id}" title="${on ? 'Unpin from toolbar' : 'Pin to toolbar'}">${icon('thumbtack')}</button>
+          <button class="ext-pin${on ? ' on' : ''}" data-pin="${e.id}" title="${on ? tl('Unpin from toolbar') : tl('Pin to toolbar')}">${icon('thumbtack')}</button>
         </div>`;
     }).join('')}</div>
     <div class="pop-sep"></div>

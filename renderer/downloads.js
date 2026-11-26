@@ -16,26 +16,26 @@ function fmtBytes(n) {
 }
 function fmtLeft(s) {
   if (!Number.isFinite(s) || s <= 0) return '';
-  if (s < 60) return `${Math.ceil(s)} s left`;
-  if (s < 3600) return `${Math.ceil(s / 60)} min left`;
-  return `${Math.floor(s / 3600)} h ${Math.ceil((s % 3600) / 60)} min left`;
+  if (s < 60) return tl('{n} s left', { n: Math.ceil(s) });
+  if (s < 3600) return tl('{n} min left', { n: Math.ceil(s / 60) });
+  return tl('{h} h {m} min left', { h: Math.floor(s / 3600), m: Math.ceil((s % 3600) / 60) });
 }
 const dlHost = (url) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 /** Texto de estado de um item ("12 MB of 80 MB · 3.2 MB/s · 20 s left", "Completed", …). */
 function dlStatus(x) {
   if (x.state === 'progressing') {
-    const of = x.total > 0 ? `${fmtBytes(x.received)} of ${fmtBytes(x.total)}` : fmtBytes(x.received);
-    if (x.paused) return `Paused · ${of}`;
+    const of = x.total > 0 ? tl('{got} of {total}', { got: fmtBytes(x.received), total: fmtBytes(x.total) }) : fmtBytes(x.received);
+    if (x.paused) return `${tl('Paused')} · ${of}`;
     // duas linhas: o tamanho; a velocidade e o tempo restante
     const rate = [x.speed > 0 ? `${fmtBytes(x.speed)}/s` : '', x.total > 0 && x.speed > 0 ? fmtLeft((x.total - x.received) / x.speed) : '']
       .filter(Boolean).join(' · ');
     return rate ? `${of}\n${rate}` : of;
   }
-  if (x.missing) return 'Deleted';
+  if (x.missing) return tl('Deleted');
   if (x.state === 'completed') return [fmtBytes(x.total || x.received), dlHost(x.url)].filter(Boolean).join(' · ');
-  if (x.state === 'cancelled') return 'Canceled';
-  return 'Failed';
+  if (x.state === 'cancelled') return tl('Canceled');
+  return tl('Failed');
 }
 
 /* ───────────── Eventos do processo principal ───────────── */
@@ -90,7 +90,7 @@ function updateDlButton(bounce) {
   const pct = active.length ? (total ? Math.min(100, (got / total) * 100) : 12) : 0;
   btn.style.setProperty('--dl-pct', pct.toFixed(1));
   btn.classList.toggle('indeterminate', active.length > 0 && !total);
-  btn.title = active.length ? `Downloads — ${active.length} in progress (Ctrl+J)` : 'Downloads (Ctrl+J)';
+  btn.title = active.length ? tl('Downloads — {n} in progress (Ctrl+J)', { n: active.length }) : tl('Downloads (Ctrl+J)');
   if (bounce) { btn.classList.remove('bounce'); void btn.offsetWidth; btn.classList.add('bounce'); }
   const count = $('#sb-dl-count');
   if (count) count.textContent = active.length || '';
@@ -112,11 +112,11 @@ function dlRowHtml(x) {
   const failed = x.state === 'cancelled' || x.state === 'interrupted';
   const pct = x.total > 0 ? Math.min(100, (x.received / x.total) * 100) : 0;
   const acts = active
-    ? `<button class="sb-act" data-dl-act="${x.paused ? 'resume' : 'pause'}" title="${x.paused ? 'Resume' : 'Pause'}">${icon(x.paused ? 'play' : 'pause')}</button>
-       <button class="sb-act" data-dl-act="cancel" title="Cancel">${icon('x')}</button>`
-    : `${done ? `<button class="sb-act" data-dl-act="show" title="Show in folder">${icon('folder')}</button>` : ''}
-       ${failed ? `<button class="sb-act" data-dl-act="retry" title="Retry">${icon('reload')}</button>` : ''}
-       <button class="sb-act" data-dl-act="remove" title="Remove from list">${icon('x')}</button>`;
+    ? `<button class="sb-act" data-dl-act="${x.paused ? 'resume' : 'pause'}" title="${x.paused ? tl('Resume') : tl('Pause')}">${icon(x.paused ? 'play' : 'pause')}</button>
+       <button class="sb-act" data-dl-act="cancel" title="${tl('Cancel')}">${icon('x')}</button>`
+    : `${done ? `<button class="sb-act" data-dl-act="show" title="${tl('Show in folder')}">${icon('folder')}</button>` : ''}
+       ${failed ? `<button class="sb-act" data-dl-act="retry" title="${tl('Retry')}">${icon('reload')}</button>` : ''}
+       <button class="sb-act" data-dl-act="remove" title="${tl('Remove from list')}">${icon('x')}</button>`;
   return `<div class="sb-row dl-row${active ? ' active' : ''}${done ? ' done' : ''}${failed ? ' failed' : ''}${x.missing ? ' missing' : ''}${x.paused ? ' paused' : ''}"
       data-dl="${x.key}"${done ? ' draggable="true"' : ''} title="${escapeHtml(x.name)}${x.url ? `\n${escapeHtml(x.url)}` : ''}">
       ${dlIcon(x)}
@@ -130,7 +130,7 @@ function renderDownloads(list) {
   const items = downloadsList.items;
   list.innerHTML = items.length
     ? items.map(dlRowHtml).join('')
-    : empty('download', 'No downloads', 'Files you download will show up here. Press Ctrl+J to open this list.');
+    : empty('download', tl('No downloads'), tl('Files you download will show up here. Press Ctrl+J to open this list.'));
   loadDlIcons(items);
   checkMissing(items);
 }
@@ -189,7 +189,7 @@ $('#sb-list').addEventListener('click', async (e) => {
   else if (x.state === 'completed' && !x.missing) {
     // clicar num download concluído abre o arquivo
     const ok = await api?.downloadOpen(x.path);
-    if (!ok) { x.missing = true; renderSub(); toast('That file was moved or deleted'); }
+    if (!ok) { x.missing = true; renderSub(); toast(tl('That file was moved or deleted')); }
   }
 });
 // Arrastar um download concluído para a área de trabalho, o Explorador ou outro programa

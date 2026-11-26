@@ -182,24 +182,24 @@ function toast(msg, action) {
 
 /* ───────────── Ajustes (salvos localmente) ───────────── */
 const SECTIONS = [
-  { id: 'favorites', name: 'Favorites' },
-  { id: 'frequent', name: 'Frequently Visited' },
-  { id: 'privacy', name: 'Privacy Report' },
-  { id: 'reading', name: 'Reading List' },
+  { id: 'favorites', name: /*i18n*/'Favorites' },
+  { id: 'frequent', name: /*i18n*/'Frequently Visited' },
+  { id: 'privacy', name: /*i18n*/'Privacy Report' },
+  { id: 'reading', name: /*i18n*/'Reading List' },
 ];
 const AURORA = {
   light: 'radial-gradient(60% 70% at 12% 8%, #a9c9ff 0%, transparent 70%), radial-gradient(50% 60% at 92% 12%, #f6c6e2 0%, transparent 70%), radial-gradient(60% 60% at 40% 105%, #ffdcb0 0%, transparent 70%), radial-gradient(45% 50% at 88% 95%, #c3b4ff 0%, transparent 70%), #eceef6',
   dark: 'radial-gradient(60% 70% at 12% 8%, rgba(40,90,190,.55) 0%, transparent 70%), radial-gradient(50% 60% at 92% 12%, rgba(120,50,125,.5) 0%, transparent 70%), radial-gradient(60% 60% at 40% 105%, rgba(140,85,35,.45) 0%, transparent 70%), radial-gradient(45% 50% at 88% 95%, rgba(70,50,160,.5) 0%, transparent 70%), #121319',
 };
 const WALLPAPERS = [
-  { id: 'aurora', name: 'Aurora', tone: 'theme' },
-  { id: 'grafite', name: 'Graphite', tone: 'dark', css: 'radial-gradient(120% 90% at 50% 0%, #2a2a2f 0%, #161618 60%, #0e0e10 100%)' },
-  { id: 'noite', name: 'Night', tone: 'dark', css: 'radial-gradient(90% 70% at 15% 0%, #22305e 0%, transparent 60%), radial-gradient(80% 60% at 95% 100%, #3a1f52 0%, transparent 60%), #0c0e18' },
-  { id: 'oceano', name: 'Ocean', tone: 'dark', css: 'linear-gradient(165deg, #0d2230 0%, #1a4559 55%, #3c7a86 100%)' },
-  { id: 'floresta', name: 'Forest', tone: 'dark', css: 'linear-gradient(165deg, #101712 0%, #1f3326 55%, #46664b 100%)' },
-  { id: 'brasa', name: 'Ember', tone: 'dark', css: 'radial-gradient(100% 80% at 85% 100%, #b5432c 0%, transparent 60%), radial-gradient(80% 70% at 10% 0%, #521c36 0%, transparent 60%), #180e12' },
-  { id: 'areia', name: 'Sand', tone: 'light', css: 'linear-gradient(165deg, #f5efe7 0%, #e2d2bf 100%)' },
-  { id: 'nevoa', name: 'Mist', tone: 'light', css: 'linear-gradient(180deg, #f6f6f8 0%, #e1e2e7 100%)' },
+  { id: 'aurora', name: /*i18n*/'Aurora', tone: 'theme' },
+  { id: 'grafite', name: /*i18n*/'Graphite', tone: 'dark', css: 'radial-gradient(120% 90% at 50% 0%, #2a2a2f 0%, #161618 60%, #0e0e10 100%)' },
+  { id: 'noite', name: /*i18n*/'Night', tone: 'dark', css: 'radial-gradient(90% 70% at 15% 0%, #22305e 0%, transparent 60%), radial-gradient(80% 60% at 95% 100%, #3a1f52 0%, transparent 60%), #0c0e18' },
+  { id: 'oceano', name: /*i18n*/'Ocean', tone: 'dark', css: 'linear-gradient(165deg, #0d2230 0%, #1a4559 55%, #3c7a86 100%)' },
+  { id: 'floresta', name: /*i18n*/'Forest', tone: 'dark', css: 'linear-gradient(165deg, #101712 0%, #1f3326 55%, #46664b 100%)' },
+  { id: 'brasa', name: /*i18n*/'Ember', tone: 'dark', css: 'radial-gradient(100% 80% at 85% 100%, #b5432c 0%, transparent 60%), radial-gradient(80% 70% at 10% 0%, #521c36 0%, transparent 60%), #180e12' },
+  { id: 'areia', name: /*i18n*/'Sand', tone: 'light', css: 'linear-gradient(165deg, #f5efe7 0%, #e2d2bf 100%)' },
+  { id: 'nevoa', name: /*i18n*/'Mist', tone: 'light', css: 'linear-gradient(180deg, #f6f6f8 0%, #e1e2e7 100%)' },
 ];
 const DEFAULTS = {
   theme: 'dark',
@@ -254,7 +254,7 @@ function saveSettings() {
     syncPrefs();
     return true;
   } catch {
-    toast('Couldn’t save: the image is too large');
+    toast(tl('Couldn’t save: the image is too large'));
     return false;
   }
 }
@@ -322,7 +322,7 @@ function applySections() {
 function buildCustomize() {
   const grid = $('#wp-grid');
   grid.innerHTML =
-    WALLPAPERS.map((w) => `<button class="wp-swatch" data-wp="${w.id}" title="${w.name}" style="background:${w.css || AURORA.light}"></button>`).join('') +
+    WALLPAPERS.map((w) => `<button class="wp-swatch" data-wp="${w.id}" title="${tl(w.name)}" style="background:${w.css || AURORA.light}"></button>`).join('') +
     `<button class="wp-swatch color" data-wp="color" title="Solid color"><span class="dot" style="background:${settings.customColor}"></span><input type="color" value="${settings.customColor}" /></button>` +
     (settings.customImage
       ? `<button class="wp-swatch" data-wp="image" title="Your image" style="background:center / cover url('${settings.customImage}')"></button>`
@@ -330,7 +330,7 @@ function buildCustomize() {
     `<button class="wp-swatch add" id="wp-upload" title="Choose an image…">${icon('image')}</button>`;
 
   $('#toggles').innerHTML = SECTIONS.map((s) =>
-    `<button class="toggle" data-sec="${s.id}"><span>${s.name}</span><span class="switch"></span></button>`).join('');
+    `<button class="toggle" data-sec="${s.id}"><span>${tl(s.name)}</span><span class="switch"></span></button>`).join('');
   applyWallpaper();
   applySections();
 }
@@ -380,7 +380,7 @@ $('#wp-file').addEventListener('change', async (e) => {
     }
     buildCustomize();
   } catch {
-    toast('Couldn’t open that image');
+    toast(tl('Couldn’t open that image'));
   }
 });
 
@@ -424,6 +424,9 @@ let seq = 0;
 const tabs = [];
 let activeId = null;
 const active = () => tabs.find((t) => t.id === activeId);
+
+/** Título mostrado da aba: as páginas internas no idioma atual. */
+const tabTitle = (t) => (t.url === START ? tl('New Tab') : t.url === SETTINGS ? tl('Settings') : t.title);
 
 function makeTab(url = START, { title, index, pinned = false } = {}) {
   const t = {
@@ -596,13 +599,13 @@ function createTabEl(t) {
   el.innerHTML = `
     <span class="slot"><span class="tfav"></span><button class="x" title="Close tab">${icon('x')}</button></span>
     <span class="title"></span>
-    <button class="snd" title="Mute tab" hidden></button>
-    <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder="Search or enter address" /></form>
+    <button class="snd" title=tl("Mute tab") hidden></button>
+    <form class="addr"><span class="lock">${icon('lock')}</span><input spellcheck="false" autocomplete="off" placeholder=tl("Search or enter address") /></form>
     <button class="popupind" title="Pop-ups blocked" hidden></button>
-    <button class="readerbtn" title="Show Reader (Ctrl+Shift+R)" hidden></button>
+    <button class="readerbtn" title=tl("Show Reader (Ctrl+Shift+R)") hidden></button>
     <button class="aabtn" title="Reader options" hidden>Aa</button>
     <button class="zoomind" title="Reset zoom (Ctrl+0)" hidden></button>
-    <button class="bm" title="Add to Favorites (Ctrl+D)">${icon('star')}</button>
+    <button class="bm" title=tl("Add to Favorites (Ctrl+D)")>${icon('star')}</button>
     <button class="reload" title="Reload">${icon('reload')}</button>
     <span class="progress"></span>`;
 
@@ -675,14 +678,14 @@ function openSettings(section) {
 function toggleBookmark(t = active()) {
   if (!t || t.url === START || !/^https?:/.test(t.url)) return;
   const added = bookmarks.toggle(t.url, t.title);
-  toast(added ? 'Added to Favorites' : 'Removed from Favorites');
+  toast(added ? tl('Added to Favorites') : tl('Removed from Favorites'));
   render();
 }
 /** Guarda a página da aba na Lista de Leitura. */
 function addToReadingList(t = active()) {
-  if (!t || t.url === START || !/^https?:/.test(t.url)) { toast('Open a page to save it to your Reading List'); return; }
+  if (!t || t.url === START || !/^https?:/.test(t.url)) { toast(tl('Open a page to save it to your Reading List')); return; }
   readingList.add(t.url, t.title);
-  toast('Saved to Reading List');
+  toast(tl('Saved to Reading List'));
 }
 
 function favHtml(t) {
@@ -711,7 +714,7 @@ function paintTab(t, el) {
   aa.hidden = !(isActive && t.reader?.active);
   if (!rb.hidden && !rb.firstChild) rb.innerHTML = icon('reader');
   rb.classList.toggle('on', !!t.reader?.active);
-  rb.title = t.reader?.active ? 'Hide Reader (Ctrl+Shift+R)' : 'Show Reader (Ctrl+Shift+R)';
+  rb.title = t.reader?.active ? tl('Hide Reader (Ctrl+Shift+R)') : tl('Show Reader (Ctrl+Shift+R)');
   // som: 🔊 tocando, 🔇 silenciada (clicar alterna)
   const snd = $('.snd', el);
   const muted = !!t.muted;
@@ -721,7 +724,7 @@ function paintTab(t, el) {
   if (!snd.hidden && snd.dataset.state !== String(muted)) {
     snd.dataset.state = String(muted);
     snd.innerHTML = icon(muted ? 'volumeOff' : 'volume');
-    snd.title = muted ? 'Unmute tab' : 'Mute tab';
+    snd.title = muted ? tl('Unmute tab') : tl('Mute tab');
   }
   // zoom diferente do padrão: aparece na barra (clicar volta ao padrão)
   const z = isActive && t.wv && typeof zoomFor === 'function' ? zoomFor(t.url) : settings.zoom;
@@ -729,9 +732,9 @@ function paintTab(t, el) {
   zi.hidden = Math.abs(z - (settings.zoom || 1)) < 0.001;
   if (!zi.hidden) zi.textContent = `${Math.round(z * 100)}%`;
   const bm = $('.bm', el);
-  if (bm) bm.title = el.classList.contains('bookmarked') ? 'Remove from Favorites (Ctrl+D)' : 'Add to Favorites (Ctrl+D)';
-  el.title = isActive ? '' : t.title;
-  $('.title', el).textContent = t.title;
+  if (bm) bm.title = el.classList.contains('bookmarked') ? tl('Remove from Favorites (Ctrl+D)') : tl('Add to Favorites (Ctrl+D)');
+  el.title = isActive ? '' : tabTitle(t);
+  $('.title', el).textContent = tabTitle(t);
 
   const f = favHtml(t);
   const fav = $('.tfav', el);
@@ -743,8 +746,8 @@ function paintTab(t, el) {
   }
 
   const input = $('input', el);
-  input.placeholder = library.isPrivate() ? 'Private browsing — search or enter address' : 'Search or enter address';
-  if (document.activeElement !== input) input.value = t.url === START ? '' : t.url === SETTINGS ? 'Settings' : hostOf(t.url);
+  input.placeholder = library.isPrivate() ? tl('Private browsing — search or enter address') : tl('Search or enter address');
+  if (document.activeElement !== input) input.value = t.url === START ? '' : t.url === SETTINGS ? tl('Settings') : hostOf(t.url);
   const loadKey = t.loading ? 'x' : 'reload';
   if (el.dataset.reload !== loadKey) {
     el.dataset.reload = loadKey;
@@ -937,7 +940,7 @@ function closeOverview() {
 
 function buildOverview() {
   const grid = $('#ov-grid');
-  $('#ov-count').textContent = `${tabs.length} ${tabs.length === 1 ? 'Tab' : 'Tabs'}`;
+  $('#ov-count').textContent = tln(tabs.length, '{n} Tab', '{n} Tabs');
   grid.innerHTML = '';
   const wp = wallpaperStyle().css || 'linear-gradient(135deg, #9ec5ff, #f7c2e1 55%, #ffd9a8)';
   ovSel = Math.min(ovSel, tabs.length - 1);
@@ -947,7 +950,7 @@ function buildOverview() {
     card.style.transitionDelay = `${i * 25}ms`;
     let cls = '', style = '', inner = '';
     if (t.url === START) style = `background:${wp}`;
-    else if (t.url === SETTINGS) { cls = 'page-thumb'; inner = `<span class="big-mono">${icon('gear')}</span><span class="host">Settings</span>`; }
+    else if (t.url === SETTINGS) { cls = 'page-thumb'; inner = `<span class="big-mono">${icon('gear')}</span><span class="host">${tl('Settings')}</span>`; }
     else if (t.thumb) style = `background-image:url(${t.thumb})`;
     else {
       cls = 'page-thumb';
@@ -955,7 +958,7 @@ function buildOverview() {
     }
     card.innerHTML = `
       <div class="thumb ${cls}" style="${escapeHtml(style)}">${inner}<button class="ov-x glass" title="Close tab">${icon('x')}</button></div>
-      <div class="cap"><span class="tfav">${favHtml(t).html}</span><span>${escapeHtml(t.title)}</span></div>`;
+      <div class="cap"><span class="tfav">${favHtml(t).html}</span><span>${escapeHtml(tabTitle(t))}</span></div>`;
     card.addEventListener('click', (e) => {
       if (e.target.closest('.ov-x')) { closeTab(t.id, { force: true }); return; }
       sfx.play('select');
@@ -971,8 +974,8 @@ function buildOverview() {
 function renderStartContent() {
   const favs = bookmarks.list.slice(0, 16);
   // "+" discreto depois do último favorito (some no fundo até o mouse passar)
-  const add = `<button class="fav-item fav-add" id="fav-add" style="--i:${favs.length}" title="Add favorite">
-        <span class="tile">${icon('plus')}</span><span class="label">Add</span></button>`;
+  const add = `<button class="fav-item fav-add" id="fav-add" style="--i:${favs.length}" title="${tl('Add favorite')}">
+        <span class="tile">${icon('plus')}</span><span class="label">${tl('Add')}</span></button>`;
   $('#fav-grid').innerHTML = favs.map((f, i) => favTile(f, i)).join('') + add;
   if (folderPop.id && !bookmarks.get(folderPop.id)) closeFolderPop();
   const visits = typeof browseHistory !== 'undefined' ? browseHistory.data.visits : [];
@@ -983,18 +986,18 @@ function renderStartContent() {
         <span class="ftile">${siteIcon(f.url)}</span>
         <div><b>${escapeHtml(f.title || hostOf(f.url))}</b><span>${escapeHtml(hostOf(f.url))}</span></div>
       </button>`).join('')
-    : '<p class="start-empty">The sites you visit most will show up here.</p>';
+    : `<p class="start-empty">${tl('The sites you visit most will show up here.')}</p>`;
   // Privacidade: dados reais do perfil (só quando a seção está visível)
   if (settings.sections.privacy) {
-    const label = { allow: 'Cookies allowed', 'block-third-party': 'Third-party cookies blocked', 'block-all': 'All cookies blocked' }[settings.cookies];
+    const label = { allow: tl('Cookies allowed'), 'block-third-party': tl('Third-party cookies blocked'), 'block-all': tl('All cookies blocked') }[settings.cookies];
     $('#privacy-body').innerHTML = `<div class="big-num" id="pv-sites">–</div>
-      <p>sites store cookies in this profile.<br><b>${label}</b>${settings.gpc ? ' · <b>GPC</b> on' : ''}</p>`;
+      <p>${tl('sites store cookies in this profile.')}<br><b>${label}</b>${settings.gpc ? ` · <b>GPC</b> ${tl('on')}` : ''}</p>`;
     api?.sitesList(PROFILES.currentProfile().partition).then((l) => { const el = $('#pv-sites'); if (el) el.textContent = l.length; });
   }
   const unread = readingList.items.filter((x) => !x.read).slice(0, 3);
   $('#reading-list').innerHTML = unread.length
     ? unread.map((x) => `<li data-url="${escapeHtml(x.url)}" data-rid="${x.id}"><b>${escapeHtml(x.title)}</b><span>${escapeHtml(hostOf(x.url))}</span></li>`).join('')
-    : '<li class="start-empty">Nothing to read right now. Press Ctrl+Shift+D to save a page.</li>';
+    : `<li class="start-empty">${tl('Nothing to read right now. Press Ctrl+Shift+D to save a page.')}</li>`;
 }
 /** Um item da grade de favoritos: site ou pasta (ícone com até 4 miniaturas, como no iPhone). */
 function favTile(f, i) {
@@ -1022,9 +1025,9 @@ function openFolderPop(id, anchor) {
   folderPop.id = id;
   const pop = $('#folder-pop');
   pop.innerHTML = `<div class="fp-head">
-      ${folderPop.trail.length ? `<button class="tb small" data-fp-back title="Back">${icon('back')}</button>` : ''}
+      ${folderPop.trail.length ? `<button class="tb small" data-fp-back title="${tl('Back')}">${icon('back')}</button>` : ''}
       <b>${escapeHtml(f.title)}</b><span>${bookmarks.count(f.children)}</span></div>
-    <div class="fav-grid fp-grid">${f.children.length ? f.children.map((c, i) => favTile(c, i)).join('') : '<p class="start-empty">This folder is empty.</p>'}</div>`;
+    <div class="fav-grid fp-grid">${f.children.length ? f.children.map((c, i) => favTile(c, i)).join('') : `<p class="start-empty">${tl('This folder is empty.')}</p>`}</div>`;
   hydrateIcons(pop);
   placeFolderPop();
   if (!pop.classList.contains('show')) { pop.classList.add('show'); sfx.play('open'); }
@@ -1088,7 +1091,7 @@ function saveFav() {
   const brand = brandOf(url);
   const name = $('#fav-name').value.trim() || brand.charAt(0).toUpperCase() + brand.slice(1);
   closeSheet('#fav-sheet');
-  if (!bookmarks.add(url, name)) { toast('That site is already in your Favorites'); return; }
+  if (!bookmarks.add(url, name)) { toast(tl('That site is already in your Favorites')); return; }
   sfx.play('select');
   renderStartContent();
 }
@@ -1118,7 +1121,7 @@ $('#winctl').addEventListener('click', (e) => {
 });
 function setMaximized(max) {
   $('#btn-max').innerHTML = max ? WIN_ICONS.restore : WIN_ICONS.max;
-  $('#btn-max').title = max ? 'Restore' : 'Maximize';
+  $('#btn-max').title = max ? tl('Restore') : tl('Maximize');
 }
 $('#toolbar').addEventListener('dblclick', (e) => {
   if (e.target === e.currentTarget || e.target.id === 'tabs') api?.maximize();
@@ -1316,8 +1319,22 @@ library.onChange((what) => {
     render();
     if (active()?.url === SETTINGS && typeof settingsPage !== 'undefined') settingsPage.render();
   } else if (what === 'profiles' && typeof renderProfileUI === 'function') renderProfileUI();
+  else if (what === 'language') {
+    // tudo o que os scripts desenharam é refeito no idioma novo (o HTML fixo já foi traduzido)
+    if (typeof makeDateFormats === 'function') makeDateFormats();
+    buildCustomize();
+    renderStartContent();
+    render();
+    if (typeof settingsPage !== 'undefined') settingsPage.refresh();
+    if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof refreshDownloadsView === 'function') refreshDownloadsView();
+    if (typeof updateDlButton === 'function') updateDlButton();
+    if (typeof renderProfileUI === 'function') renderProfileUI();
+    if (typeof renderMedia === 'function') renderMedia();
+    setMaximized(wasMaximized ?? false);
+  }
 });
-api?.on('update:ready', ({ version }) => toast(`Kona ${version} is ready to install`, { label: 'Restart now', run: () => api.installUpdate() }));
+api?.on('update:ready', ({ version }) => toast(tl('Kona {version} is ready to install', { version }), { label: tl('Restart now'), run: () => api.installUpdate() }));
 let wasMaximized = null;
 api?.on('win:state', ({ focused, maximized, fullscreen }) => {
   document.body.classList.toggle('blurred', !focused);
@@ -1345,8 +1362,8 @@ function renderExtensions() {
     list.innerHTML = `
       <div class="ext-empty">
         <span class="big">${icon('puzzle')}</span>
-        <b>No extensions installed</b>
-        <p>Open the Chrome Web Store and click “Add to Chrome” to add an extension to Kona.</p>
+        <b>${tl('No extensions installed')}</b>
+        <p>${tl('Open the Chrome Web Store and click “Add to Chrome” to add an extension to Kona.')}</p>
       </div>`;
     return;
   }
@@ -1354,7 +1371,7 @@ function renderExtensions() {
     <div class="ext-row" data-id="${e.id}" style="--i:${i}">
       <span class="eicon">${e.icon ? `<img src="${e.icon}" alt="" />` : icon('puzzle')}</span>
       <div class="einfo"><b>${escapeHtml(e.name)}<small>${escapeHtml(e.version)}</small></b><span>${escapeHtml(e.description || '')}</span></div>
-      <button class="eremove">Remove</button>
+      <button class="eremove">${tl('Remove')}</button>
     </div>`).join('');
 }
 
@@ -1369,7 +1386,7 @@ $('#ext-list').addEventListener('click', async (e) => {
     toast(`“${name}” removed`);
   } catch {
     row.classList.remove('removing');
-    toast('Couldn’t remove the extension');
+    toast(tl('Couldn’t remove the extension'));
   }
 });
 
@@ -1397,7 +1414,7 @@ let pendingConfirm = null;
 function answerConfirm(ok) {
   if (!pendingConfirm) return;
   api?.extConfirmReply(pendingConfirm.id, ok);
-  if (ok) toast(`Installing “${pendingConfirm.name}”…`);
+  if (ok) toast(tl('Installing “{name}”…', { name: pendingConfirm.name }));
   pendingConfirm = null;
   closeSheet('#confirm-sheet');
 }
@@ -1405,12 +1422,12 @@ api?.on('ext:confirm', (req) => {
   if (pendingConfirm) api.extConfirmReply(pendingConfirm.id, false);
   pendingConfirm = req;
   $('#confirm-icon').innerHTML = req.icon ? `<img src="${req.icon}" alt="" />` : icon('puzzle');
-  $('#confirm-title').textContent = `Add “${req.name}” to Kona?`;
+  $('#confirm-title').textContent = tl('Add “{name}” to Kona?', { name: req.name });
   const perms = [];
-  if (req.allSites) perms.push('Can read and change your data on all websites.');
-  if (req.permissions.includes('tabs') || req.permissions.includes('history')) perms.push('Can see your browsing history.');
-  if (req.permissions.includes('downloads')) perms.push('Can manage your downloads.');
-  if (!perms.length) perms.push('This extension doesn’t ask for special permissions.');
+  if (req.allSites) perms.push(tl('Can read and change your data on all websites.'));
+  if (req.permissions.includes('tabs') || req.permissions.includes('history')) perms.push(tl('Can see your browsing history.'));
+  if (req.permissions.includes('downloads')) perms.push(tl('Can manage your downloads.'));
+  if (!perms.length) perms.push(tl('This extension doesn’t ask for special permissions.'));
   $('#confirm-perms').innerHTML = perms.map((x) => `<li>${escapeHtml(x)}</li>`).join('');
   openSheet('#confirm-sheet');
   $('#confirm-yes').focus();
@@ -1427,7 +1444,7 @@ $('#scrim').addEventListener('click', () => {
 api?.on('ext:changed', () => {
   const before = extensions.length;
   refreshExtensions().then(() => {
-    if (extensions.length > before) toast('Extension installed');
+    if (extensions.length > before) toast(tl('Extension installed'));
   });
 });
 

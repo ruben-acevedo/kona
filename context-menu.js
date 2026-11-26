@@ -4,6 +4,7 @@
 // inspecionar, controlar vídeo/áudio e o corretor ortográfico (que usa os idiomas do Windows).
 const { clipboard, dialog, webContents } = require('electron');
 const { onUi, handleUi } = require('./ipc');
+const { tl } = require('./i18n');
 const { contextItems } = require('./extensions');
 
 let askNext = () => {};
@@ -68,7 +69,7 @@ function registerContextMenu(opts) {
       case 'savePage': {
         const r = await dialog.showSaveDialog(opts.win(), {
           defaultPath: `${(wc.getTitle() || 'page').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 120) || 'page'}.html`,
-          filters: [{ name: 'Webpage, complete', extensions: ['html', 'htm'] }],
+          filters: [{ name: tl('Webpage, complete'), extensions: ['html', 'htm'] }],
         });
         if (!r.canceled && r.filePath) await wc.savePage(r.filePath, 'HTMLComplete').catch(() => {});
         break;

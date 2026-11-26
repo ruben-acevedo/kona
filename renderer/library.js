@@ -79,7 +79,7 @@ const bookmarks = {
     return true;
   },
   addFolder(title, parentId = null) {
-    const f = { id: uid(), title: (title || '').trim().slice(0, 60) || 'New folder', folder: true, children: [] };
+    const f = { id: uid(), title: (title || '').trim().slice(0, 60) || tl('New folder'), folder: true, children: [] };
     const target = parentId ? this.get(parentId)?.children : this.list;
     (target || this.list).push(f);
     this.save();
@@ -237,7 +237,7 @@ const tabSets = {
   group(id) { return this.data.groups.find((g) => g.id === id); },
   snapshotOf(id) { return id === 'default' ? this.data.default : this.group(id); },
   createGroup(name) {
-    const g = { id: uid(), name: name.trim().slice(0, 40) || 'Untitled group', tabs: [], active: 0 };
+    const g = { id: uid(), name: name.trim().slice(0, 40) || tl('Untitled group'), tabs: [], active: 0 };
     this.data.groups.push(g);
     this.save();
     return g;

@@ -96,7 +96,7 @@
       <header>
         ${a.siteName ? `<div class="site">${esc(a.siteName)}</div>` : `<div class="site">${esc(location.hostname.replace(/^www\./, ''))}</div>`}
         <h1 class="title">${esc(a.title || document.title)}</h1>
-        <div class="meta">${[a.byline ? esc(a.byline) : '', `${minutes} min read`].filter(Boolean).join(' · ')}</div>
+        <div class="meta">${[a.byline ? esc(a.byline) : '', String(s?.minRead || '{n} min read').replace('{n}', minutes)].filter(Boolean).join(' · ')}</div>
       </header>
       <div class="content">${a.content}</div>
     </div></div>`;

@@ -10,7 +10,7 @@ const findBar = {
   tab: null,
   open() {
     const t = active();
-    if (!t?.wv) { toast('Open a page to search in it'); return; }
+    if (!t?.wv) { toast(tl('Open a page to search in it')); return; }
     if (this.tab && this.tab !== t) this.close(false);
     this.tab = t;
     this.el.classList.add('show');
@@ -40,7 +40,7 @@ const findBar = {
   setCount(r) {
     const c = $('#fb-count');
     this.el.classList.toggle('none', !!r && r.matches === 0);
-    c.textContent = !r ? '' : r.matches ? `${r.activeMatchOrdinal} of ${r.matches}` : 'No results';
+    c.textContent = !r ? '' : r.matches ? tl('{i} of {n}', { i: r.activeMatchOrdinal, n: r.matches }) : tl('No results');
   },
   /** Chamado ao criar o webview de uma aba. */
   watch(t, wv) {
@@ -79,7 +79,7 @@ function setSiteZoom(t, factor) {
   saveSettings();
   for (const o of tabs) if (zoomHost(o.url) === h) applyZoom(o); // todas as abas do mesmo site, como no Chrome
   render();
-  toast(`Zoom ${Math.round(factor * 100)}%`);
+  toast(tl('Zoom {n}%', { n: Math.round(factor * 100) }));
 }
 function zoomStep(dir) {
   const t = active();
@@ -99,7 +99,7 @@ function rememberClosed(t, index) {
 }
 function reopenClosedTab() {
   const c = closedTabs.pop();
-  if (!c) { toast('No recently closed tabs'); return; }
+  if (!c) { toast(tl('No recently closed tabs')); return; }
   const t = makeTab(c.url, { title: c.title, index: Math.min(c.index, tabs.length) });
   sfx.play('tabOpen');
   activate(t.id);
@@ -163,11 +163,11 @@ function popupMenu(t, x, y) {
   const list = t.blockedPopups || [];
   const host = popupHost(t.blockedPopupsOrigin || '');
   showMenu([
-    { label: `Pop-ups blocked on ${host}`, disabled: true },
+    { label: tl('Pop-ups blocked on {host}', { host }), disabled: true },
     '-',
     ...list.slice(-8).map((u) => ({ label: u.replace(/^https?:\/\//, '').slice(0, 60), run: () => { t.blockedPopups = t.blockedPopups.filter((x) => x !== u); newTab(u, false); } })),
     '-',
-    { label: `Always allow pop-ups from ${host}`, run: () => {
+    { label: tl('Always allow pop-ups from {host}', { host }), run: () => {
       settings.popupsAllowed = [...new Set([...(settings.popupsAllowed || []), t.blockedPopupsOrigin])];
       saveSettings(); api?.setPopupsAllowed(settings.popupsAllowed);
       t.blockedPopups = null; render();

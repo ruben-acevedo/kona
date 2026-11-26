@@ -203,7 +203,11 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Corrigido (relato do usuário: "quando comecei a transmitir ele abriu uma aba em branco"): o Kona transformava todo pop-up em aba. Agora, como no Chrome, pedido de aba (`target=_blank`) vira aba do Kona e pop-up de verdade (`disposition: new-window`, `about:blank` ou com tamanho) vira janela pop-up ligada à página que a abriu — os controles de apresentação do Meet e os logins "Entrar com Google/Microsoft" (window.opener/postMessage) dependem disso. A janela não tem menu, o que ela abrir vira aba e ela fecha junto com a aba de origem. Teste: `tests/debug/popup-window.js`.
 - [x] **N4. Links especiais** (mailto:, tel:, zoommtg:, msteams:…): conferir se abrem o programa certo.
   - Conferido: já funciona como no Chrome — o Kona pergunta "<site> wants to open an app on your computer" (permissão "Open external apps") e lembra por site; permitido, o Windows abre o programa do protocolo.
-- [ ] **N5. Português (e outros idiomas).**
+- [x] **N5. Português (e outros idiomas).** Inglês, português (Brasil) e espanhol.
+  - O idioma segue o do Windows (o 1º da lista; sem tradução → inglês) e pode ser escolhido em Configurações › Geral › Language. A troca vale na hora, sem recarregar as abas; as páginas do próprio Chromium (erro, PDF, data) e o idioma enviado aos sites passam a valer na próxima abertura (`--lang`, guardado em `language.json`).
+  - Como funciona: `tl('texto em inglês')` / `tln(n, singular, plural)` (`renderer/i18n.js`); dicionários em `renderer/i18n/pt-BR.js` e `es.js` (os mesmos servem ao processo principal, `i18n.js`); o HTML fixo é traduzido na abertura. `node scripts/i18n-check.js` lista o que falta traduzir (`--loose` mostra textos fora de `tl()`). 529 textos.
+  - Fora por enquanto: o instalador. Os nomes de perfil já criados ficam como estão (são dados da pessoa).
+  - Testado: `tests/debug/i18n.js` + smoke, barra lateral, pastas, menu de contexto, Configurações. Corrigido no caminho: o arrastar de link do N8 tinha uma função com o mesmo nome da do arrastar de favoritos (quebrava o arrasto na barra lateral).
 - [ ] **N6. Recuperar a sessão depois de um travamento.**
 
 ### Esperado em qualquer navegador
