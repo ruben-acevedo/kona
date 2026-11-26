@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
+    "@mozilla/readability": "^0.6.0",
     "electron-chrome-extensions": "^4.10.0",
     "electron-chrome-web-store": "^0.13.0",
     "electron-updater": "^6.8.11"
@@ -54,6 +55,8 @@
       "extension-shims.js",
       "passwords.js",
       "page-passwords.js",
+      "reader.js",
+      "reader-page.js",
       "renderer/**/*",
       "assets/**/*",
       "package.json",

@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm', 'ext:changed', 'page:mousedown',
   'perm:ask', 'download:start', 'download:done', 'update:ready', 'tab:external', 'download:progress', 'ctx:page',
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
-  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio'];
+  'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -12,6 +12,12 @@ contextBridge.exposeInMainWorld('kona', {
   maximize: () => ipcRenderer.send('win:maximize'),
   devtools: () => ipcRenderer.send('win:devtools'),
   toggleFullscreen: () => ipcRenderer.send('win:fullscreen'),
+  reader: {
+    open: (id, s) => ipcRenderer.invoke('reader:open', id, s),
+    close: (id) => ipcRenderer.invoke('reader:close', id),
+    apply: (id, s) => ipcRenderer.invoke('reader:apply', id, s),
+    speech: (id, cmd) => ipcRenderer.invoke('reader:speech', id, cmd),
+  },
   setTheme: (value) => ipcRenderer.send('theme:set', value),
   extList: () => ipcRenderer.invoke('ext:list'),
   extRemove: (id) => ipcRenderer.invoke('ext:remove', id),

@@ -160,7 +160,12 @@ Ordem combinada em 2026-11-25 (recomendação aceita, com o modo leitura incluí
   - F11 (também com o foco na página): tela cheia da janela; a barra some e desliza de volta ao levar o mouse ao topo (some ao sair da faixa do topo, ao sair da barra ou ao clicar na página); fica enquanto se edita o endereço.
   - Som: a aba que toca mostra 🔊 (azul); clicar silencia (🔇) e clicar de novo reativa; "Mute tab"/"Unmute tab" no menu da aba. `audio-state-changed` do webContents → `tab:audio`.
   - Teste: `tests/debug/fullscreen.js`.
-- [ ] **L6. Modo leitura (como o do Safari).**
+- [x] **L6. Modo leitura (como o do Safari).**
+  - Decidido: "segue tudo do Safari" — ícone na barra de endereço só em artigos; "Aa" com tamanho (12 passos), 8 fontes (equivalentes do Windows: System/Segoe, Georgia, Palatino, Times New Roman, Cambria, Constantia, Sitka, Candara), fundos White/Sepia/Gray/Night (padrão segue o tema do Kona), "Listen to Page" (vozes do Windows, destaca o parágrafo lido) e "Use Reader automatically on <site>". O Safari não tem largura de coluna, então não entrou.
+  - `reader.js` + `reader-page.js`: Readability da Mozilla (Apache 2.0, citado no README) num mundo isolado da página; a versão limpa fica numa camada (shadow DOM fechado) por cima da página, que continua intacta (sair não recarrega). Esc sai; Ctrl+Shift+R alterna.
+  - `renderer/reader-ui.js`: botões na barra, painel "Aa", estado por aba (zera ao navegar).
+  - Corrigido no teste: fundo não mudava (transição sobre variável CSS); o `<article>` do site herdava o estilo da coluna. As capturas de teste ficam atrasadas se a janela estiver atrás de outras (o Windows para de redesenhar): o teste traz a janela para a frente antes de capturar.
+  - Teste: `tests/debug/reader.js`.
 - [ ] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional).
 
 Depois, conforme o uso: várias janelas, fixar abas, preenchimento de endereços/cartões, tradução, buscadores personalizados, pré-visualização de impressão, português, proteção contra golpes (Safe Browsing/Web Risk), sincronização, macOS/Linux/celular, acessibilidade, relatório de travamentos.

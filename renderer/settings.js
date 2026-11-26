@@ -186,7 +186,7 @@ const settingsPage = {
       ['Ctrl+T', 'New tab'], ['Ctrl+W', 'Close tab'], ['Ctrl+L', 'Address bar'], ['Ctrl+Tab', 'Next tab'],
       ['Alt+Z', 'Sidebar'], ['Ctrl+D', 'Add page to Favorites'], ['Ctrl+Shift+D', 'Save to Reading List'],
       ['Ctrl+H', 'History'], ['Ctrl+J', 'Downloads'], ['Ctrl+Shift+N', 'Private browsing'], ['Ctrl+,', 'Settings'], ['Alt+V', 'All tabs'],
-      ['Ctrl+F', 'Find in page'], ['Ctrl+Shift+T', 'Reopen closed tab'], ['Ctrl+ / Ctrl−', 'Zoom in / out'], ['Ctrl+0', 'Reset zoom'],
+      ['Ctrl+F', 'Find in page'], ['Ctrl+Shift+R', 'Reader'], ['F11', 'Full screen'], ['Ctrl+Shift+T', 'Reopen closed tab'], ['Ctrl+ / Ctrl−', 'Zoom in / out'], ['Ctrl+0', 'Reset zoom'],
       ['Alt+← / Alt+→', 'Back / Forward'], ['Ctrl+P', 'Print'],
     ];
     return this.section('sobre', 'About Kona',

@@ -107,6 +107,8 @@ Kona shows up in the Start menu and on the desktop. Updates arrive on their own.
 | <kbd>Ctrl</kbd>+<kbd>H</kbd> | History |
 | <kbd>Ctrl</kbd>+<kbd>J</kbd> | Downloads |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Find in page |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | Reader |
+| <kbd>F11</kbd> | Full screen |
 | <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd> | Zoom in, out, reset (remembered per site) |
 | <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> | Back / Forward |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Private browsing |
@@ -120,4 +122,4 @@ Everything Kona stores (favorites, history, profiles, settings and sign-ins) sta
 
 Created by **Rubén Acevedo**.
 
-Open source under the [MIT license](LICENSE). Kona uses [Electron](https://www.electronjs.org) and [Chromium](https://www.chromium.org), each under its own license.
+Open source under the [MIT license](LICENSE). Kona uses [Electron](https://www.electronjs.org) ([castLabs' build](https://github.com/castlabs/electron-releases) with Widevine), [Chromium](https://www.chromium.org) and Mozilla's [Readability](https://github.com/mozilla/readability) (Apache 2.0) for Reader, each under its own license.

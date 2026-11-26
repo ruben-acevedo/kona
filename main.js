@@ -10,6 +10,7 @@ const { registerDownloads } = require('./downloads');
 const { registerContextMenu, watchPage } = require('./context-menu');
 const extensionsApi = require('./extensions');
 const { registerPasswords } = require('./passwords');
+const { watchReader, registerReader } = require('./reader');
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -308,6 +309,9 @@ registerDownloads({ win: () => mainWin, currentSession: () => browserSession() }
 // Gerenciador de senhas (salvar, preencher, gerar, importar/exportar), por perfil
 registerPasswords({ win: () => mainWin, currentPartition: () => currentPartition });
 
+// Modo leitura (como o do Safari)
+registerReader();
+
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
 extensionsApi.registerExtensions({ win: () => mainWin });
 
@@ -446,6 +450,7 @@ app.on('web-contents-created', (_e, contents) => {
   }
   if (contents.getType() !== 'webview') return;
   watchPage(contents); // botão direito → menu do Kona
+  watchReader(contents); // modo leitura: a página é um artigo?
   // som: a aba mostra 🔊 enquanto toca (e permite silenciar)
   contents.on('audio-state-changed', (e) => contents.hostWebContents?.send('tab:audio', { id: contents.id, audible: !!e.audible }));
   extensionsApi.trackTab(contents); // a aba existe para as extensões (chrome.tabs)
