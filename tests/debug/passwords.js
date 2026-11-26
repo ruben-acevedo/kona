@@ -47,8 +47,11 @@ app.whenReady().then(async () => {
   await clickIn(g, '#u');
   log('lista sob o campo:', await until(`document.querySelector('#pw-suggest').classList.contains('show')`), '·', await js(`[...document.querySelectorAll('#pw-suggest .pw-opt b')].map((b) => b.textContent).join(' | ')`));
   await shot('suggest.png');
-  await js(`document.querySelector('#pw-suggest [data-acc]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.querySelector('#pw-suggest [data-acc]').click(); 0`); await sleep(600);
-  log('preencheu:', JSON.stringify(await g.executeJavaScript(`({ u: document.querySelector('#u').value, p: document.querySelector('#p').value === 'S3cret-pass!' })`)));
+  // clique de mouse de verdade na janela (a página perde o foco e o recebe de volta, como com a pessoa)
+  const opt = await js(`(() => { const r = document.querySelector('#pw-suggest [data-acc]').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`);
+  wc.sendInputEvent({ type: "mouseDown", ...opt, button: "left", clickCount: 1 }); wc.sendInputEvent({ type: "mouseUp", ...opt, button: "left", clickCount: 1 });
+  await sleep(1500);
+  log('preencheu:', JSON.stringify(await g.executeJavaScript(`({ u: document.querySelector('#u').value, p: document.querySelector('#p').value === 'S3cret-pass!' })`)), '· lista fechou e continuou fechada:', !(await js(`document.querySelector('#pw-suggest').classList.contains('show')`)));
 
   // 3. cadastro → senha forte sugerida → salva sozinha ao enviar
   await js(`navigate(active(), ${JSON.stringify(base + '/signup')}); 0`); await sleep(1500);

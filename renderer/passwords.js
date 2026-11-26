@@ -16,6 +16,7 @@ api?.on('pw:suggest', (s) => {
   const t = active();
   let wcId = -1; try { wcId = t?.wv?.getWebContentsId(); } catch { /* sem webview */ }
   if (!t?.wv || s.wcId !== wcId) return;
+  if (Date.now() - (pwState.filledAt || 0) < 1000) return; // a volta do foco logo depois de preencher
   pwState.suggest = s;
   pwState.shownAt = Date.now();
   const box = $('#pw-suggest');
@@ -47,7 +48,9 @@ $('#pw-suggest').addEventListener('click', async (e) => {
   const opt = e.target.closest('.pw-opt');
   if (!s || !opt) return;
   if (opt.dataset.manage) { hideSuggest(); openPasswordSheet(); return; }
+  hideSuggest();
   const ok = await api.pw.fill(s.id, opt.dataset.acc || null, opt.dataset.gen ? s.generate : null);
+  pwState.filledAt = Date.now();
   sfx.play('select');
   hideSuggest();
   active()?.wv?.focus();
@@ -186,7 +189,7 @@ async function importPasswords() {
   const r = await api?.pw.importCsv();
   if (!r) return;
   if (r.error) { toast(r.error); return; }
-  toast(`${r.added} added · ${r.updated} updated${r.skipped ? ` · ${r.skipped} skipped` : ''}`);
+  toast(`${tl('{added} added · {updated} updated', { added: r.added, updated: r.updated })}${r.skipped ? ` · ${tl('{n} skipped', { n: r.skipped })}` : ''}`);
   await loadPasswords(); settingsPage.refresh?.();
 }
 async function exportPasswords() {
@@ -194,7 +197,7 @@ async function exportPasswords() {
   const r = await api?.pw.exportCsv();
   if (!r) return;
   if (r.error === 'auth') { toast(tl('Windows Hello didn’t confirm it’s you')); return; }
-  toast(`${r.count} ${r.count === 1 ? 'password' : 'passwords'} exported`);
+  toast(tln(r.count, '{n} password exported', '{n} passwords exported'));
 }
 api?.on('pw:changed', async () => {
   await loadPasswords();

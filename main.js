@@ -10,6 +10,7 @@ const { registerDownloads } = require('./downloads');
 const { registerContextMenu, watchPage } = require('./context-menu');
 const extensionsApi = require('./extensions');
 const { registerPasswords } = require('./passwords');
+const { registerAutofill, importAddresses } = require('./autofill');
 const { watchReader, registerReader } = require('./reader');
 const { installShare, registerShare, shareEndedFrom } = require('./screen-share');
 const { watchMedia, registerMedia } = require('./media');
@@ -265,6 +266,7 @@ const installSession = (ses, partition) => {
   policy.install(ses, partition);
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-preload.js') });
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-passwords.js') }); // gerenciador de senhas
+  ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-autofill.js') }); // endereços e cartões
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-share.js') }); // compartilhar a tela
   ses.registerPreloadScript({ type: 'frame', filePath: path.join(__dirname, 'page-media.js') }); // controle de mídia
   installShare(ses); // seletor de tela/janela/aba do Kona
@@ -387,6 +389,10 @@ registerDownloads({ broadcast, currentSession: () => browserSession() });
 
 // Gerenciador de senhas (salvar, preencher, gerar, importar/exportar), por perfil
 registerPasswords({ win: focusedWin, broadcast, currentPartition: () => currentPartition });
+
+// Endereços e cartões (preencher e salvar), por perfil
+registerAutofill({ broadcast, currentPartition: () => currentPartition });
+handleUi('import:addresses', (_e, list) => importAddresses(list, currentPartition));
 
 // Modo leitura (como o do Safari)
 registerReader();

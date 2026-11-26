@@ -15,6 +15,7 @@ const ST_SECTIONS = [
   ['geral', /*i18n*/'General', 'gear'],
   ['aparencia', /*i18n*/'Appearance', 'palette'],
   ['senhas', /*i18n*/'Passwords', 'key'],
+  ['enderecos', /*i18n*/'Addresses and cards', 'card'],
   ['privacidade', /*i18n*/'Privacy and security', 'shield'],
   ['permissoes', /*i18n*/'Site permissions', 'hand'],
   ['downloads', /*i18n*/'Downloads', 'download'],
@@ -70,7 +71,7 @@ const settingsPage = {
     if (!this.built) return;
     const scroll = $('#st-scroll').scrollTop;
     $('#st-main').innerHTML = [
-      this.general(), this.appearance(), this.passwords(), this.privacy(), this.permissions(),
+      this.general(), this.appearance(), this.passwords(), typeof afSettingsSection === 'function' ? afSettingsSection() : '', this.privacy(), this.permissions(),
       this.downloads(), this.profiles(), this.extensions(), this.about(),
     ].join('');
     $('#st-scroll').scrollTop = scroll;
@@ -204,6 +205,7 @@ function afterSetting(key) {
   if (key === 'zoom') for (const t of tabs) applyZoom(t);
   if (key === 'searchEngine' || key === 'suggestions') omnibox.cache.clear();
   if (key === 'offerPasswords') api?.pw.setOffer(settings.offerPasswords !== false);
+  if ((key === 'autofillAddresses' || key === 'autofillCards') && typeof syncAfPrefs === 'function') syncAfPrefs();
   if (key === 'sounds') { applySections(); if (settings.sounds) sfx.play('select'); }
   settingsPage.refresh();
 }

@@ -5,7 +5,8 @@ const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm
   'browserAction.update', 'ext:tab-create', 'ext:tab-select', 'ext:tab-remove',
   'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked',
   'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
-  'session:restore-tabs', 'tab:crashed', 'tab:responsive'];
+  'session:restore-tabs', 'tab:crashed', 'tab:responsive',
+  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -24,6 +25,17 @@ contextBridge.exposeInMainWorld('kona', {
   tabPinned: (wcId, on) => ipcRenderer.send('tab:pinned', wcId, !!on),
   setLanguage: (lang) => ipcRenderer.send('lang:set', lang),
   sessionUpdate: (snap) => ipcRenderer.send('session:update', snap),
+  // endereços e cartões (o número do cartão nunca chega à interface)
+  af: {
+    setPrefs: (p) => ipcRenderer.invoke('af:set-prefs', p),
+    fill: (suggestId, itemId) => ipcRenderer.invoke('af:fill', suggestId, itemId),
+    answer: (id, answer) => ipcRenderer.invoke('af:save-answer', id, answer),
+    list: () => ipcRenderer.invoke('af:list'),
+    saveAddress: (data, id) => ipcRenderer.invoke('af:save-address', data, id),
+    saveCard: (data, id) => ipcRenderer.invoke('af:save-card', data, id),
+    remove: (kind, id) => ipcRenderer.invoke('af:delete', kind, id),
+    importAddresses: (list) => ipcRenderer.invoke('import:addresses', list),
+  },
   sessionRecovery: () => ipcRenderer.invoke('session:recovery'),
   sessionRestore: () => ipcRenderer.invoke('session:restore'),
   sessionDismiss: () => ipcRenderer.invoke('session:dismiss'),

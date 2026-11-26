@@ -40,6 +40,7 @@ async function loadSource(id) {
   imp.pick = {
     bookmarks: !!data?.bookmarkCount,
     history: !!data?.history.visits.length,
+    addresses: !!data?.addresses?.length,
     extensions: new Set((data?.extensions || []).filter((e) => e.enabled && e.available !== false && !installedExtension(e.id)).map((e) => e.id)),
   };
   renderImport();
@@ -73,6 +74,8 @@ function renderImport() {
         <span><b>${tl('Favorites')}</b><small>${d.bookmarkCount ? `${tln(d.bookmarkCount, '{n} favorite, with folders', '{n} favorites, with folders')}${replacing ? ` · ${tl('replaces Kona’s default favorites')}` : ` · ${tl('added after yours')}`}` : tl('None found')}</small></span></label>
       <label${h.visits.length ? '' : ' class="off"'}><input type="checkbox" data-pick="history"${imp.pick.history ? ' checked' : ''}${h.visits.length ? '' : ' disabled'} />
         <span><b>${tl('History')}</b><small>${h.visits.length ? `${tln(h.visits.length, 'Your most recent and visited site', 'Your {n} most recent and visited sites')} · ${tln(h.searches.length, '{n} search', '{n} searches')}` : tl('None found')}</small></span></label>
+      <label${d.addresses?.length ? '' : ' class="off"'}><input type="checkbox" data-pick="addresses"${imp.pick.addresses ? ' checked' : ''}${d.addresses?.length ? '' : ' disabled'} />
+        <span><b>${tl('Addresses')}</b><small>${d.addresses?.length ? tln(d.addresses.length, '{n} address for filling in forms', '{n} addresses for filling in forms') : tl('None found')}</small></span></label>
       <div class="imp-ext-head"><b>${tl('Extensions')}</b><small>${d.extensions.length ? tl('Installed again from the Chrome Web Store. Their own settings don’t come along.') : tl('None from the Chrome Web Store found')}</small></div>
       ${exts ? `<div class="imp-exts">${exts}</div>` : ''}
     </div>
@@ -92,8 +95,8 @@ function setImportFooter() {
   if (imp.phase === 'working') { cancel.hidden = true; go.hidden = true; hint.textContent = tl('This may take a moment. Keep Kona open.'); return; }
   cancel.hidden = false; go.hidden = false; go.textContent = tl('Import');
   const p = imp.pick;
-  go.disabled = imp.busy || !imp.data || !(p.bookmarks || p.history || p.extensions.size);
-  if (imp.phase === 'choose' && imp.data) hint.textContent = tl('Passwords and sign-ins can’t be imported.');
+  go.disabled = imp.busy || !imp.data || !(p.bookmarks || p.history || p.addresses || p.extensions.size);
+  if (imp.phase === 'choose' && imp.data) hint.textContent = tl('Passwords, sign-ins and cards can’t be imported.');
 }
 
 $('#imp-body').addEventListener('change', (e) => {
@@ -121,6 +124,10 @@ async function runImport() {
     step(tl('Importing history…'));
     browseHistory.merge(d.history);
     done.push(`${tln(d.history.visits.length, '{n} site in history', '{n} sites in history')} · ${tln(d.history.searches.length, '{n} search', '{n} searches')}`);
+  }
+  if (p.addresses && d.addresses?.length) {
+    const n = (await api?.af.importAddresses(d.addresses)) || 0;
+    done.push(tln(n, '{n} address', '{n} addresses'));
   }
   const ids = [...p.extensions];
   let ok = 0;

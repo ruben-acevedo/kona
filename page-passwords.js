@@ -28,9 +28,12 @@ if (/^https?:$/.test(location.protocol)) {
   /* foco: a interface mostra as contas salvas (e o gerador de senha em cadastros) */
   let blurTimer = null;
   let lastField = null;
+  // logo depois de preencher, o Kona devolve o foco à página: essa volta não reabre a lista
+  let quietUntil = 0;
   document.addEventListener('focusin', (e) => {
     const el = e.target;
     if (!(el instanceof HTMLInputElement)) return;
+    if (Date.now() < quietUntil) return;
     const isPw = el.type === 'password';
     if (!isPw && !(isUserField(el) && (passwordFields(scopeOf(el)).length || passwordFields().length))) return;
     clearTimeout(blurTimer);
@@ -51,6 +54,7 @@ if (/^https?:$/.test(location.protocol)) {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   };
   ipcRenderer.on('pw:fill', (_e, { username, password, generated }) => {
+    quietUntil = Date.now() + 1000;
     const anchor = lastField && lastField.isConnected ? lastField : passwordFields()[0];
     if (!anchor) return;
     const scope = scopeOf(anchor);

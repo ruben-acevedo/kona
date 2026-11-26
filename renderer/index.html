@@ -348,6 +348,17 @@
     </footer>
   </section>
 
+  <!-- Editor de endereço / cartão (Settings → Addresses and cards) -->
+  <section id="af-sheet" class="sheet" role="dialog" aria-labelledby="af-title">
+    <header class="sheet-head"><div><h2 id="af-title"></h2></div></header>
+    <div class="pf-body" id="af-form"></div>
+    <footer class="sheet-foot">
+      <span class="spacer"></span>
+      <button class="btn-secondary" id="af-cancel">Cancel</button>
+      <button class="btn-primary" id="af-save">Save</button>
+    </footer>
+  </section>
+
   <!-- Compartilhar a tela: o que compartilhar (tela, janela ou aba do Kona) -->
   <section id="share-sheet" class="sheet share-sheet" role="dialog" aria-labelledby="share-title">
     <header class="sheet-head">
@@ -387,6 +398,9 @@
   <!-- Senhas: contas para o campo focado na página e o balão "Save password?" -->
   <div id="pw-suggest" class="glass" role="listbox" aria-label="Saved passwords"></div>
   <div id="pw-bubble" class="glass" role="dialog" aria-labelledby="pwb-title"></div>
+  <!-- Endereços e cartões: lista para o campo focado e o balão "Salvar?" -->
+  <div id="af-suggest" class="glass" role="listbox" aria-label="Saved addresses and cards"></div>
+  <div id="af-bubble" class="glass" role="dialog"></div>
 
   <!-- Modo leitura: painel "Aa" (tamanho, fonte, fundo, ouvir, automático) -->
   <div id="reader-pop" class="glass" role="dialog" aria-label="Reader options"></div>
@@ -428,6 +442,7 @@
   <script src="media-ui.js"></script>
   <script src="import.js"></script>
   <script src="passwords.js"></script>
+  <script src="autofill-ui.js"></script>
   <script src="default-browser.js"></script>
   <script src="session-ui.js"></script>
 </body>

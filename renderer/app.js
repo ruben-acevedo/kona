@@ -47,6 +47,7 @@ const ICONS = {
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
   play: '<path d="M8.5 6.2v11.6a.8.8 0 0 0 1.2.7l9.2-5.8a.8.8 0 0 0 0-1.4L9.7 5.5a.8.8 0 0 0-1.2.7z"/>',
   pause: '<path d="M9 6v12M15 6v12"/>',
+  card: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3.5"/>',
   music: '<path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
   prevTrack: '<path d="M18 6.6v10.8a.6.6 0 0 1-.9.5L9.6 12.5a.6.6 0 0 1 0-1l7.5-5.4a.6.6 0 0 1 .9.5z"/><path d="M6.5 6v12"/>',
   nextTrack: '<path d="M6 6.6v10.8a.6.6 0 0 0 .9.5l7.5-5.4a.6.6 0 0 0 0-1L6.9 6.1a.6.6 0 0 0-.9.5z"/><path d="M17.5 6v12"/>',
@@ -216,6 +217,7 @@ const DEFAULTS = {
   sites: {},
   siteZoom: {}, // zoom guardado por site (host → fator), como no Chrome
   offerPasswords: true, // oferecer salvar senhas (o gerenciador do Kona)
+  autofillAddresses: true, autofillCards: true, // salvar e preencher endereços e cartões
   reader: { size: 5, font: 'system', theme: null }, // modo leitura (theme null = segue o tema do Kona)
   readerAuto: {}, // sites em que o modo leitura abre sozinho
   popupsAllowed: [], // sites com pop-ups sempre permitidos
@@ -1254,7 +1256,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
-    for (const id of ['#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    for (const id of ['#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
     if (findBar.close()) return;
     if (closeProfileLayers()) return;
@@ -1439,6 +1441,7 @@ $('#scrim').addEventListener('click', () => {
   closeSheet('#ext-sheet');
   closeSheet('#fav-sheet');
   closeSheet('#pw-sheet');
+  closeSheet('#af-sheet');
   if ($('#import-sheet').classList.contains('show')) closeImport();
 });
 api?.on('ext:changed', () => {

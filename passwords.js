@@ -273,7 +273,7 @@ function registerPasswords(opts) {
     const iUrl = col('url', 'login_uri', 'website', 'origin');
     const iUser = col('username', 'login_username', 'login', 'email');
     const iPass = col('password', 'login_password');
-    if (iUrl === undefined || iPass === undefined) return { error: 'This file doesn’t look like a passwords export (it needs “url” and “password” columns).' };
+    if (iUrl === undefined || iPass === undefined) return { error: tl('This file doesn’t look like a passwords export (it needs “url” and “password” columns).') };
     let added = 0, updated = 0, skipped = 0;
     for (const row of rows) {
       const origin = originOf((row[iUrl] || '').trim());
@@ -302,4 +302,4 @@ function registerPasswords(opts) {
   });
 }
 
-module.exports = { registerPasswords };
+module.exports = { registerPasswords, verifyUser };

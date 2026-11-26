@@ -14,6 +14,8 @@ app.whenReady().then(() => {
     console.log('R   favoritos:', r.bookmarkCount, '· nível principal:', r.bookmarks.length, '· pastas:', folders(r.bookmarks).join(', '));
     console.log('R   histórico:', r.history.visits.length, 'sites ·', r.history.searches.length, 'buscas · mais recente:', new Date(r.history.visits[0]?.t || 0).toISOString());
     console.log('R   extensões:', r.extensions.map((e) => `${e.name}${e.enabled ? '' : ' (desligada)'}${e.icon ? '' : ' [sem ícone]'}`).join(' | '));
+    // endereços: só quantos e quais campos vieram (sem mostrar os dados)
+    console.log('R   endereços:', r.addresses.length, r.addresses.length ? `· campos: ${Object.keys(r.addresses[0]).filter((k) => r.addresses[0][k]).join(', ')}` : '');
     if (r.errors.length) console.log('R   erros:', r.errors.join('; '));
   }
   app.exit(0);

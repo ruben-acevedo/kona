@@ -62,6 +62,8 @@
       "media.js",
       "i18n.js",
       "session.js",
+      "autofill.js",
+      "page-autofill.js",
       "page-media.js",
       "renderer/**/*",
       "assets/**/*",

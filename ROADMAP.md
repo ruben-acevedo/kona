@@ -217,7 +217,12 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [x] **N7. Fixar abas.** "Pin tab" / "Unpin tab" no menu da aba. A fixada fica no começo da barra, só com o ícone (a ativa abre o endereço, como as outras), e aparece em todas as janelas e em todos os grupos, como no Safari (não no modo privado). Link para outro site dentro dela abre numa aba nova; Ctrl+W e o botão do meio não a fecham (vai para a aba seguinte); "Close tab" no menu desafixa e fecha. Arrastar muda a ordem só entre as fixadas; não muda de janela. Guardadas por perfil (`kona:pinned:<perfil>`), com o endereço atual. Testado: `tests/debug/pinned.js`.
 - [x] **N8. Atalhos de abas:** Ctrl+1…9, Ctrl+PgUp/PgDn, arrastar link para a barra de abas.
   - Feito: Ctrl+1…8 (aba N), Ctrl+9 (última), Ctrl+PgUp/PgDn (anterior/seguinte), Ctrl+Shift+PgUp/PgDn (leva a aba; fixadas só entre fixadas) — também com o foco na página. Soltar link/texto na barra: sobre uma aba abre nela (contorno azul), entre abas abre numa aba nova ali (traço azul); texto vira busca; só http(s). Atalhos novos listados em Configurações. Testado: `tests/debug/tab-shortcuts.js`.
-- [ ] **N9. Preencher endereços e cartões.**
+- [x] **N9. Preencher endereços e cartões.**
+  - Campos reconhecidos pelo `autocomplete` que os sites marcam para o Chrome; sem ele, pelo nome/rótulo em inglês, português e espanhol (inclui número, complemento e bairro, comuns no Brasil). Focar um campo mostra a lista; escolher preenche o formulário inteiro (inclusive listas de seleção de estado e validade).
+  - Formulário enviado com dados novos → "Save address?" / "Save card?" (ou "Update…"). Nada é salvo no modo privado.
+  - Cartões: número criptografado pelo Windows (DPAPI), lista só com bandeira e 4 últimos dígitos, CVV nunca salvo nem preenchido, só preenche em https e depois do Windows Hello.
+  - Configurações › Addresses and cards: ligar/desligar, adicionar, editar, apagar. Importação: endereços do Chrome/Edge/Brave (cartões não: o Chrome os tranca).
+  - `page-autofill.js`, `autofill.js`, `renderer/autofill-ui.js`. Testado: `tests/debug/autofill.js` (precisa do certificado de teste em `tests/fixtures/tls/`, ignorado pelo git) + importação (4 endereços lidos do Chrome do usuário) + senhas.
 - [ ] **N10. Traduzir páginas.**
 - [ ] **N11. Instalar sites como aplicativo (PWA).**
 - [ ] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.

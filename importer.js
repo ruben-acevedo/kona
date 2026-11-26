@@ -104,6 +104,59 @@ function readHistory(dir) {
   }
 }
 
+/* ───────────── Endereços (preenchimento automático) ─────────────
+   Ficam em "Web Data". Os cartões não: o Chrome os tranca com uma chave que só ele abre. */
+// tipos de campo do Chrome (components/autofill/core/browser/field_types.h)
+const ADDR_TYPES = { 7: 'name', 3: 'given', 5: 'family', 9: 'email', 14: 'tel', 60: 'org', 77: 'street-address', 30: 'line1', 31: 'line2', 33: 'city', 34: 'state', 35: 'postal', 36: 'country', 81: 'neighborhood' };
+function toAddress(f) {
+  const lines = String(f['street-address'] || [f.line1, f.line2].filter(Boolean).join('\n')).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  return {
+    name: f.name || [f.given, f.family].filter(Boolean).join(' '), org: f.org || '',
+    street: lines[0] || '', complement: lines.slice(1).join(', '), number: '',
+    neighborhood: f.neighborhood || '', city: f.city || '', state: f.state || '', postal: f.postal || '',
+    country: f.country || '', tel: f.tel || '', email: f.email || '',
+  };
+}
+function readAddresses(dir) {
+  const src = path.join(dir, 'Web Data');
+  if (!fs.existsSync(src)) return [];
+  const tmp = path.join(os.tmpdir(), `kona-import-${process.pid}-${Date.now()}-wd.sqlite`);
+  fs.copyFileSync(src, tmp);
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(tmp, { readOnly: true });
+  const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name));
+  try {
+    // formato atual (addresses + address_type_tokens) ou o anterior (local_addresses…)
+    for (const [main, tokens] of [['addresses', 'address_type_tokens'], ['local_addresses', 'local_addresses_type_tokens']]) {
+      if (!tables.has(main) || !tables.has(tokens)) continue;
+      const byGuid = new Map();
+      for (const r of db.prepare(`SELECT guid, type, value FROM ${tokens}`).all()) {
+        const k = ADDR_TYPES[Number(r.type)];
+        if (!k || !r.value) continue;
+        if (!byGuid.has(r.guid)) byGuid.set(r.guid, {});
+        byGuid.get(r.guid)[k] = String(r.value);
+      }
+      const order = db.prepare(`SELECT guid FROM ${main} ORDER BY use_count DESC`).all().map((r) => r.guid);
+      const list = order.filter((g) => byGuid.has(g)).map((g) => toAddress(byGuid.get(g)));
+      if (list.length) return list.slice(0, 100);
+    }
+    // formato antigo (autofill_profiles + nomes, e-mails e telefones em tabelas à parte)
+    if (tables.has('autofill_profiles')) {
+      const one = (table, col, guid) => { try { return db.prepare(`SELECT ${col} v FROM ${table} WHERE guid = ? LIMIT 1`).get(guid)?.v || ''; } catch { return ''; } };
+      return db.prepare('SELECT guid, company_name, street_address, dependent_locality, city, state, zipcode, country_code FROM autofill_profiles ORDER BY use_count DESC LIMIT 100').all()
+        .map((r) => toAddress({
+          name: one('autofill_profile_names', 'full_name', r.guid), email: one('autofill_profile_emails', 'email', r.guid),
+          tel: one('autofill_profile_phones', 'number', r.guid), org: r.company_name, 'street-address': r.street_address,
+          neighborhood: r.dependent_locality, city: r.city, state: r.state, postal: r.zipcode, country: r.country_code,
+        }));
+    }
+    return [];
+  } finally {
+    db.close();
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
 /* ───────────── Extensões ───────────── */
 function localized(extDir, manifest, text) {
   const m = /^__MSG_(.+)__$/.exec(text || '');
@@ -157,6 +210,7 @@ function read(id) {
   result.bookmarkCount = countUrls(result.bookmarks);
   step('history', () => readHistory(src.dir), { visits: [], searches: [] });
   step('extensions', () => readExtensions(src.dir), []);
+  step('addresses', () => readAddresses(src.dir).filter((a) => a.street), []);
   return result;
 }
 

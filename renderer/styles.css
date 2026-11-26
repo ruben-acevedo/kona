@@ -1017,14 +1017,14 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 .ext-pin.on { color: var(--accent); opacity: 1; }
 
 /* ───────────── Senhas ───────────── */
-#pw-suggest {
+#pw-suggest, #af-suggest {
   position: fixed; z-index: 70; max-width: 440px; padding: 5px; border-radius: 12px;
   background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
   box-shadow: inset 0 0.5px 0 var(--rim), 0 0 0 0.5px var(--stroke), var(--shadow-lg);
   opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .12s, transform .2s var(--ease);
 }
-#pw-suggest.show { opacity: 1; transform: none; pointer-events: auto; }
-:root[data-theme="dark"] #pw-suggest, :root[data-theme="dark"] #pw-bubble { background: rgba(40, 40, 46, 0.94); }
+#pw-suggest.show, #af-suggest.show { opacity: 1; transform: none; pointer-events: auto; }
+:root[data-theme="dark"] :is(#pw-suggest, #pw-bubble, #af-suggest, #af-bubble) { background: rgba(40, 40, 46, 0.94); }
 .pw-opt { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 8px; border-radius: 8px; cursor: default; }
 .pw-opt:hover { background: var(--accent); color: #fff; }
 .pw-opt:hover small { color: rgba(255,255,255,.8); }
@@ -1036,17 +1036,17 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 .pw-txt small { font-size: 11.5px; color: var(--text-2); }
 .pw-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .02em; }
 .pw-note { margin: 2px 10px 6px 40px; font-size: 11px; color: var(--text-2); line-height: 1.4; }
-#pw-suggest .pop-sep { height: 0.5px; background: var(--stroke); margin: 4px 6px; }
+#pw-suggest .pop-sep, #af-suggest .pop-sep { height: 0.5px; background: var(--stroke); margin: 4px 6px; }
 .pw-manage b { font-weight: 500; }
 
-#pw-bubble {
+#pw-bubble, #af-bubble {
   position: fixed; z-index: 70; top: calc(var(--top-h) + 8px); right: 16px; width: 320px; padding: 14px 16px 14px;
   border-radius: 16px; background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%);
   box-shadow: inset 0 0.5px 0 var(--rim), 0 0 0 0.5px var(--stroke), var(--shadow-lg);
   opacity: 0; transform: translateY(-8px) scale(0.98); transform-origin: top right; pointer-events: none;
   transition: opacity .16s, transform .28s var(--ease);
 }
-#pw-bubble.show { opacity: 1; transform: none; pointer-events: auto; }
+#pw-bubble.show, #af-bubble.show { opacity: 1; transform: none; pointer-events: auto; }
 .pwb-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .pwb-head .pw-ic { width: 32px; height: 32px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
 .pwb-head > div { flex: 1; }
@@ -1072,7 +1072,7 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 
 /* ───────────── Tela cheia ───────────── */
 /* vídeo (ou outro elemento) em tela cheia: só a página, sem nada do Kona */
-body.page-fullscreen :is(#toolbar, #sidebar, #infobar, #find-bar, #pw-suggest, #pw-bubble, #ext-pop, #toast, #peek-zone) { display: none !important; }
+body.page-fullscreen :is(#toolbar, #sidebar, #infobar, #find-bar, #pw-suggest, #pw-bubble, #af-suggest, #af-bubble, #ext-pop, #toast, #peek-zone) { display: none !important; }
 body.page-fullscreen #views { inset: 0; }
 /* F11: a página ocupa a tela; a barra desliza ao levar o mouse ao topo */
 #peek-zone { display: none; position: fixed; z-index: 95; top: 0; left: 0; right: 0; height: 6px; }
@@ -1232,3 +1232,17 @@ body.secondary :is(#sb-groups-h, #sb-groups) { display: none; }
 #crash-pane .cp-ic .ic { width: 22px; height: 22px; }
 #crash-pane b { font-size: 17px; font-weight: 650; }
 #crash-pane p { margin: 0 0 6px; color: var(--text-2); font-size: 13px; max-width: 360px; }
+
+/* ───────────── Endereços e cartões (N9) ───────────── */
+#af-bubble .pwb-head p { margin-top: 2px; }
+.af-note { margin: 10px 0 0; font-size: 11.5px; color: var(--text-2); line-height: 1.45; }
+.af-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.af-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.af-field > span:first-child { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.af-field .pf-input { width: 100%; }
+.af-grid .af-name, .af-grid .af-street, .af-card .af-number, .af-card .af-name { grid-column: 1 / -1; }
+.af-exp { display: flex; align-items: center; gap: 6px; }
+.af-exp .st-select { min-width: 72px; }
+.af-row .st-text { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+.af-row .st-text p { grid-column: 2; }
+.st-card-gap { margin-top: 14px; }
