@@ -32,6 +32,8 @@ function dlStatus(x) {
       .filter(Boolean).join(' · ');
     return rate ? `${of}\n${rate}` : of;
   }
+  if (x.state === 'dangerous') return x.danger === 'insecure' ? tl('Insecure download: it wasn’t encrypted and could have been changed on the way') : tl('This type of file can harm your computer');
+  if (x.state === 'blocked') return tl('Blocked by Windows: virus or unwanted program detected');
   if (x.missing) return tl('Deleted');
   if (x.state === 'completed') return [fmtBytes(x.total || x.received), dlHost(x.url)].filter(Boolean).join(' · ');
   if (x.state === 'cancelled') return tl('Canceled');
@@ -73,7 +75,7 @@ api?.on('download:progress', (d) => {
 api?.on('download:done', (d) => {
   const x = dlFor(d);
   if (!x) return;
-  Object.assign(x, { name: d.name, path: d.path, received: d.received, total: d.total || d.received, state: d.state, paused: false, speed: 0, missing: false });
+  Object.assign(x, { name: d.name, path: d.path, received: d.received, total: d.total || d.received, state: d.state, paused: false, speed: 0, missing: false, danger: d.state === 'dangerous' ? d.danger : null });
   downloadsList.save();
   updateDlButton(d.state === 'completed' ? 'done' : false);
   refreshDownloadsView();
@@ -110,19 +112,29 @@ function dlRowHtml(x) {
   const active = x.state === 'progressing';
   const done = x.state === 'completed' && !x.missing;
   const failed = x.state === 'cancelled' || x.state === 'interrupted';
+  const danger = x.state === 'dangerous';
+  const blocked = x.state === 'blocked';
   const pct = x.total > 0 ? Math.min(100, (x.received / x.total) * 100) : 0;
-  const acts = active
+  // arquivo arriscado: os botões ficam numa linha própria, abaixo do aviso (a barra lateral é estreita)
+  const decide = danger ? `<span class="dl-decide">
+      <button class="btn-primary dl-discard" data-dl-act="discard">${tl('Discard')}</button>
+      <button class="btn-secondary dl-keep" data-dl-act="keep">${tl('Keep')}</button></span>` : '';
+  const acts = danger
+    ? ''
+    : blocked
+    ? `<button class="sb-act" data-dl-act="remove" title="${tl('Remove from list')}">${icon('x')}</button>`
+    : active
     ? `<button class="sb-act" data-dl-act="${x.paused ? 'resume' : 'pause'}" title="${x.paused ? tl('Resume') : tl('Pause')}">${icon(x.paused ? 'play' : 'pause')}</button>
        <button class="sb-act" data-dl-act="cancel" title="${tl('Cancel')}">${icon('x')}</button>`
     : `${done ? `<button class="sb-act" data-dl-act="show" title="${tl('Show in folder')}">${icon('folder')}</button>` : ''}
        ${failed ? `<button class="sb-act" data-dl-act="retry" title="${tl('Retry')}">${icon('reload')}</button>` : ''}
        <button class="sb-act" data-dl-act="remove" title="${tl('Remove from list')}">${icon('x')}</button>`;
-  return `<div class="sb-row dl-row${active ? ' active' : ''}${done ? ' done' : ''}${failed ? ' failed' : ''}${x.missing ? ' missing' : ''}${x.paused ? ' paused' : ''}"
+  return `<div class="sb-row dl-row${active ? ' active' : ''}${done ? ' done' : ''}${failed ? ' failed' : ''}${danger || blocked ? ' danger' : ''}${x.missing ? ' missing' : ''}${x.paused ? ' paused' : ''}"
       data-dl="${x.key}"${done ? ' draggable="true"' : ''} title="${escapeHtml(x.name)}${x.url ? `\n${escapeHtml(x.url)}` : ''}">
       ${dlIcon(x)}
-      <div class="sb-row-text"><b>${escapeHtml(x.name)}</b><span class="dl-status">${escapeHtml(dlStatus(x))}</span>
+      <div class="sb-row-text"><b>${escapeHtml(x.name)}</b><span class="dl-status">${escapeHtml(dlStatus(x))}</span>${decide}
         ${active ? `<span class="dl-bar${x.total ? '' : ' indeterminate'}"><i style="width:${pct.toFixed(1)}%"></i></span>` : ''}</div>
-      <span class="sb-acts${active ? ' always' : ''}">${acts}</span>
+      ${acts ? `<span class="sb-acts${active ? ' always' : ''}">${acts}</span>` : ''}
     </div>`;
 }
 
@@ -186,6 +198,10 @@ $('#sb-list').addEventListener('click', async (e) => {
   else if (act === 'show') api?.showDownload(x.path);
   else if (act === 'retry') { downloadsList.remove(x.key); api?.downloadRetry(x.url); }
   else if (act === 'remove') { downloadsList.remove(x.key); sfx.play('tick'); }
+  else if (act === 'keep') {
+    if (await api?.downloadKeep(x.id)) sfx.play('select'); // o aviso "baixado · Mostrar na pasta" vem em seguida
+  }
+  else if (act === 'discard') { await api?.downloadDiscard(x.id); sfx.play('tick'); toast(tl('“{name}” discarded', { name: x.name })); }
   else if (x.state === 'completed' && !x.missing) {
     // clicar num download concluído abre o arquivo
     const ok = await api?.downloadOpen(x.path);

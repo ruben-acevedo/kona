@@ -2,12 +2,13 @@
 // menu lateral (abrir o arquivo, mostrar na pasta, ícone do tipo de arquivo, arrastar para fora).
 // A lista em si fica na interface, por perfil. Por segurança, abrir/mostrar/arrastar só vale para
 // arquivos que o próprio Kona baixou (lembrados em downloads-known.json, na pasta de dados).
-const { app, shell, nativeImage } = require('electron');
+const { app, shell, nativeImage, dialog, BrowserWindow } = require('electron');
 const { onUi, handleUi } = require('./ipc');
 const path = require('path');
 const fs = require('fs');
 
 const live = new Map(); // id → DownloadItem em andamento
+const held = new Map(); // id → download arriscado esperando "Manter" ou "Descartar" (N14)
 let seq = 0;
 let broadcast = () => {};
 let currentSession = () => null;
@@ -45,12 +46,52 @@ function info(id, item) {
   };
 }
 
+/* ───────────── Downloads arriscados (N14) ─────────────
+   Tipos que podem rodar programas (a mesma família que o Chrome trata como perigosa) e qualquer
+   arquivo que veio sem criptografia (http, fora da própria máquina). Sem o serviço de reputação do
+   Google, o Kona avisa sempre: o arquivo fica numa pasta à parte até a pessoa escolher. O antivírus
+   do Windows já examina todo download ao ser salvo (o Chromium pede); se ele barra, o aviso é outro. */
+const RISKY = new Set(['exe', 'msi', 'msix', 'msixbundle', 'appx', 'appxbundle', 'msp', 'mst', 'bat', 'cmd', 'com', 'scr', 'pif',
+  'ps1', 'psm1', 'psd1', 'vbs', 'vbe', 'vb', 'js', 'jse', 'wsf', 'wsh', 'wsc', 'ws', 'hta', 'jar', 'reg', 'lnk', 'url', 'scf',
+  'cpl', 'msc', 'dll', 'sys', 'inf', 'application', 'appref-ms', 'gadget', 'iso', 'img', 'vhd', 'vhdx', 'xll', 'settingcontent-ms']);
+const isLocal = (host) => /^(localhost|127(\.\d+){3}|\[::1\])$/i.test(host);
+/** 'file' (tipo que pode rodar programas), 'insecure' (veio sem criptografia) ou null. */
+function riskOf(name, urlChain = []) {
+  const insecure = urlChain.some((u) => { try { const x = new URL(u); return x.protocol === 'http:' && !isLocal(x.hostname); } catch { return false; } });
+  if (insecure) return 'insecure';
+  const ext = path.extname(String(name || '')).slice(1).toLowerCase();
+  return RISKY.has(ext) ? 'file' : null;
+}
+const holdingDir = () => path.join(app.getPath('userData'), 'Downloads-holding');
+/** Onde o arquivo arriscado espera a decisão (uma pasta por download: o nome do arquivo não muda). */
+function holdingPath(name) {
+  const dir = path.join(holdingDir(), require('crypto').randomBytes(6).toString('hex'));
+  fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, path.basename(String(name || 'download')));
+}
+function uniquePath(dir, name) {
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+  let file = path.join(dir, name);
+  for (let i = 1; fs.existsSync(file); i++) file = path.join(dir, `${base} (${i})${ext}`);
+  return file;
+}
+/** "Veio da internet" (Mark of the Web): o Windows avisa e o SmartScreen confere ao abrir. */
+function markOfTheWeb(file, url) {
+  if (process.platform !== 'win32') return;
+  try {
+    if (fs.existsSync(`${file}:Zone.Identifier`)) return;
+    fs.writeFileSync(`${file}:Zone.Identifier`, `[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=${String(url || '').replace(/[\r\n]/g, '')}\r\n`);
+  } catch { /* disco sem fluxos alternativos (FAT/exFAT): segue sem a marca */ }
+}
+
 /** Chamado pela política da sessão (session-policy.js) a cada download que começa. */
-function track(item, { priv = false } = {}) {
+function track(item, { priv = false, danger = null, finalDir = null, ask = false } = {}) {
   const id = ++seq;
   live.set(id, item);
   const send = (channel, data) => broadcast(channel, data);
-  send('download:start', { ...info(id, item), priv });
+  if (danger) held.set(id, { file: null, finalDir: finalDir || app.getPath('downloads'), ask, url: item.getURL(), danger });
+  send('download:start', { ...info(id, item), priv, danger });
   let last = 0;
   item.on('updated', () => {
     const now = Date.now();
@@ -61,6 +102,16 @@ function track(item, { priv = false } = {}) {
   item.once('done', (_e, state) => {
     live.delete(id);
     const file = item.getSavePath();
+    const h = held.get(id);
+    // baixou inteiro, mas o arquivo não está lá: o antivírus do Windows barrou
+    if (state === 'interrupted' && item.getTotalBytes() > 0 && item.getReceivedBytes() === item.getTotalBytes() && file && !fs.existsSync(file)) state = 'blocked';
+    if (state === 'completed' && h && file) {
+      h.file = file;
+      h.info = { ...info(id, item), danger: h.danger };
+      send('download:done', { ...h.info, state: 'dangerous' });
+      return;
+    }
+    held.delete(id);
     if (state === 'completed' && file) remember(file);
     send('download:done', { ...info(id, item), state });
   });
@@ -81,6 +132,38 @@ const appIcon = () => (fallbackIcon ||= nativeImage.createFromPath(path.join(__d
 
 function registerDownloads(opts) {
   broadcast = opts.broadcast;
+  // arquivos arriscados que ficaram sem decisão quando o Kona fechou: descartados
+  fs.rm(holdingDir(), { recursive: true, force: true }, () => {});
+  // "Manter": o arquivo vai para a pasta de downloads (ou onde a pessoa escolher), com a marca de internet
+  handleUi('download:keep', async (e, id) => {
+    const h = held.get(Number(id));
+    if (!h?.file || !fs.existsSync(h.file)) return null;
+    let dest = uniquePath(h.finalDir, path.basename(h.file));
+    if (h.ask) {
+      const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: dest });
+      if (r.canceled || !r.filePath) return null;
+      dest = r.filePath;
+    }
+    try { fs.renameSync(h.file, dest); } catch {
+      fs.copyFileSync(h.file, dest); // outro disco: copia (a marca é refeita abaixo)
+      fs.rmSync(h.file, { force: true });
+    }
+    fs.rm(path.dirname(h.file), { recursive: true, force: true }, () => {});
+    markOfTheWeb(dest, h.url);
+    remember(dest);
+    held.delete(Number(id));
+    broadcast('download:done', { ...h.info, name: path.basename(dest), path: dest, state: 'completed', kept: true });
+    return dest;
+  });
+  // "Descartar": apaga o arquivo
+  handleUi('download:discard', (_e, id) => {
+    const h = held.get(Number(id));
+    if (!h) return false;
+    if (h.file) fs.rm(path.dirname(h.file), { recursive: true, force: true }, () => {});
+    held.delete(Number(id));
+    broadcast('download:done', { ...(h.info || { id: Number(id) }), path: null, state: 'cancelled', discarded: true });
+    return true;
+  });
   currentSession = opts.currentSession;
   const byId = (id) => live.get(Number(id));
   handleUi('download:pause', (_e, id) => { byId(id)?.pause(); return true; });
@@ -107,4 +190,4 @@ function registerDownloads(opts) {
   });
 }
 
-module.exports = { track, registerDownloads };
+module.exports = { track, registerDownloads, riskOf, holdingPath };

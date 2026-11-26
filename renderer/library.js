@@ -163,7 +163,9 @@ const downloadsList = {
   save() {
     // um download em andamento não sobrevive ao fechar o Kona: fica salvo como interrompido
     const keep = this.items.filter((x) => !x.priv).slice(0, this.MAX)
-      .map((x) => (x.state === 'progressing' ? { ...x, state: 'interrupted', paused: false, id: null } : { ...x, id: null }));
+      .map((x) => (x.state === 'progressing' ? { ...x, state: 'interrupted', paused: false, id: null }
+        // arquivo arriscado sem decisão não sobrevive ao fechar o Kona (é descartado)
+        : x.state === 'dangerous' ? { ...x, state: 'cancelled', id: null } : { ...x, id: null }));
     writeJSON(profileKey('downloads'), keep);
     library.changed('downloads');
   },

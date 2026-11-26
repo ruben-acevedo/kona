@@ -223,11 +223,13 @@ function createPolicy(ctx) {
     ses.on('will-download', (_e, item) => {
       const p = prefsFor(partition);
       const askThis = item.getURLChain().some((u) => askUrls.delete(u));
-      if (!p.downloadAsk && !askThis) {
-        const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
-        item.setSavePath(uniquePath(dir, item.getFilename()));
-      }
-      downloads.track(item, { priv: ctx.isPrivate(partition) });
+      const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
+      // arquivo que pode rodar programas, ou que veio sem criptografia: fica guardado à parte até a
+      // pessoa escolher "Manter" (aí vai para a pasta) ou "Descartar" (ver downloads.js)
+      const danger = downloads.riskOf(item.getFilename(), item.getURLChain());
+      if (danger) item.setSavePath(downloads.holdingPath(item.getFilename()));
+      else if (!p.downloadAsk && !askThis) item.setSavePath(uniquePath(dir, item.getFilename()));
+      downloads.track(item, { priv: ctx.isPrivate(partition), danger, finalDir: dir, ask: !!(p.downloadAsk || askThis) });
     });
   }
 

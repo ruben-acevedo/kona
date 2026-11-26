@@ -227,7 +227,11 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
 - [ ] **N11. Instalar sites como aplicativo (PWA).**
 - [ ] **N12. Barra de endereço mais esperta:** contas, buscadores por atalho, busca dentro do site.
 - [ ] **N13. Pré-visualização de impressão.**
-- [ ] **N14. Aviso de download perigoso.**
+- [x] **N14. Aviso de download perigoso.**
+  - Tipos que podem rodar programas (.exe, .msi, .bat, .ps1, .vbs, .js, .jar, .hta, .reg, .lnk, .iso… — a família que o Chrome trata como perigosa) e qualquer arquivo vindo por http de fora da máquina: o arquivo fica numa pasta à parte (`Downloads-holding`) e a lista mostra "This type of file can harm your computer" / "Insecure download" com **Discard** (destaque) e **Keep**. Manter leva à pasta de downloads (ou pergunta onde, se o ajuste pede) com a marca de internet (Zone.Identifier); descartar apaga. Sem decisão ao fechar o Kona = descartado.
+  - Sem o serviço de reputação do Google (Safe Browsing pede chave/acordo), avisa sempre para esses tipos (opção (a), escolhida pelo usuário).
+  - Antivírus: o Windows já examina todo download ao salvar (o Chromium pede); se barra, a lista mostra "Blocked by Windows: virus or unwanted program detected".
+  - Testado: `tests/debug/download-danger.js` + downloads. Falta testar o bloqueio do antivírus (com o arquivo de teste EICAR, que faz o Windows Defender mostrar um alerta) — só com o usuário avisado.
 - [ ] **N15. Barra de favoritos (opcional).**
 - [~] **N16. Controle de mídia global e teclas de mídia.**
   - Feito: botão ♪ na barra (só quando alguma aba, de qualquer janela, tem mídia; azul enquanto toca). Painel "Playing now": capa, título e artista (do `navigator.mediaSession` do site), tocar/pausar, faixa anterior/seguinte (quando o site oferece), clicar leva à aba (troca de janela se preciso). Abas privadas só aparecem na própria janela. `media.js` + `page-media.js` (captura os botões de mídia do site com função de cara nativa). Testado: `tests/debug/media.js` + ua/smoke.

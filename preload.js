@@ -88,6 +88,8 @@ contextBridge.exposeInMainWorld('kona', {
   downloadPause: (id) => ipcRenderer.invoke('download:pause', id),
   downloadResume: (id) => ipcRenderer.invoke('download:resume', id),
   downloadCancel: (id) => ipcRenderer.invoke('download:cancel', id),
+  downloadKeep: (id) => ipcRenderer.invoke('download:keep', id),
+  downloadDiscard: (id) => ipcRenderer.invoke('download:discard', id),
   downloadRetry: (url) => ipcRenderer.invoke('download:retry', url),
   downloadOpen: (file) => ipcRenderer.invoke('download:open', file),
   downloadExists: (files) => ipcRenderer.invoke('download:exists', files),

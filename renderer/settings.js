@@ -335,8 +335,11 @@ $('#perm-no').addEventListener('click', () => answerPerm(false));
 
 /* ───────────── Downloads ───────────── */
 api?.on('download:start', ({ name }) => toast(tl('Downloading “{name}”…', { name })));
-api?.on('download:done', ({ name, path, state }) => {
-  if (state === 'completed') toast(tl('“{name}” downloaded', { name }), { label: tl('Show in folder'), run: () => api.showDownload(path) });
+api?.on('download:done', ({ name, path, state, discarded }) => {
+  if (discarded) return; // "Descartar": a lista já avisa
+  if (state === 'dangerous') toast(tl('“{name}” may be dangerous. Keep it?', { name }), { label: tl('Review'), run: () => openSidebarView('downloads') });
+  else if (state === 'blocked') toast(tl('Windows blocked “{name}”: virus or unwanted program detected', { name }));
+  else if (state === 'completed') toast(tl('“{name}” downloaded', { name }), { label: tl('Show in folder'), run: () => api.showDownload(path) });
   else if (state === 'cancelled') toast(tl('Download canceled'));
   else toast(tl('Couldn’t download “{name}”', { name }));
 });
