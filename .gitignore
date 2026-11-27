@@ -7,3 +7,4 @@ build-extra/
 
 # certificado só para testes locais (gerado: openssl req -x509 ... ver tests/debug/autofill.js)
 tests/fixtures/tls/
+__pycache__/
