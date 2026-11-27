@@ -166,7 +166,7 @@ Ordem combinada em 2026-11-25 (recomendação aceita, com o modo leitura incluí
   - `renderer/reader-ui.js`: botões na barra, painel "Aa", estado por aba (zera ao navegar).
   - Corrigido no teste: fundo não mudava (transição sobre variável CSS); o `<article>` do site herdava o estilo da coluna. As capturas de teste ficam atrasadas se a janela estiver atrás de outras (o Windows para de redesenhar): o teste traz a janela para a frente antes de capturar.
   - Teste: `tests/debug/reader.js`.
-- [ ] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional).
+- [x] **L7. Publicar a primeira versão** (Release no GitHub, atualização automática; assinatura opcional). Feito no O5: v0.2.0 (2026-11-27).
 
 Depois, conforme o uso: várias janelas, fixar abas, preenchimento de endereços/cartões, tradução, buscadores personalizados, pré-visualização de impressão, português, proteção contra golpes (Safe Browsing/Web Risk), sincronização, macOS/Linux/celular, acessibilidade, relatório de travamentos.
 
@@ -312,7 +312,7 @@ Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. M
   - O Kona gasta 9% menos que o Chrome com 10 abas e fica empatado com 1 aba. O Edge gasta 13% menos que o Kona com 10 abas, quase tudo nas páginas: 1145 MB contra 1367 MB, com o mesmo número de processos.
   - O processo de vídeo (GPU) do Kona usa mais: 133 MB contra cerca de 95 MB no Chrome e no Edge, por causa dos efeitos da interface (desfoque, transparência). O processo principal usa menos: 86 MB contra 118 a 146 MB.
   - `tests/debug/memory-compare.js`: abre o Chrome e o Edge instalados e mede o Kona com o mesmo método. Leva uns 6 minutos.
-- [ ] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen.
+- [~] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen. **Feito:** v0.2.0 publicada (2026-11-27), `npm run release` e `npm run update-electron`. **Falta:** decidir a assinatura.
 - [x] **O7. Um perfil por janela (como o Chrome).** Pedido em 2026-11-27. Antes havia um "perfil atual" único para o Kona inteiro, e trocar de perfil pedia fechar as outras janelas.
   - Escolher outro perfil (menu de perfis ou Configurações › Perfis › Open): traz para a frente a janela dele, se houver; senão abre uma janela nova dele. Só troca na própria janela quando ela está sozinha e vazia (só a nova aba), ou ao apagar o perfil dela.
   - Cada janela guarda o seu perfil (`PROFILES.win`, vindo de `?partition=`; `data.current` é só o último usado, que decide a próxima abertura). A janela principal (guarda as abas e mostra os grupos) é uma por perfil; Ctrl+N abre no mesmo perfil.
