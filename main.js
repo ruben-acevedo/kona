@@ -650,6 +650,35 @@ const attachQueue = (contents) => { if (!attachQueues.has(contents)) attachQueue
  * de voltar/avançar. to: { window: id } | { point: {x, y} } (onde a aba foi solta) | { newWindow: true }.
  * Devolve true se a aba foi aceita (a janela de origem então fecha a dela).
  */
+/* ───────────── Economia de memória (O1) ─────────────
+   A interface suspende abas paradas: guarda o histórico da aba (voltar/avançar), fecha a página e,
+   ao voltar, a aba renasce com o histórico de volta (o mesmo caminho do tab:move). */
+const guestOf = (e, wcId) => {
+  const wc = Number.isInteger(wcId) && webContents.fromId(wcId);
+  return wc && !wc.isDestroyed() && wc.hostWebContents === e.sender ? wc : null;
+};
+/** Memória da aba (KB, do processo dela) e se ela precisa continuar viva (câmera/microfone, notificações). */
+handleUi('tab:suspend-info', (e, wcId, partition) => {
+  const wc = guestOf(e, wcId);
+  if (!wc) return null;
+  const pid = wc.getOSProcessId();
+  const m = app.getAppMetrics().find((x) => x.pid === pid);
+  return { kb: m?.memory?.workingSetSize || 0, keep: policy.keepAliveReason(wc, typeof partition === 'string' ? partition : currentPartition) };
+});
+/** Guarda o histórico da aba (sem prazo: a aba pode ficar suspensa por horas) e devolve o token. */
+handleUi('tab:stash', (e, wcId) => {
+  const wc = guestOf(e, wcId);
+  if (!wc) return null;
+  const entries = wc.navigationHistory.getAllEntries();
+  if (!entries.length) return null;
+  const token = require('crypto').randomBytes(8).toString('hex');
+  pendingRestores.set(token, { index: wc.navigationHistory.getActiveIndex(), entries });
+  return token;
+});
+onUi('tab:stash-drop', (_e, token) => { if (typeof token === 'string') pendingRestores.delete(token); });
+/** Memória do Windows (KB): a economia suspende mais cedo quando sobra pouca. */
+handleUi('sys:memory', () => { const m = process.getSystemMemoryInfo(); return { total: m.total, free: m.free }; });
+
 handleUi('tab:move', (e, { wcId, url, title, to } = {}) => {
   const src = BrowserWindow.fromWebContents(e.sender);
   if (!src || typeof url !== 'string' || !(TAB_SCHEMES.has(schemeOf(url)) || /^kona:\/\/\w+$/.test(url))) return false;

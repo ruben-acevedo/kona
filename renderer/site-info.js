@@ -96,6 +96,10 @@ function renderSitePop() {
     ${rows}${permRows}
     ${changed ? `<div class="si-reload"><span>${tl('Reload to apply your changes')}</span><button class="btn-primary small" data-si="reload">${tl('Reload')}</button></div>` : ''}
     ${priv ? `<p class="si-note">${tl('In private browsing, these choices only last until you close this window.')}</p>` : ''}
+    ${settings.memorySaver ? (() => { // economia de memória: este site nunca fica inativo
+      const on = (settings.keepActive || []).includes(keepHostOf(sp.url));
+      return `<button class="si-keep" data-si="keep" role="switch" aria-checked="${on}"><span data-icon="gauge"></span><span class="si-keep-label">${tl('Always keep this site active')}</span><span class="sw${on ? ' on' : ''}"><span></span></span></button>`;
+    })() : ''}
     <div class="si-sep"></div>
     <div class="si-foot"><span class="si-cookies">${icon('cookie')}<span id="si-cookie-count">…</span></span>
       <button class="btn-link" data-si="clear">${tl('Clear site data')}</button></div>
@@ -152,6 +156,14 @@ sitePop.addEventListener('click', async (e) => {
   if (!b) return;
   const t = sp.t;
   if (b.dataset.si === 'reload') { toggleSitePop(null, null, false); t?.wv?.reload(); }
+  else if (b.dataset.si === 'keep') {
+    const h = keepHostOf(sp.url);
+    const list = settings.keepActive || [];
+    settings.keepActive = list.includes(h) ? list.filter((x) => x !== h) : [...list, h];
+    saveSettings(); settingsPage.refresh?.();
+    renderSitePop();
+    $('#site-pop [data-si="keep"]')?.focus();
+  }
   else if (b.dataset.si === 'settings') { toggleSitePop(null, null, false); openSettings('permissoes'); }
   else if (b.dataset.si === 'clear') {
     const yes = await ask({ title: tl('Clear data for {site}?', { site: sp.site }), text: tl('You’ll be signed out of this site.'), ok: tl('Clear'), danger: true });

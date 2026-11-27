@@ -135,9 +135,15 @@ const sfx = (() => {
   const FIELD = 'input:not([type]), input:is([type="text"], [type="search"], [type="url"], [type="email"], [type="tel"], [type="number"], [type="password"]), textarea';
 
   let hovered = null;
+  // Só o mouse que se mexe faz tique: quando a interface se redesenha sob o mouse parado (trocar de
+  // aba, abrir uma subtela), o Chromium também dispara "pointerover", e o tique sairia dobrado.
+  // (o "pointerover" de um movimento de verdade vem antes do "pointermove": a posição ainda é outra)
+  let px = -1, py = -1;
+  document.addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; }, true);
   document.addEventListener('pointerover', (e) => {
     const el = e.target.closest?.(CONTROL) || null;
-    if (el && el !== hovered && !el.matches(FIELD)) play('tick');
+    const real = e.clientX !== px || e.clientY !== py;
+    if (el && el !== hovered && !el.matches(FIELD) && real) play('tick');
     hovered = el;
   });
   document.addEventListener('click', (e) => {
@@ -176,7 +182,8 @@ const sfx = (() => {
   document.addEventListener('focusin', (e) => {
     const el = e.target;
     // contêineres (menu, menu lateral, janela sem botões) recebem foco com tabindex -1: o som é o "open" deles
-    if (!viaKeyboard || el === document.body || el.tagName === 'WEBVIEW' || el.tabIndex < 0 || el.matches?.(FIELD)) return;
+    if (!viaKeyboard || el === document.body || el.tagName === 'WEBVIEW' || el.matches?.(FIELD)) return;
+    if (el.tabIndex < 0 && !el.matches?.(CONTROL)) return; // contêiner focado (menu, janela): o som é o "open" dele
     if (performance.now() - lastBig < 150) return;
     play('tick');
   });

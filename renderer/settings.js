@@ -14,6 +14,7 @@ const PERM_INFO = Object.fromEntries(PERMS.map(([k, label, ic, verb]) => [k, { l
 const ST_SECTIONS = [
   ['geral', /*i18n*/'General', 'gear'],
   ['aparencia', /*i18n*/'Appearance', 'palette'],
+  ['desempenho', /*i18n*/'Performance', 'gauge'],
   ['senhas', /*i18n*/'Passwords', 'key'],
   ['enderecos', /*i18n*/'Addresses and cards', 'card'],
   ['privacidade', /*i18n*/'Privacy and security', 'shield'],
@@ -83,7 +84,7 @@ const settingsPage = {
       (list.find((el) => sig(el) === focusSig) || list[focusIdx])?.focus({ preventScroll: true });
     });
     main.innerHTML = [
-      this.general(), this.appearance(), this.passwords(), typeof afSettingsSection === 'function' ? afSettingsSection() : '', this.privacy(), this.permissions(),
+      this.general(), this.appearance(), this.performance(), this.passwords(), typeof afSettingsSection === 'function' ? afSettingsSection() : '', this.privacy(), this.permissions(),
       this.downloads(), this.profiles(), this.extensions(), typeof appsSettingsSection === 'function' ? appsSettingsSection() : '', this.about(),
     ].join('');
     $('#st-scroll').scrollTop = scroll;
@@ -122,6 +123,24 @@ const settingsPage = {
       stRow(tl('Interface sounds'), tl('Short sounds when you open menus, move between tabs and hover over favorites.'), stSwitch('sounds')) +
       stRow(tl('Default page zoom'), null,
         stSelect('zoom', [[0.75, '75%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.25, '125%'], [1.5, '150%']])));
+  },
+
+  /** Economia de memória (O1): liga/desliga, modo (como no Chrome) e sites sempre ativos. */
+  performance() {
+    const keep = settings.keepActive || [];
+    const list = keep.length
+      ? keep.map((h) => `<div class="st-keep-row"><span class="st-keep-host">${escapeHtml(h)}</span><button class="sb-act" data-do="keep-remove" data-host="${escapeHtml(h)}" title="${tl('Remove')}" aria-label="${tl('Remove')} ${escapeHtml(h)}">${icon('x')}</button></div>`).join('')
+      : `<p class="st-empty">${tl('No sites yet.')}</p>`;
+    return this.section('desempenho', /*i18n*/'Performance',
+      stRow(tl('Memory saver'), tl('Frees memory from tabs you haven’t used for a while. They reload, in the same place, when you go back to them.'), stSwitch('memorySaver')) +
+      (settings.memorySaver ? stRow(tl('Mode'), {
+        moderate: tl('Tabs become inactive after 2 hours, or sooner if Windows is running out of memory.'),
+        balanced: tl('Tabs become inactive after 1 hour, or sooner if Windows is low on memory. Recommended.'),
+        maximum: tl('Tabs become inactive after 15 minutes. Frees the most memory.'),
+      }[settings.memorySaverMode] || '', stSelect('memorySaverMode', [['moderate', tl('Moderate')], ['balanced', tl('Balanced')], ['maximum', tl('Maximum')]])) : '') +
+      stRow(tl('Always keep these sites active'), tl('Tabs playing sound, sharing the screen, using the camera or microphone, with a form you started filling in, or from sites allowed to show notifications are never made inactive.'),
+        `<div class="st-keep"><input class="pf-input st-keep-input" id="keep-host" placeholder="${tl('Site, e.g. web.whatsapp.com')}" spellcheck="false" aria-label="${tl('Site to keep active')}" /><button class="btn-secondary" data-do="keep-add">${tl('Add')}</button></div>`) +
+      `<div class="st-keep-list">${list}</div>`);
   },
 
   passwords() {
@@ -243,6 +262,15 @@ function afterSetting(key) {
   settingsPage.refresh();
 }
 
+/** "web.whatsapp.com", "https://x.com/abc" → host sem "www." (para a lista de sites sempre ativos). */
+function keepHostOf(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return '';
+  try { return new URL(/^[a-z]+:\/\//.test(t) ? t : `https://${t}`).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+$('#st-main').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 'keep-host') { e.preventDefault(); $('#st-main [data-do="keep-add"]').click(); }
+});
 $('#st-main').addEventListener('change', (e) => {
   const el = e.target;
   if (el.dataset.lang) { setLanguage(el.value); return; }
@@ -275,6 +303,18 @@ $('#st-main').addEventListener('click', async (e) => {
   switch (b.dataset.do) {
     case 'customize': newTab(START, false); requestAnimationFrame(() => toggleCustomize(true)); break;
     case 'clear-data': openClearSheet({ historyOnly: false }); break;
+    case 'keep-add': {
+      const h = keepHostOf($('#keep-host').value);
+      if (!h) { $('#keep-host').focus(); break; }
+      settings.keepActive = [...new Set([...(settings.keepActive || []), h])];
+      afterSetting('keepActive');
+      requestAnimationFrame(() => $('#keep-host')?.focus());
+      break;
+    }
+    case 'keep-remove':
+      settings.keepActive = (settings.keepActive || []).filter((x) => x !== b.dataset.host);
+      afterSetting('keepActive');
+      break;
     case 'sites': openSitesSheet(); break;
     case 'import': openImport(); break;
     case 'pw-manage': openPasswordSheet(); break;

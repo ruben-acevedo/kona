@@ -27,7 +27,7 @@ function renderSidebar() {
 
 function tabRows() {
   const rows = tabs.map((t) => `
-    <div class="sb-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}" title="${escapeHtml(tabTitle(t))}">
+    <div class="sb-tab${t.id === activeId ? ' active' : ''}${t.suspended ? ' suspended' : ''}" data-tab="${t.id}" title="${escapeHtml(tabTitle(t) + (t.suspended ? `\n${suspendedNote(t)}` : ''))}">
       <span class="sb-fav">${favHtml(t).html}</span>
       <span class="sb-tab-title">${escapeHtml(tabTitle(t))}</span>
       <button class="sb-act" data-act="close-tab" title="${tl('Close tab')}">${icon('x')}</button>

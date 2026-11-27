@@ -1451,3 +1451,43 @@ body.sidebar-open #sidebar { visibility: visible; transition-delay: 0s; }
 
 /* texto só para leitores de tela */
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ───────────── Economia de memória (O1) ───────────── */
+/* aba suspensa: ícone apagado com um anel tracejado (como as abas inativas do Chrome) */
+:is(.tab .tfav, .sb-tab .sb-fav) { transition: opacity .3s, filter .3s; }
+:is(.tab.suspended .tfav, .sb-tab.suspended .sb-fav) { opacity: .5; filter: grayscale(.6); }
+.tab.suspended .slot::before {
+  content: ""; position: absolute; inset: -2.5px; border-radius: 50%;
+  border: 1px dashed var(--text-2); opacity: .7; pointer-events: none;
+}
+.tab.suspended:hover .slot::before { opacity: 0; }
+/* Configurações › Desempenho: sites sempre ativos */
+.st-keep { display: flex; gap: 8px; align-items: center; }
+.st-keep-input { width: 230px; height: 32px; font-size: 13px; }
+.st-keep-list { padding: 0 18px 8px; }
+.st-keep-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 0.5px solid var(--stroke); font-size: 13px; }
+.st-keep-list .st-empty { padding: 8px 0; }
+.si-keep { width: 100%; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; margin-top: 4px; border-radius: 9px; text-align: left; font-size: 12.5px; }
+.si-keep:hover { background: var(--glass-hover); }
+.si-keep [data-icon] { color: var(--text-2); display: grid; } .si-keep [data-icon] .ic { width: 16px; height: 16px; }
+.si-keep-label { flex: 1; }
+.si-keep .sw { transform: scale(.8); transform-origin: right center; }
+
+/* ───────────── Menu lateral pelo teclado: cursor de seleção ───────────── */
+#sb-cursor {
+  /* a mesma seleção cinza dos itens ativos (uma só coisa selecionando, e ela desliza) */
+  position: absolute; left: 0; top: 0; z-index: 0; border-radius: 9px; pointer-events: none; opacity: 0;
+  background: var(--glass-press);
+  transition: transform .34s cubic-bezier(.3, 1.35, .5, 1), width .34s cubic-bezier(.3, 1.35, .5, 1), height .34s cubic-bezier(.3, 1.35, .5, 1), opacity .18s;
+}
+#sb-cursor.on { opacity: 1; }
+#sb-cursor.instant { transition: opacity .18s; }
+#sidebar .sb-views, #sidebar .sb-foot, #sidebar > :not(#sb-cursor) { position: relative; z-index: 1; }
+/* com o cursor, o anel de foco sai; o texto do item escolhido desliza um pouco */
+#sidebar.kb-nav :focus-visible { outline: none; }
+/* navegando pelo teclado, o destaque fixo dos itens ativos sai (o negrito continua marcando a aba atual) */
+#sidebar :is(.sb-item, .sb-tab) { transition: background .2s; }
+#sidebar.kb-nav :is(.sb-item.active, .sb-item.set.active, .sb-tab.active) { background: transparent; }
+#sidebar :is(.sb-label, .sb-tab-title, .sb-row-title, .pf-name) { transition: transform .3s cubic-bezier(.3, 1.35, .5, 1); }
+#sidebar.kb-nav :focus-visible :is(.sb-label, .sb-tab-title, .sb-row-title, .pf-name) { transform: translateX(3px); }
+@media (forced-colors: active) { #sb-cursor { forced-color-adjust: none; background: Highlight; opacity: .35; } #sidebar.kb-nav :focus-visible { outline: 2px solid Highlight; } }

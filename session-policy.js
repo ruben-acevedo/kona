@@ -265,6 +265,8 @@ function createPolicy(ctx) {
     });
 
     ses.setPermissionRequestHandler(async (wc, permission, callback, details) => {
+      // câmera/microfone liberados: a aba fica marcada "em chamada" (a economia de memória não a suspende)
+      if (permission === 'media') { const cb = callback; callback = (ok) => { if (ok) markMedia(wc); cb(ok); }; }
       if (ALWAYS.has(permission)) { callback(true); return; }
       const p = prefsFor(partition);
       if (permission === 'storage-access' || permission === 'top-level-storage-access') { callback(storageAccessOk(partition, p, wc?.getURL?.(), details.requestingUrl)); return; }
@@ -380,7 +382,25 @@ function createPolicy(ctx) {
       .finally(() => app.quit());
   });
 
-  return { install, prefsFor, askNext, ruleForContents };
+  /* Economia de memória (O1): abas que precisam continuar vivas, como no Chrome: com câmera ou
+     microfone liberados nesta página, ou de um site com notificações permitidas (WhatsApp, Gmail…). */
+  const mediaTabs = new Set();
+  function markMedia(wc) {
+    if (!wc || mediaTabs.has(wc.id)) return;
+    mediaTabs.add(wc.id);
+    const id = wc.id;
+    const clear = () => mediaTabs.delete(id);
+    wc.once('did-navigate', clear);
+    wc.once('destroyed', clear);
+  }
+  function keepAliveReason(wc, partition) {
+    if (mediaTabs.has(wc.id)) return 'media';
+    const origin = originOf(wc.getURL());
+    if (origin && decide(prefsFor(partition), origin, 'notifications') === 'allow') return 'notifications';
+    return null;
+  }
+
+  return { install, prefsFor, askNext, ruleForContents, keepAliveReason };
 }
 
 module.exports = { createPolicy, siteOf, siteKeyOf, isThirdParty, DEFAULT_PREFS };

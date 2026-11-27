@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('kona', {
   windowRole: () => ipcRenderer.invoke('win:role'),
   otherWindows: () => ipcRenderer.invoke('win:others'),
   tabMove: (data) => ipcRenderer.invoke('tab:move', data),
+  // economia de memória (O1)
+  tabSuspendInfo: (wcId, partition) => ipcRenderer.invoke('tab:suspend-info', wcId, partition),
+  tabStash: (wcId) => ipcRenderer.invoke('tab:stash', wcId),
+  tabStashDrop: (token) => ipcRenderer.send('tab:stash-drop', token),
+  sysMemory: () => ipcRenderer.invoke('sys:memory'),
   otherTabs: () => ipcRenderer.invoke('win:tabs'),
   focusTab: (winId, tabId) => ipcRenderer.invoke('win:focus-tab', winId, tabId),
   windowPrivate: (on) => ipcRenderer.send('win:private', !!on),

@@ -7,6 +7,7 @@ const params = new URLSearchParams(location.search);
 
 /* ───────────── Ícones ───────────── */
 const ICONS = {
+  gauge: '<path d="M4.6 16.5a8 8 0 1 1 14.8 0"/><path d="M12 13.2l3.6-3.8"/><circle cx="12" cy="13.5" r="1.2"/>',
   sidebar: '<rect x="3" y="4.5" width="18" height="15" rx="3.5"/><path d="M9.5 4.5v15"/>',
   back: '<path d="M14.5 5.5 8 12l6.5 6.5"/>',
   forward: '<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
@@ -219,6 +220,8 @@ const DEFAULTS = {
   sections: { favorites: true, frequent: false, privacy: false, reading: false },
   // Geral
   startup: 'newtab', searchEngine: 'google', suggestions: true, saveHistory: true, zoom: 1, sounds: true,
+  // Desempenho: economia de memória (renderer/memory-saver.js), como a do Chrome
+  memorySaver: true, memorySaverMode: 'balanced', keepActive: [],
   // Privacidade (aplicadas no processo principal — ver session-policy.js)
   cookies: 'block-third-party', clearOnExit: false, gpc: true, httpsFirst: true, secureDns: true,
   permissions: { camera: 'ask', microphone: 'ask', location: 'ask', notifications: 'ask', clipboard: 'ask', apps: 'ask' },
@@ -458,6 +461,7 @@ function ensureWebview(t) {
   // aba vinda de outra janela: nasce vazia e o processo principal devolve o histórico dela
   wv.setAttribute('src', t.restore ? `about:blank#kona-restore-${t.restore}` : t.url);
   t.restore = null;
+  t.suspended = null; // aba que estava suspensa (economia de memória) volta com o histórico dela
   wv.setAttribute('partition', t.partition);
   wv.setAttribute('allowpopups', ''); // window.open/target=_blank chegam ao main.js, que abre como aba
   wv.setAttribute('plugins', ''); // leitor de PDF do Chromium (sem isso, PDFs são baixados)
@@ -517,7 +521,11 @@ function navigate(t, url) {
   // loadURL rejeita quando a página não carrega (sem internet, endereço inválido, navegação
   // interrompida); a página de erro do Chromium já aparece na aba, então não há o que tratar aqui
   if (t.wv) t.wv.loadURL(url).catch(() => {});
-  else ensureWebview(t);
+  else {
+    // aba suspensa indo para outro endereço: o histórico guardado não volta (abre o endereço novo)
+    if (t.restore) { api?.tabStashDrop?.(t.restore); t.restore = null; t.suspended = null; }
+    ensureWebview(t);
+  }
   render();
 }
 
@@ -573,6 +581,7 @@ function closeTab(id, { moved = false, force = false } = {}) {
   if (!moved) sfx.play('tabClose');
   t.wv?.remove();
   discardParked(t);
+  if (t.restore) api?.tabStashDrop?.(t.restore); // suspensa: o histórico guardado não serve mais
   mru = mru.filter((x) => x !== id);
   if (!tabs.length) {
     if (APP_MODE) { api?.close(); return; } // fechar a página do app fecha a janela
@@ -641,7 +650,7 @@ function createTabEl(t) {
     if (e.button === 1) { e.preventDefault(); closeTab(t.id); return; }
     // botão direito: só o menu (não troca de aba nem começa a editar o endereço)
     if (e.button === 2) { if (document.activeElement !== input) e.preventDefault(); return; }
-    if (t.id !== activeId && !e.target.closest('.x')) { activate(t.id); e.preventDefault(); }
+    if (t.id !== activeId && !e.target.closest('.x')) { sfx.play('select'); activate(t.id); e.preventDefault(); }
   });
   // Na aba ativa, qualquer ponto da caixa (não só o texto) começa a edição do endereço.
   // É feito no "click" (e não cancelando o mousedown): assim o clique tira o foco de uma
@@ -786,8 +795,10 @@ function paintTab(t, el) {
   if (!zi.hidden) zi.textContent = `${Math.round(z * 100)}%`;
   const bm = $('.bm', el);
   if (bm) bm.title = el.classList.contains('bookmarked') ? tl('Remove from Favorites (Ctrl+D)') : tl('Add to Favorites (Ctrl+D)');
-  el.title = isActive ? '' : tabTitle(t);
-  el.setAttribute('aria-label', tabTitle(t));
+  // suspensa pela economia de memória: ícone apagado e, na dica, quanto liberou
+  el.classList.toggle('suspended', !!t.suspended);
+  el.title = isActive ? '' : tabTitle(t) + (t.suspended ? `\n${suspendedNote(t)}` : '');
+  el.setAttribute('aria-label', tabTitle(t) + (t.suspended ? `, ${tl('inactive')}` : ''));
   if (isActive) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
   $('.title', el).textContent = tabTitle(t);
   // janela de app (N11): fora do site do app, o endereço aparece antes do título (como no Chrome)
@@ -1210,7 +1221,11 @@ function toggleSidebar(force) {
     toggleSidebar.t = setTimeout(() => $('#sidebar').classList.remove('opening'), 600);
   }
   // Com o foco no menu, clicar numa página (outro processo) gera "focusin" no <webview> → fecha
-  if (open) $('#sidebar').focus({ preventScroll: true });
+  if (open && !was) {
+    $('#sidebar').focus({ preventScroll: true });
+    // já no primeiro item: dá para andar pelas setas sem o mouse (a11y.js)
+    if (typeof sidebarFocusFirst === 'function') sidebarFocusFirst();
+  }
 }
 
 // Clicar fora do menu lateral fecha o menu. Painéis abertos a partir dele não contam como "fora".
@@ -1305,16 +1320,19 @@ function shortcut(key, shift) {
   // Ctrl+1…8: aba 1…8 · Ctrl+9: a última (como no Chrome)
   else if (/^[1-9]$/.test(key) && !shift) {
     const t = key === '9' ? tabs[tabs.length - 1] : tabs[Number(key) - 1];
-    if (t) activate(t.id);
+    if (t && t !== a) { sfx.play('tick'); activate(t.id); }
   }
   // Ctrl+PgUp/PgDn: aba anterior/seguinte · com Shift: leva a aba para a esquerda/direita
-  else if ((key === 'pageup' || key === 'pagedown') && shift) moveTabBy(a, key === 'pageup' ? -1 : 1);
+  // trocar de aba pelo teclado toca o tique (como passar o mouse); clicar numa aba toca a seleção
+  else if ((key === 'pageup' || key === 'pagedown') && shift) { sfx.play('tick'); moveTabBy(a, key === 'pageup' ? -1 : 1); }
   else if (key === 'pageup' || key === 'pagedown') {
     const i = tabs.indexOf(a);
+    if (tabs.length > 1) sfx.play('tick');
     activate(tabs[(i + (key === 'pageup' ? -1 : 1) + tabs.length) % tabs.length].id);
   }
   else if (key === 'tab') {
     const i = tabs.indexOf(a);
+    if (tabs.length > 1) sfx.play('tick');
     activate(tabs[(i + (shift ? -1 : 1) + tabs.length) % tabs.length].id);
   } else return false;
   return true;
@@ -1620,7 +1638,11 @@ function warmUp() {
 /** Depois da abertura, carrega as abas de fundo uma a uma: trocar de aba fica instantâneo. */
 let profileReadyDone = false;
 function prewarmTabs() {
-  const pending = tabs.filter((t) => !t.wv && t.url !== START);
+  // com a economia de memória ligada, só as abas que se usam logo (as últimas e as vizinhas da atual);
+  // as outras carregam quando a pessoa clicar, como no Chrome
+  const ai = tabs.indexOf(active());
+  const near = new Set([...mru.slice(0, KEEP_RENDERED), tabs[ai - 1]?.id, tabs[ai + 1]?.id]);
+  const pending = tabs.filter((t) => !t.wv && !t.suspended && t.url !== START && (!settings.memorySaver || near.has(t.id)));
   const next = () => {
     const t = pending.shift();
     if (!t) return;
