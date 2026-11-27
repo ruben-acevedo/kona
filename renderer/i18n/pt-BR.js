@@ -809,4 +809,6 @@
   "Malicious URLs from abuse.ch URLhaus, packaged by malware-filter.": "Endereços maliciosos do URLhaus (abuse.ch), empacotados pelo malware-filter.",
   "Free phishing feed for non-commercial use.": "Lista gratuita de phishing para uso não comercial.",
   "Active phishing domains.": "Domínios de phishing ativos.",
+  "Close the windows of “{name}” to delete it": "Feche as janelas de “{name}” para apagá-lo",
+  "Applies to all profiles.": "Vale para todos os perfis.",
 });

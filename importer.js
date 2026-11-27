@@ -226,18 +226,18 @@ async function inStore(id) {
   } catch { return null; }
 }
 
-/** Liga os canais da interface. `session` e `extensionsPath` são os do perfil em uso no Kona. */
-function registerImporter(handleUi, { currentSession, currentExtensionsPath }) {
+/** Liga os canais da interface. A sessão e a pasta de extensões são as do perfil da janela que pediu. */
+function registerImporter(handleUi, { sessionFor, extensionsPathFor }) {
   handleUi('import:sources', () => sources().map(({ id, browser, profile }) => ({ id, browser, profile })));
   handleUi('import:read', async (_e, id) => {
     const data = read(String(id));
     if (data) await Promise.all(data.extensions.map(async (e) => { e.available = await inStore(e.id); }));
     return data;
   });
-  handleUi('import:extension', async (_e, id) => {
+  handleUi('import:extension', async (e, id) => {
     if (!/^[a-p]{32}$/.test(String(id))) return false;
     try {
-      await installExtension(id, { session: currentSession(), extensionsPath: currentExtensionsPath() });
+      await installExtension(id, { session: sessionFor(e.sender), extensionsPath: extensionsPathFor(e.sender) });
       return true;
     } catch (err) {
       console.error('extension import failed', id, err?.message);

@@ -89,7 +89,9 @@ const DEFAULT_PARTITION = 'persist:kona';
 const isPartition = (p) => typeof p === 'string' && /^persist:kona(-[a-z0-9]{4,32})?$/.test(p);
 // Modo privado: sessão só em memória (sem "persist:"), nada vai para o disco
 const isPrivatePartition = (p) => typeof p === 'string' && /^kona-private-[a-f0-9]{12}$/.test(p);
-let currentPartition = DEFAULT_PARTITION;
+// Cada janela tem o seu perfil (O7, como no Chrome). Este é só o último usado: o perfil de quem
+// ainda não disse o seu (ex.: a 1ª janela antes de a interface carregar).
+let lastPartition = DEFAULT_PARTITION;
 
 // Identidade de navegador: sem "Electron/x" e "Kona/x" o user agent fica igual ao do Chromium.
 // Importante: isto muda o user agent PADRÃO. Substituir o user agent da sessão (setUserAgent)
@@ -102,8 +104,44 @@ app.userAgentFallback = app.userAgentFallback.replace(/\s(Electron|kona)\/\S+/gi
 const windows = []; // em ordem de abertura
 const appWins = new Map(); // janelas de apps instalados (N11) → id do app; ficam fora da sessão e dos grupos
 let lastFocused = null;
-let primaryWin = null;
 const alive = (w) => w && !w.isDestroyed();
+/* Perfis por janela (O7): cada janela (e janela de app) tem a partição do seu perfil. A "principal"
+   (guarda as abas e mostra os grupos) é uma por perfil: a 1ª janela aberta dele. */
+const winPart = new Map(); // BrowserWindow → partição do perfil
+const winInfo = new Map(); // BrowserWindow → { name, badge } (título e ícone na barra de tarefas)
+const primaryOf = new Map(); // partição → BrowserWindow principal dela
+const partOfWin = (w) => winPart.get(w) || lastPartition;
+/** O perfil de quem pediu: a janela da interface ou a aba (webview) dentro dela. */
+function partitionFor(wc) {
+  if (!wc || wc.isDestroyed?.()) return null;
+  const host = wc.hostWebContents || wc;
+  const w = BrowserWindow.fromWebContents(host);
+  return w ? partOfWin(w) : null;
+}
+/** Uma janela do navegador desse perfil (a em uso, se for dele). */
+const winOfPartition = (p) => (alive(lastFocused) && windows.includes(lastFocused) && partOfWin(lastFocused) === p
+  ? lastFocused : windows.find((w) => alive(w) && partOfWin(w) === p)) || null;
+/** Torna `win` a principal do perfil dela, se ele ainda não tiver uma viva. */
+function claimPrimary(win) {
+  const p = partOfWin(win);
+  if (!alive(primaryOf.get(p))) primaryOf.set(p, win);
+  return primaryOf.get(p) === win;
+}
+/**
+ * Título e ícone de cada janela: com mais de um perfil aberto, o nome do perfil no título (aparece no Alt+Tab)
+ * e o avatar do perfil sobre o ícone do Kona na barra de tarefas. Com um perfil só, nada muda.
+ */
+function updateIdentities() {
+  const open = windows.filter(alive);
+  const many = new Set(open.map(partOfWin)).size > 1;
+  for (const w of open) {
+    const info = winInfo.get(w);
+    w.webContents.send('win:identity', { profile: many && info?.name ? info.name : '' }); // entra no título da janela
+    if (process.platform !== 'win32') continue;
+    const img = many && info?.badge ? nativeImage.createFromDataURL(info.badge) : null;
+    w.setOverlayIcon(img && !img.isEmpty() ? img : null, many && info?.name ? info.name : '');
+  }
+}
 /** A janela em uso (a última que teve o foco). */
 const focusedWin = () => (alive(lastFocused) ? lastFocused : windows.find(alive)) || null;
 /** A janela da interface que hospeda uma aba (ou a em uso, se não der para saber). */
@@ -144,6 +182,7 @@ function createWindow(opts = {}) {
   });
   if (appRec) {
     appWins.set(win, appRec.id);
+    winPart.set(win, appRec.partition);
     // identidade própria na barra de tarefas: ícone do app, agrupado à parte e fixável (o atalho usa o mesmo id)
     if (process.platform === 'win32') {
       win.setAppDetails({
@@ -154,7 +193,8 @@ function createWindow(opts = {}) {
     win.on('closed', () => appWins.delete(win));
   } else {
     windows.push(win);
-    if (first || !alive(primaryWin)) primaryWin = win;
+    winPart.set(win, opts.partition && isPartition(opts.partition) ? opts.partition : lastPartition);
+    claimPrimary(win);
     lastFocused = win;
     win.on('focus', () => { lastFocused = win; });
   }
@@ -167,11 +207,16 @@ function createWindow(opts = {}) {
     windows.splice(windows.indexOf(win), 1);
     recovery.windowClosed(winId, { quitting: !windows.length });
     if (lastFocused === win) lastFocused = null;
-    // a principal fechou: a mais antiga das outras passa a guardar a sessão
-    if (primaryWin === win) {
-      primaryWin = windows.find(alive) || null;
-      primaryWin?.webContents.send('win:promote');
+    // a principal do perfil fechou: a mais antiga das outras dele passa a guardar a sessão
+    const part = partOfWin(win);
+    winPart.delete(win);
+    winInfo.delete(win);
+    if (primaryOf.get(part) === win) {
+      primaryOf.delete(part);
+      const next = windows.find((w) => alive(w) && partOfWin(w) === part);
+      if (next) { primaryOf.set(part, next); next.webContents.send('win:promote'); }
     }
+    updateIdentities();
   });
   // botões laterais do mouse (voltar/avançar)
   win.on('app-command', (_e, cmd) => {
@@ -180,7 +225,11 @@ function createWindow(opts = {}) {
 
   const query = { state: first ? process.env.KONA_STATE || '' : '' };
   query.syslang = app.getPreferredSystemLanguages?.()[0] || app.getLocale(); // idioma "automático"
-  if (!first) { query.role = 'secondary'; query.nowelcome = '1'; } // as ofertas do primeiro uso só na 1ª janela
+  if (!first) query.nowelcome = '1'; // as ofertas do primeiro uso só na 1ª janela
+  if (!appRec) {
+    if (primaryOf.get(partOfWin(win)) !== win) query.role = 'secondary';
+    if (opts.partition) query.partition = partOfWin(win); // o perfil da janela (sem ele, o último usado)
+  }
   if (appRec) Object.assign(query, { app: appRec.id, partition: appRec.partition, url: opts.appUrl || appRec.startUrl, scope: appRec.scope, name: appRec.name, apptheme: appRec.themeColor || '' });
   if (process.env.KONA_THEME) query.theme = process.env.KONA_THEME;
   if (process.env.KONA_WALLPAPER) query.wallpaper = process.env.KONA_WALLPAPER;
@@ -232,7 +281,7 @@ function createWindow(opts = {}) {
 /** Ctrl+N: janela nova do tamanho da atual, um pouco deslocada (ou maximizada, se a atual estiver). */
 function newWindowFrom(src, adopt) {
   const b = alive(src) ? src.getNormalBounds() : null;
-  return createWindow({ adopt, maximize: !!src?.isMaximized(), bounds: b && { x: b.x + 30, y: b.y + 30, width: b.width, height: b.height } });
+  return createWindow({ adopt, partition: alive(src) ? partOfWin(src) : undefined, maximize: !!src?.isMaximized(), bounds: b && { x: b.x + 30, y: b.y + 30, width: b.width, height: b.height } });
 }
 
 /* ───────────── Apps instalados (N11) ───────────── */
@@ -274,7 +323,7 @@ apps.register({
 });
 
 /* ───────────── Extensões (Chrome Web Store) ───────────── */
-const browserSession = (partition = currentPartition) => session.fromPartition(partition);
+const browserSession = (partition = lastPartition) => session.fromPartition(partition);
 const extApi = (ses) => ses.extensions || ses; // Electron novo expõe session.extensions
 
 /* ───────────── Client hints nas navegações ─────────────
@@ -301,20 +350,33 @@ const policy = createPolicy({
   win: () => focusedWin(),
   winFor,
   uaHints: () => uaHints,
-  currentPartition: () => currentPartition,
+  parentOf: (p) => privateParent.get(p) || lastPartition,
   isPrivate: (p) => isPrivatePartition(p),
-  onPrefs: (partition) => { if (partition === currentPartition) applySecureDns(); },
 });
+const privateParent = new Map(); // janela privada → perfil de onde foi aberta (os ajustes vêm dele)
 
 /* ───────────── DNS seguro ─────────────
    DNS criptografado (DoH) pelo Quad9: o provedor de internet não vê os sites visitados, e o Quad9
    bloqueia domínios conhecidos de malware e phishing. Isso cobre parte do que o Safe Browsing faz
    no Chrome. O modo "automatic" volta para o DNS do sistema se o Quad9 não responder.
    Desligado: o mesmo padrão do Chrome (usa DoH só se o DNS do sistema oferecer). */
+// O DNS do Chromium é um só para o Kona inteiro (não dá por perfil): o ajuste é geral (O7), guardado
+// em kona-global.json. Na 1ª vez, vem do que o primeiro perfil tinha.
+const globalFile = path.join(app.getPath('userData'), 'kona-global.json');
+const globalPrefs = (() => { try { return JSON.parse(fs.readFileSync(globalFile, 'utf8')) || {}; } catch { return {}; } })();
+const secureDnsOn = () => (typeof globalPrefs.secureDns === 'boolean' ? globalPrefs.secureDns : policy.prefsFor(DEFAULT_PARTITION).secureDns !== false);
+handleUi('dns:get', () => secureDnsOn());
+handleUi('dns:set', (_e, on) => {
+  globalPrefs.secureDns = !!on;
+  try { fs.writeFileSync(globalFile, JSON.stringify(globalPrefs)); } catch { /* sem espaço: vale até fechar */ }
+  applySecureDns();
+  broadcast('dns:changed', globalPrefs.secureDns);
+  return globalPrefs.secureDns;
+});
 let dnsState = null;
 function applySecureDns() {
   if (!app.isReady()) return;
-  const on = policy.prefsFor(currentPartition).secureDns;
+  const on = secureDnsOn();
   if (on === dnsState) return;
   dnsState = on;
   app.configureHostResolver(on
@@ -361,8 +423,8 @@ function iconFor(ext) {
   return img.isEmpty() ? null : img.resize({ width: 48, quality: 'best' }).toDataURL();
 }
 
-function listExtensions() {
-  const api = extApi(browserSession());
+function listExtensions(partition) {
+  const api = extApi(browserSession(partition));
   return api.getAllExtensions().map((ext) => ({
     id: ext.id,
     name: localize(ext, ext.name),
@@ -404,7 +466,7 @@ function prepareSession(partition) {
       installSession(ses, partition);
       extensionsApi.attach(ses, partition); // APIs chrome.tabs/action/contextMenus e popups (antes de carregar as extensões)
       await installChromeWebStore({ session: ses, extensionsPath: extensionsPathFor(partition), beforeInstall });
-      const notify = () => { if (partition === currentPartition) broadcast('ext:changed'); };
+      const notify = () => broadcast('ext:changed', partition);
       const api = extApi(ses);
       api.on?.('extension-loaded', notify);
       api.on?.('extension-unloaded', notify);
@@ -446,14 +508,14 @@ handleUi('default:set', async () => {
 });
 
 // Downloads: controles, abrir, ícones e arrastar (a lista fica na interface)
-registerDownloads({ broadcast, currentSession: () => browserSession() });
+registerDownloads({ broadcast, sessionFor: (wc) => browserSession(partitionFor(wc) || lastPartition) });
 
 // Gerenciador de senhas (salvar, preencher, gerar, importar/exportar), por perfil
-registerPasswords({ win: focusedWin, broadcast, currentPartition: () => currentPartition });
+registerPasswords({ win: focusedWin, broadcast, partitionFor });
 
 // Endereços e cartões (preencher e salvar), por perfil
-registerAutofill({ broadcast, currentPartition: () => currentPartition });
-handleUi('import:addresses', (_e, list) => importAddresses(list, currentPartition));
+registerAutofill({ broadcast, partitionFor });
+handleUi('import:addresses', (e, list) => importAddresses(list, partitionFor(e.sender) || lastPartition));
 
 // Modo leitura (como o do Safari)
 registerReader();
@@ -465,7 +527,8 @@ ipcMain.on('share:ended-page', (e) => { if (e.sender.getType() === 'webview') sh
 // Recuperar a sessão (N6): abas de cada janela, "Restaurar abas" depois de um travamento
 recovery.registerSession({
   windowOf: (wc) => { const w = BrowserWindow.fromWebContents(wc); return windows.includes(w) ? w : null; },
-  isPrimary: (w) => w === primaryWin,
+  isPrimary: (w) => primaryOf.get(partOfWin(w)) === w,
+  partitionOf: (w) => partOfWin(w),
   createWindow: (o) => createWindow(o),
 });
 // Página que parou de responder: "Fechar página" encerra o processo dela
@@ -480,30 +543,70 @@ handleUi('tab:kill', (e, wcId) => {
 registerMedia({ broadcast, winFor });
 
 // Extensões completas: botões, popups, chrome.tabs e itens no menu do botão direito
-extensionsApi.registerExtensions({ win: focusedWin, winFor });
+extensionsApi.registerExtensions({ win: focusedWin, winFor, winOfPartition });
 
 // Menu de contexto (botão direito): ações nas páginas e nos campos da interface
 registerContextMenu({ win: focusedWin, askNextDownload: (url) => policy.askNext(url) });
 
 // Importar de outro navegador: tudo entra no perfil em uso
 registerImporter(handleUi, {
-  currentSession: () => browserSession(),
-  currentExtensionsPath: () => extensionsPathFor(currentPartition),
+  sessionFor: (wc) => browserSession(partitionFor(wc) || lastPartition),
+  extensionsPathFor: (wc) => extensionsPathFor(partitionFor(wc) || lastPartition),
 });
 
 /* ───────────── Perfis ───────────── */
-handleUi('profile:use', async (_e, partition) => {
+/**
+ * A janela diz qual é o seu perfil (ao abrir e ao trocar no lugar). info: { name, badge } para o
+ * título e o ícone na barra de tarefas. Trocar no lugar só acontece com a janela sozinha (ver
+ * profiles-ui.js), então ela vira a principal do perfil novo.
+ */
+handleUi('profile:use', async (e, partition, info) => {
   if (!isPartition(partition)) return false;
   await prepareSession(partition);
-  currentPartition = partition;
-  applySecureDns();
-  broadcast('ext:changed');
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w && windows.includes(w)) {
+    const old = winPart.get(w);
+    if (old !== partition) {
+      if (primaryOf.get(old) === w) primaryOf.delete(old);
+      winPart.set(w, partition);
+      claimPrimary(w);
+    }
+    lastPartition = partition;
+    setIdentity(w, info);
+  }
+  broadcast('ext:changed', partition);
   return true;
+});
+function setIdentity(w, info) {
+  const name = typeof info?.name === 'string' ? info.name.slice(0, 60) : '';
+  const badge = typeof info?.badge === 'string' && info.badge.startsWith('data:image/png;base64,') && info.badge.length < 200000 ? info.badge : null;
+  winInfo.set(w, { name, badge });
+  updateIdentities();
+}
+// nome e avatar do perfil da janela (o avatar vira imagem depois de carregar; muda ao editar o perfil)
+onUi('profile:identity', (e, info) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w && windows.includes(w)) setIdentity(w, info);
+});
+/** Outro perfil: traz a janela dele para a frente, ou abre uma janela nova dele (O7). */
+handleUi('profile:open-window', async (e, partition) => {
+  if (!isPartition(partition)) return false;
+  const open = winOfPartition(partition);
+  if (open) {
+    if (open.isMinimized()) open.restore();
+    open.show(); open.focus();
+    return 'focused';
+  }
+  await prepareSession(partition);
+  const src = BrowserWindow.fromWebContents(e.sender);
+  const b = alive(src) ? src.getNormalBounds() : null;
+  createWindow({ partition, maximize: !!src?.isMaximized(), bounds: b && { x: b.x + 30, y: b.y + 30, width: b.width, height: b.height } });
+  return 'opened';
 });
 
 // Apagar um perfil apaga de verdade os dados dele: cookies, logins, cache, armazenamento e extensões
 handleUi('profile:forget', async (_e, partition) => {
-  if (!isPartition(partition) || partition === currentPartition) return false;
+  if (!isPartition(partition) || windows.some((w) => alive(w) && partOfWin(w) === partition)) return false;
   const ses = browserSession(partition);
   const api = extApi(ses);
   for (const ext of api.getAllExtensions()) api.removeExtension(ext.id);
@@ -524,8 +627,9 @@ handleUi('data:clear', async (_e, partition, { cookies = false, cache = false } 
 });
 
 /* ───────────── Modo privado ───────────── */
-handleUi('private:open', () => {
+handleUi('private:open', (e) => {
   const partition = `kona-private-${require('crypto').randomBytes(6).toString('hex')}`;
+  privateParent.set(partition, partitionFor(e.sender) || lastPartition);
   installSession(session.fromPartition(partition), partition); // sem extensões, como no modo anônimo do Chrome
   return partition;
 });
@@ -572,10 +676,11 @@ onUi('ext:confirm-reply', (_e, { id, ok }) => {
   pendingConfirms.get(id)?.(!!ok);
   pendingConfirms.delete(id);
 });
-handleUi('ext:list', () => listExtensions());
-handleUi('ext:remove', async (_e, id) => {
-  await uninstallExtension(id, { session: browserSession(), extensionsPath: extensionsPathFor(currentPartition) });
-  return listExtensions();
+handleUi('ext:list', (e) => listExtensions(partitionFor(e.sender) || lastPartition));
+handleUi('ext:remove', async (e, id) => {
+  const P = partitionFor(e.sender) || lastPartition;
+  await uninstallExtension(id, { session: browserSession(P), extensionsPath: extensionsPathFor(P) });
+  return listExtensions(P);
 });
 
 /* ───────────── Janela ───────────── */
@@ -605,13 +710,14 @@ onUi('win:private', (e, on) => {
   const w = BrowserWindow.fromWebContents(e.sender);
   if (w) { if (on) privateWins.add(w); else privateWins.delete(w); }
 });
-handleUi('win:role', (e) => ({ primary: BrowserWindow.fromWebContents(e.sender) === primaryWin }));
+handleUi('win:role', (e) => { const w = BrowserWindow.fromWebContents(e.sender); return { primary: !!w && primaryOf.get(partOfWin(w)) === w }; });
 /** As outras janelas (para "Mover para…"): título da aba ativa de cada uma. */
 handleUi('win:others', async (e) => {
   const me = BrowserWindow.fromWebContents(e.sender);
   const out = [];
   for (const w of windows) {
-    if (!alive(w) || w === me || privateWins.has(w)) continue;
+    // abas só mudam entre janelas do mesmo perfil (O7)
+    if (!alive(w) || w === me || privateWins.has(w) || partOfWin(w) !== partOfWin(me)) continue;
     const title = await w.webContents.executeJavaScript('typeof active === "function" ? active()?.title || "" : ""').catch(() => '');
     out.push({ id: w.id, title: String(title).slice(0, 80) });
   }
@@ -623,7 +729,7 @@ handleUi('win:tabs', async (e) => {
   if (privateWins.has(me)) return [];
   const out = [];
   for (const w of windows) {
-    if (!alive(w) || w === me || privateWins.has(w)) continue;
+    if (!alive(w) || w === me || privateWins.has(w) || partOfWin(w) !== partOfWin(me)) continue;
     const list = await w.webContents.executeJavaScript('typeof tabs === "object" ? tabs.map((t) => ({ id: t.id, url: t.url, title: t.title })) : []').catch(() => []);
     for (const t of Array.isArray(list) ? list.slice(0, 200) : []) {
       if (typeof t?.url === 'string' && /^https?:/.test(t.url)) out.push({ winId: w.id, id: Number(t.id), url: t.url.slice(0, 2000), title: String(t.title || '').slice(0, 300) });
@@ -663,7 +769,7 @@ handleUi('tab:suspend-info', (e, wcId, partition) => {
   if (!wc) return null;
   const pid = wc.getOSProcessId();
   const m = app.getAppMetrics().find((x) => x.pid === pid);
-  return { kb: m?.memory?.workingSetSize || 0, keep: policy.keepAliveReason(wc, typeof partition === 'string' ? partition : currentPartition) };
+  return { kb: m?.memory?.workingSetSize || 0, keep: policy.keepAliveReason(wc, typeof partition === 'string' ? partition : partitionFor(e.sender)) };
 });
 /** Guarda o histórico da aba (sem prazo: a aba pode ficar suspensa por horas) e devolve o token. */
 handleUi('tab:stash', (e, wcId) => {
@@ -695,11 +801,12 @@ handleUi('tab:move', (e, { wcId, url, title, to } = {}) => {
   }
   let target = null;
   const pt = to?.point;
-  if (Number.isInteger(to?.window)) target = windows.find((w) => alive(w) && w.id === to.window && w !== src && !privateWins.has(w));
+  const samePart = (w) => partOfWin(w) === partOfWin(src); // abas só entre janelas do mesmo perfil (O7)
+  if (Number.isInteger(to?.window)) target = windows.find((w) => alive(w) && w.id === to.window && w !== src && !privateWins.has(w) && samePart(w));
   else if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
     // solta sobre a barra de abas de outra janela → vai para ela; em qualquer outro lugar → janela nova
     target = windows.find((w) => {
-      if (!alive(w) || w === src || w.isMinimized() || privateWins.has(w)) return false;
+      if (!alive(w) || w === src || w.isMinimized() || privateWins.has(w) || !samePart(w)) return false;
       const b = w.getBounds();
       return pt.x >= b.x && pt.x < b.x + b.width && pt.y >= b.y && pt.y < b.y + 64;
     });
@@ -713,7 +820,7 @@ handleUi('tab:move', (e, { wcId, url, title, to } = {}) => {
     const b = src.getNormalBounds();
     const width = Math.min(b.width, 1360), height = Math.min(b.height, 860);
     // a janela nova aparece com a aba sob o mouse
-    createWindow({ adopt, bounds: { x: Math.round(pt.x - 140), y: Math.round(pt.y - 22), width, height } });
+    createWindow({ adopt, partition: partOfWin(src), bounds: { x: Math.round(pt.x - 140), y: Math.round(pt.y - 22), width, height } });
   } else if (to?.newWindow) newWindowFrom(src, adopt);
   else return false;
   return true;

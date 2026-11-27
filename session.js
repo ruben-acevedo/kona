@@ -57,7 +57,7 @@ const cleanTabs = (list) => (Array.isArray(list) ? list : [])
   .map((x) => ({ url: x.url, title: typeof x.title === 'string' ? x.title.slice(0, 300) : '' }));
 
 /**
- * opts: { windowOf(webContents) → BrowserWindow, isPrimary(win), createWindow({ restoreTabs }) }.
+ * opts: { windowOf(webContents) → BrowserWindow, isPrimary(win), partitionOf(win), createWindow({ restoreTabs, partition }) }.
  */
 function registerSession(opts) {
   // as abas de cada janela (a interface manda a cada mudança; janela privada manda lista vazia)
@@ -68,6 +68,7 @@ function registerSession(opts) {
     const tabs = cleanTabs(snap?.tabs);
     live.set(w.id, {
       primary: opts.isPrimary(w),
+      partition: opts.partitionOf?.(w) || null, // o perfil da janela (O7)
       set: typeof snap?.set === 'string' ? snap.set.slice(0, 40) : 'default',
       tabs,
       active: Math.max(0, Math.min(Number(snap?.active) || 0, tabs.length - 1)),
@@ -75,12 +76,24 @@ function registerSession(opts) {
     save();
   });
   // o que a 1ª janela precisa saber na abertura
-  handleUi('session:recovery', () => (crashed && recovered ? { crashed: true, windows: recovered.windows } : { crashed }));
-  // "Restaurar abas": as outras janelas da última vez reabrem; a principal fica com a 1ª da lista
-  handleUi('session:restore', () => {
+  // (a principal do perfil de quem pergunta vem primeiro: é ela que essa janela usa)
+  const mineFirst = (e) => {
+    const w = opts.windowOf(e.sender);
+    const p = w && opts.partitionOf?.(w);
+    const list = recovered.windows;
+    const i = list.findIndex((x) => x.primary && (!x.partition || x.partition === p));
+    return i > 0 ? [list[i], ...list.filter((_, j) => j !== i)] : list;
+  };
+  handleUi('session:recovery', (e) => (crashed && recovered ? { crashed: true, windows: mineFirst(e) } : { crashed }));
+  // "Restaurar abas": as outras janelas da última vez reabrem, cada uma no seu perfil; a principal
+  // fica com a 1ª da lista. A principal de outro perfil reabre as abas guardadas dele sozinha.
+  handleUi('session:restore', (e) => {
     if (!recovered) return false;
-    const [, ...rest] = recovered.windows;
-    for (const snap of rest) opts.createWindow({ restoreTabs: snap });
+    const w = opts.windowOf(e.sender);
+    const p = w && opts.partitionOf?.(w);
+    const [first, ...others] = mineFirst(e);
+    const rest = first.primary && (!first.partition || first.partition === p) ? others : [first, ...others];
+    for (const snap of rest) opts.createWindow(snap.primary && snap.partition && snap.partition !== p ? { partition: snap.partition } : { restoreTabs: snap, partition: snap.partition || undefined });
     recovered = null;
     return true;
   });

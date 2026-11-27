@@ -14,15 +14,17 @@ const path = require('path');
 const { handleUi } = require('./ipc');
 const passwords = require('./passwords'); // Windows Hello (passwords.verifyUser)
 
-let currentPartition = () => 'persist:kona';
+let partitionFor = () => 'persist:kona'; // webContents (janela ou aba) → partição do perfil dela (O7)
 let broadcast = () => {};
-const prefs = { addresses: true, cards: true };
+// ajustes por perfil (cada janela manda os do perfil dela; O7)
+const prefsByPart = new Map();
+const prefsOf = (P) => prefsByPart.get(P) || { addresses: true, cards: true };
 
 /* ───────────── Armazenamento ───────────── */
 const dir = () => path.join(app.getPath('userData'), 'autofill');
 const fileFor = (partition) => path.join(dir(), `${partition.replace(/[^a-z0-9-]/gi, '_')}.json`);
 const stores = new Map();
-function store(partition = currentPartition()) {
+function store(partition) {
   if (!stores.has(partition)) {
     let data = { addresses: [], cards: [] };
     try { data = { ...data, ...JSON.parse(fs.readFileSync(fileFor(partition), 'utf8')) }; } catch { /* novo */ }
@@ -30,7 +32,7 @@ function store(partition = currentPartition()) {
   }
   return stores.get(partition);
 }
-function save(partition = currentPartition()) {
+function save(partition) {
   fs.mkdirSync(dir(), { recursive: true });
   const tmp = `${fileFor(partition)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(store(partition)));
@@ -98,13 +100,16 @@ function offerSave(wcId) {
   pending.delete(wcId);
   const host = webContents.fromId(wcId)?.hostWebContents;
   if (!p || !host) return;
-  const s = store();
+  const P = partitionFor(webContents.fromId(wcId));
+  if (!P) return;
+  const prefs = prefsOf(P);
+  const s = store(P);
   if (p.card && prefs.cards) {
     const old = s.cards.find((c) => dec(c.num) === p.card.number);
     const changed = !old || (p.card.expMonth && (old.expMonth !== p.card.expMonth || old.expYear !== p.card.expYear)) || (p.card.name && old.name !== p.card.name);
     if (changed) {
       const id = ++seq;
-      suggestions.set(id, { save: { kind: 'card', data: p.card, oldId: old?.id } });
+      suggestions.set(id, { save: { kind: 'card', data: p.card, oldId: old?.id }, P });
       host.send('af:offer-save', { id, kind: 'card', update: !!old, card: { brand: brandOf(p.card.number), last4: p.card.number.slice(-4), name: p.card.name, expMonth: p.card.expMonth, expYear: p.card.expYear } });
       return; // um balão por vez: o cartão primeiro
     }
@@ -114,7 +119,7 @@ function offerSave(wcId) {
     const changed = !old || ADDRESS_FIELDS.some((k) => p.address[k] && p.address[k] !== old[k]);
     if (!changed) return;
     const id = ++seq;
-    suggestions.set(id, { save: { kind: 'address', data: p.address, oldId: old?.id } });
+    suggestions.set(id, { save: { kind: 'address', data: p.address, oldId: old?.id }, P });
     host.send('af:offer-save', { id, kind: 'address', update: !!old, address: p.address });
   }
 }
@@ -123,15 +128,18 @@ function registerPageChannels() {
   ipcMain.on('af:focus', (e, info) => {
     const origin = fromPage(e);
     if (!origin || !info || !['address', 'card'].includes(info.kind)) return;
+    const P = partitionFor(e.sender);
+    if (!P) return;
+    const prefs = prefsOf(P);
     if (info.kind === 'address' && !prefs.addresses) return;
     if (info.kind === 'card' && !prefs.cards) return;
-    const s = store();
+    const s = store(P);
     const items = info.kind === 'card'
       ? s.cards.slice().sort((a, b) => (b.used || 0) - (a.used || 0)).map(publicCard)
       : s.addresses.slice().sort((a, b) => (b.used || 0) - (a.used || 0)).map(publicAddress);
     if (!items.length) return;
     const id = ++seq;
-    suggestions.set(id, { wcId: e.sender.id, frame: e.senderFrame, origin, kind: info.kind });
+    suggestions.set(id, { wcId: e.sender.id, frame: e.senderFrame, origin, kind: info.kind, P });
     e.sender.hostWebContents?.send('af:suggest', {
       id, wcId: e.sender.id, top: e.senderFrame === e.sender.mainFrame, rect: info.rect, kind: info.kind, items,
       secure: origin.startsWith('https:'),
@@ -142,6 +150,7 @@ function registerPageChannels() {
     const origin = fromPage(e);
     if (!origin || !d || typeof d !== 'object') return;
     if (!e.sender.session.isPersistent()) return; // modo privado: nada é guardado
+    const prefs = prefsOf(partitionFor(e.sender));
     let card = null, address = null;
     if (d.card && prefs.cards) {
       const number = digits(d.card.number);
@@ -158,17 +167,19 @@ function registerPageChannels() {
   });
 }
 
-function saveAddress(data, id) {
-  const s = store();
+function saveAddress(P, data, id) {
+  if (!P) return false;
+  const s = store(P);
   const a = cleanAddress(data);
   const old = id && s.addresses.find((x) => x.id === id);
   if (old) Object.assign(old, a, { updated: Date.now() });
   else s.addresses.push({ id: crypto.randomUUID(), ...a, created: Date.now(), used: 0 });
-  save();
+  save(P);
   return true;
 }
-function saveCard(data, id) {
-  const s = store();
+function saveCard(P, data, id) {
+  if (!P) return false;
+  const s = store(P);
   const old = id && s.cards.find((x) => x.id === id);
   const number = digits(data.number);
   const exp = data.expMonth ? { expMonth: Number(data.expMonth) || 0, expYear: Number(data.expYear) || 0 } : parseExp(data);
@@ -186,25 +197,25 @@ function saveCard(data, id) {
     if (!num) return false;
     s.cards.push({ id: crypto.randomUUID(), num, last4: number.slice(-4), brand: brandOf(number), ...fields, created: Date.now(), used: 0 });
   }
-  save();
+  save(P);
   return true;
 }
 
 function registerAutofill(opts) {
   broadcast = opts.broadcast;
-  currentPartition = opts.currentPartition;
+  partitionFor = opts.partitionFor;
   registerPageChannels();
-  handleUi('af:set-prefs', (_e, p) => { prefs.addresses = p?.addresses !== false; prefs.cards = p?.cards !== false; return true; });
+  handleUi('af:set-prefs', (e, p) => { prefsByPart.set(partitionFor(e.sender), { addresses: p?.addresses !== false, cards: p?.cards !== false }); return true; });
 
   // escolher um item na lista: preenche só o frame que pediu, se a origem ainda for a mesma
   handleUi('af:fill', async (_e, suggestId, itemId) => {
     const sg = suggestions.get(Number(suggestId));
-    if (!sg?.frame || sg.frame.isDestroyed?.() || originOf(sg.frame.url) !== sg.origin) return false;
-    const s = store();
+    if (!sg?.frame || sg.frame.isDestroyed?.() || originOf(sg.frame.url) !== sg.origin || !sg.P) return false;
+    const s = store(sg.P);
     if (sg.kind === 'address') {
       const a = s.addresses.find((x) => x.id === itemId);
       if (!a) return false;
-      a.used = Date.now(); save();
+      a.used = Date.now(); save(sg.P);
       sg.frame.send('af:fill', { kind: 'address', data: cleanAddress(a) });
       return true;
     }
@@ -214,7 +225,7 @@ function registerAutofill(opts) {
     if (sg.frame.isDestroyed?.() || originOf(sg.frame.url) !== sg.origin) return false;
     const number = dec(c.num);
     if (!number) return false;
-    c.used = Date.now(); save();
+    c.used = Date.now(); save(sg.P);
     sg.frame.send('af:fill', { kind: 'card', data: { name: c.name, number, expMonth: c.expMonth, expYear: c.expYear } });
     return true;
   });
@@ -224,21 +235,22 @@ function registerAutofill(opts) {
     suggestions.delete(Number(id));
     if (!sg?.save || answer !== 'save') return false;
     const { kind, data, oldId } = sg.save;
-    return kind === 'card' ? saveCard(data, oldId) === true : saveAddress(data, oldId);
+    return kind === 'card' ? saveCard(sg.P, data, oldId) === true : saveAddress(sg.P, data, oldId);
   });
 
   // Gerenciamento (Settings → Addresses and cards)
-  handleUi('af:list', () => {
-    const s = store();
+  handleUi('af:list', (e) => {
+    const s = store(partitionFor(e.sender));
     return { addresses: s.addresses.map(publicAddress), cards: s.cards.map(publicCard), encryption: safeStorage.isEncryptionAvailable() };
   });
-  handleUi('af:save-address', (_e, data, id) => saveAddress(data || {}, typeof id === 'string' ? id : null));
-  handleUi('af:save-card', (_e, data, id) => saveCard(data || {}, typeof id === 'string' ? id : null));
-  handleUi('af:delete', (_e, kind, id) => {
-    const s = store();
+  handleUi('af:save-address', (e, data, id) => saveAddress(partitionFor(e.sender), data || {}, typeof id === 'string' ? id : null));
+  handleUi('af:save-card', (e, data, id) => saveCard(partitionFor(e.sender), data || {}, typeof id === 'string' ? id : null));
+  handleUi('af:delete', (e, kind, id) => {
+    const P = partitionFor(e.sender);
+    const s = store(P);
     if (kind === 'card') s.cards = s.cards.filter((x) => x.id !== id);
     else s.addresses = s.addresses.filter((x) => x.id !== id);
-    save();
+    save(P);
     return true;
   });
 

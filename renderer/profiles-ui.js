@@ -25,10 +25,15 @@ $('#ask-yes').addEventListener('click', () => answerAsk(true));
 $('#ask-no').addEventListener('click', () => answerAsk(false));
 
 /* ───────────── Barra lateral e menu de perfis ───────────── */
+let identitySent = ''; // o nome/avatar já enviado ao Kona (título e barra de tarefas; O7)
 function renderProfileUI() {
   const p = PROFILES.currentProfile();
   $('#sb-profile').innerHTML = `${avatarHtml(p.avatar, p.name)}<span class="pf-name">${escapeHtml(p.name)}</span>${icon('chevron')}`;
   $('#sb-profile').title = `Profile: ${p.name}`;
+  if (identitySent !== `${p.id}|${p.name}|${JSON.stringify(p.avatar)?.length}|${p.avatar?.id}`) { // nome/avatar mudou
+    identitySent = `${p.id}|${p.name}|${JSON.stringify(p.avatar)?.length}|${p.avatar?.id}`;
+    sendProfileIdentity();
+  }
 }
 
 function buildProfilePop() {
@@ -76,12 +81,24 @@ function closeProfileLayers() {
 }
 
 /* ───────────── Trocar de perfil ───────────── */
-async function switchProfile(id) {
+/**
+ * Outro perfil (O7, como no Chrome): cada janela tem o seu. Se ele já tem uma janela aberta, ela vem
+ * para a frente; senão abre uma janela nova dele. Só troca nesta mesma janela quando ela está
+ * sozinha e vazia (só a nova aba), ou quando o perfil desta janela vai ser apagado (inPlace).
+ */
+async function switchProfile(id, { inPlace = false } = {}) {
   const p = PROFILES.byId(id);
   if (!p || id === PROFILES.current) return;
-  // um perfil por vez em todas as janelas (cada janela de um perfil fica para depois)
-  if ((await api?.windowCount?.()) > 1) { toast(tl('Close the other windows to switch profiles')); return; }
-  const ok = await (api?.profileUse(p.partition) ?? Promise.resolve(true));
+  if (!inPlace && !APP_MODE) {
+    const alone = ((await api?.windowCount?.()) ?? 1) <= 1;
+    const empty = !library.isPrivate() && tabs.every((t) => t.url === START);
+    if (!(alone && empty)) {
+      const r = await api?.profileOpenWindow(p.partition);
+      if (r === false) toast(tl('Couldn’t open that profile'));
+      return;
+    }
+  }
+  const ok = await (api?.profileUse(p.partition, { name: p.name }) ?? Promise.resolve(true));
   if (ok === false) { toast(tl('Couldn’t open that profile')); return; }
   // As abas do perfil anterior ficam guardadas nele; o novo perfil reabre as dele
   await library.beforeProfileSwitch();
@@ -94,7 +111,33 @@ async function switchProfile(id) {
   buildCustomize();
   refreshExtensions();
   renderProfileUI();
+  sendProfileIdentity();
   toast(tl('Switched to “{name}”', { name: p.name }));
+}
+
+/** O avatar do perfil numa imagem PNG pequena e redonda (para o ícone da janela na barra de tarefas). */
+function profileBadge(p) {
+  const src = p.avatar?.type === 'image' && p.avatar.data ? p.avatar.data
+    : avatarSrc(AVATARS.find((x) => x.id === p.avatar?.id) || AVATARS.find((x) => x.id === DEFAULT_AVATAR));
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 32;
+      const g = c.getContext('2d');
+      g.beginPath(); g.arc(16, 16, 16, 0, Math.PI * 2); g.clip();
+      g.drawImage(img, 0, 0, 32, 32);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+/** Diz ao Kona o nome e o avatar do perfil desta janela (título e barra de tarefas, com mais de um perfil aberto). */
+async function sendProfileIdentity() {
+  if (APP_MODE) return;
+  const p = PROFILES.currentProfile();
+  api?.profileIdentity({ name: p.name, badge: await profileBadge(p) });
 }
 
 /* ───────────── Criar / editar ───────────── */
@@ -230,8 +273,9 @@ async function deleteProfile(id) {
   });
   if (!yes) return;
   closeSheet('#profile-sheet');
-  if (id === PROFILES.current) await switchProfile(PROFILES.list.find((x) => x.id !== id).id);
-  await api?.profileForget(p.partition);
+  if (id === PROFILES.current) await switchProfile(PROFILES.list.find((x) => x.id !== id).id, { inPlace: true });
+  // outra janela ainda usa o perfil: ele não pode ser apagado agora (O7)
+  if (!(await api?.profileForget(p.partition) ?? true)) { toast(tl('Close the windows of “{name}” to delete it', { name: p.name })); return; }
   PROFILES.remove(id);
   renderProfileUI();
   toast(tl('Profile “{name}” deleted', { name: p.name }));
@@ -274,3 +318,6 @@ const profileSetup = new Promise((resolve) => {
   profileSetupDone = resolve;
   setTimeout(() => openProfileSheet('welcome'), 900);
 });
+
+// o Kona já sabe o perfil desta janela: manda o nome e o avatar (título e barra de tarefas; O7)
+profileReady.then(() => { identitySent = ''; renderProfileUI(); });

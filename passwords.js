@@ -9,7 +9,7 @@
 //   origem do frame bate com a da senha e só então a envia àquele frame.
 // - A origem é sempre a do frame que mandou a mensagem (e.senderFrame), nunca um valor da página.
 // - Mostrar, copiar e exportar senhas na tela de gerenciamento pedem o Windows Hello (60 s de folga).
-const { app, ipcMain, safeStorage, dialog, clipboard, webContents } = require('electron');
+const { app, ipcMain, safeStorage, dialog, clipboard, webContents, BrowserWindow } = require('electron');
 const { execFile } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -18,7 +18,7 @@ const { handleUi } = require('./ipc');
 const { tl } = require('./i18n');
 const { siteOf } = require('./session-policy');
 
-let currentPartition = () => 'persist:kona';
+let partitionFor = () => 'persist:kona'; // webContents (janela ou aba) → partição do perfil dela (O7)
 let win = () => null;
 let broadcast = () => {};
 
@@ -26,7 +26,7 @@ let broadcast = () => {};
 const dir = () => path.join(app.getPath('userData'), 'passwords');
 const fileFor = (partition) => path.join(dir(), `${partition.replace(/[^a-z0-9-]/gi, '_')}.json`);
 const stores = new Map();
-function store(partition = currentPartition()) {
+function store(partition) {
   if (!stores.has(partition)) {
     let data = { entries: [], never: [] };
     try { data = { ...data, ...JSON.parse(fs.readFileSync(fileFor(partition), 'utf8')) }; } catch { /* novo */ }
@@ -34,7 +34,7 @@ function store(partition = currentPartition()) {
   }
   return stores.get(partition);
 }
-function save(partition = currentPartition()) {
+function save(partition) {
   fs.mkdirSync(dir(), { recursive: true });
   const tmp = `${fileFor(partition)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(store(partition)));
@@ -56,7 +56,7 @@ function matches(origin, partition) {
 }
 const publicEntry = (e, origin) => ({ id: e.id, username: e.username, origin: e.origin, host: hostOf(e.origin), exact: !origin || e.origin === origin, used: e.used || 0, updated: e.updated || 0 });
 
-function upsert({ origin, username, password }, partition = currentPartition()) {
+function upsert({ origin, username, password }, partition) {
   const s = store(partition);
   const now = Date.now();
   const old = s.entries.find((e) => e.origin === origin && e.username === username);
@@ -123,20 +123,22 @@ function offerSave(wcId) {
   const p = pending.get(wcId);
   if (!p || !p.password) return;
   pending.delete(wcId);
-  const s = store();
+  const P = partitionFor(webContents.fromId(wcId));
+  if (!P) return;
+  const s = store(P);
   // senha gerada pelo Kona e usada no cadastro: salva direto, como o Chrome
   if (p.generated) {
-    upsert({ origin: p.origin, username: p.username, password: p.password });
+    upsert({ origin: p.origin, username: p.username, password: p.password }, P);
     webContents.fromId(wcId)?.hostWebContents?.send('pw:saved', { host: hostOf(p.origin) });
     return;
   }
   if (s.never.includes(p.origin)) return;
   const same = s.entries.find((e) => e.origin === p.origin && e.username === p.username);
-  if (same && dec(same.pass) === p.password) { same.used = Date.now(); save(); return; } // já salva
+  if (same && dec(same.pass) === p.password) { same.used = Date.now(); save(P); return; } // já salva
   const host = webContents.fromId(wcId)?.hostWebContents;
   const id = ++suggestSeq;
-  suggestions.set(id, { save: p });
-  host?.send('pw:offer-save', { id, wcId, host: hostOf(p.origin), username: p.username, update: !!same || (!p.username && matches(p.origin).length === 1) });
+  suggestions.set(id, { save: p, P });
+  host?.send('pw:offer-save', { id, wcId, host: hostOf(p.origin), username: p.username, update: !!same || (!p.username && matches(p.origin, P).length === 1) });
 }
 
 function registerPageChannels() {
@@ -144,12 +146,14 @@ function registerPageChannels() {
   ipcMain.on('pw:focus', (e, info) => {
     const origin = fromPage(e);
     if (!origin || !info || typeof info !== 'object') return;
-    const s = store();
-    const accounts = matches(origin).map((x) => publicEntry(x, origin));
+    const P = partitionFor(e.sender);
+    if (!P) return;
+    const s = store(P);
+    const accounts = matches(origin, P).map((x) => publicEntry(x, origin));
     const offerGenerate = !!info.newPassword && info.fieldType === 'password';
     if (!accounts.length && !offerGenerate) return;
     const id = ++suggestSeq;
-    suggestions.set(id, { wcId: e.sender.id, frame: e.senderFrame, origin });
+    suggestions.set(id, { wcId: e.sender.id, frame: e.senderFrame, origin, P });
     e.sender.hostWebContents?.send('pw:suggest', {
       id, wcId: e.sender.id, top: e.senderFrame === e.sender.mainFrame, rect: info.rect, accounts,
       generate: offerGenerate ? generatePassword() : null, never: s.never.includes(origin),
@@ -160,7 +164,7 @@ function registerPageChannels() {
   ipcMain.on('pw:submit', (e, data) => {
     const origin = fromPage(e);
     if (!origin || !data || typeof data.password !== 'string' || !data.password || data.password.length > 512) return;
-    if (!settingsOffer()) return;
+    if (!settingsOffer(partitionFor(e.sender))) return;
     const prev = pending.get(e.sender.id);
     const username = String(data.username || '').slice(0, 256) || (prev && prev.origin === origin ? prev.username : '');
     const generated = !!(prev?.generated && prev.password === data.password);
@@ -177,8 +181,9 @@ function registerPageChannels() {
 }
 
 /* ───────────── Ajuste "Offer to save passwords" (vem da interface) ───────────── */
-let offerEnabled = true;
-const settingsOffer = () => offerEnabled;
+// por perfil: cada janela manda o ajuste do perfil dela (O7)
+const offerOff = new Set(); // partições com "Offer to save passwords" desligado
+const settingsOffer = (P) => !offerOff.has(P);
 
 function generatePassword() {
   // 15 caracteres, como o Chrome: letras maiúsculas e minúsculas, números e símbolos, sem ambíguos
@@ -194,9 +199,9 @@ function generatePassword() {
 function registerPasswords(opts) {
   win = opts.win;
   broadcast = opts.broadcast;
-  currentPartition = opts.currentPartition;
+  partitionFor = opts.partitionFor;
   registerPageChannels();
-  handleUi('pw:set-offer', (_e, on) => { offerEnabled = !!on; return true; });
+  handleUi('pw:set-offer', (e, on) => { const P = partitionFor(e.sender); if (on) offerOff.delete(P); else offerOff.add(P); return true; });
 
   // escolher uma conta (ou a senha gerada) na lista: preenche só o frame que pediu, se a origem bater
   handleUi('pw:fill', (_e, suggestId, accountId, generated) => {
@@ -209,21 +214,21 @@ function registerPasswords(opts) {
       pending.set(sg.wcId, { origin: sg.origin, username: '', password: generated, t: Date.now(), generated: true });
       return true;
     }
-    const entry = matches(sg.origin).find((x) => x.id === accountId);
+    const entry = matches(sg.origin, sg.P).find((x) => x.id === accountId);
     if (!entry) return false;
     const password = dec(entry.pass);
     if (password == null) return false;
-    entry.used = Date.now(); save();
+    entry.used = Date.now(); save(sg.P);
     sg.frame.send('pw:fill', { username: entry.username, password });
     return true;
   });
   handleUi('pw:never-here', (_e, suggestId) => {
     const sg = suggestions.get(Number(suggestId));
     const origin = sg?.origin || sg?.save?.origin;
-    if (!origin) return false;
-    const s = store();
+    if (!origin || !sg.P) return false;
+    const s = store(sg.P);
     if (!s.never.includes(origin)) s.never.push(origin);
-    save();
+    save(sg.P);
     return true;
   });
   // balão "Save password?": salvar (com o usuário que a pessoa pode ter editado) ou nunca neste site
@@ -231,41 +236,43 @@ function registerPasswords(opts) {
     const sg = suggestions.get(Number(id));
     suggestions.delete(Number(id));
     if (!sg?.save) return false;
-    if (answer === 'never') { const s = store(); if (!s.never.includes(sg.save.origin)) s.never.push(sg.save.origin); save(); return 'never'; }
+    if (answer === 'never') { const s = store(sg.P); if (!s.never.includes(sg.save.origin)) s.never.push(sg.save.origin); save(sg.P); return 'never'; }
     if (answer !== 'save') return false;
     const user = typeof username === 'string' ? username.slice(0, 256) : sg.save.username;
-    return upsert({ origin: sg.save.origin, username: user, password: sg.save.password });
+    return upsert({ origin: sg.save.origin, username: user, password: sg.save.password }, sg.P);
   });
 
   // Gerenciamento (Settings → Passwords)
-  handleUi('pw:list', () => {
-    const s = store();
+  handleUi('pw:list', (e) => {
+    const s = store(partitionFor(e.sender));
     return { entries: s.entries.map((e) => publicEntry(e)).sort((a, b) => a.host.localeCompare(b.host) || a.username.localeCompare(b.username)), never: [...s.never], encryption: safeStorage.isEncryptionAvailable() };
   });
-  handleUi('pw:reveal', async (_e, id) => {
-    const e = store().entries.find((x) => x.id === id);
+  handleUi('pw:reveal', async (ev, id) => {
+    const e = store(partitionFor(ev.sender)).entries.find((x) => x.id === id);
     if (!e || !(await verifyUser())) return null;
     return dec(e.pass);
   });
-  handleUi('pw:copy', async (_e, id) => {
-    const e = store().entries.find((x) => x.id === id);
+  handleUi('pw:copy', async (ev, id) => {
+    const e = store(partitionFor(ev.sender)).entries.find((x) => x.id === id);
     if (!e || !(await verifyUser())) return false;
     clipboard.writeText(dec(e.pass) || '');
     return true;
   });
-  handleUi('pw:edit', async (_e, id, { username, password } = {}) => {
-    const e = store().entries.find((x) => x.id === id);
+  handleUi('pw:edit', async (ev, id, { username, password } = {}) => {
+    const P = partitionFor(ev.sender);
+    const e = store(P).entries.find((x) => x.id === id);
     if (!e || !(await verifyUser())) return false;
     if (typeof username === 'string') e.username = username.slice(0, 256);
     if (typeof password === 'string' && password) { const p = enc(password.slice(0, 512)); if (p) e.pass = p; }
     e.updated = Date.now();
-    save();
+    save(P);
     return true;
   });
-  handleUi('pw:delete', (_e, id) => { const s = store(); s.entries = s.entries.filter((x) => x.id !== id); save(); return true; });
-  handleUi('pw:never-remove', (_e, origin) => { const s = store(); s.never = s.never.filter((o) => o !== origin); save(); return true; });
-  handleUi('pw:import', async () => {
-    const r = await dialog.showOpenDialog(win(), { title: tl('Import passwords'), filters: [{ name: 'CSV', extensions: ['csv'] }], properties: ['openFile'] });
+  handleUi('pw:delete', (e, id) => { const P = partitionFor(e.sender); const s = store(P); s.entries = s.entries.filter((x) => x.id !== id); save(P); return true; });
+  handleUi('pw:never-remove', (e, origin) => { const P = partitionFor(e.sender); const s = store(P); s.never = s.never.filter((o) => o !== origin); save(P); return true; });
+  handleUi('pw:import', async (e) => {
+    const P = partitionFor(e.sender);
+    const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender) || win(), { title: tl('Import passwords'), filters: [{ name: 'CSV', extensions: ['csv'] }], properties: ['openFile'] });
     if (r.canceled || !r.filePaths[0]) return null;
     const rows = parseCsv(fs.readFileSync(r.filePaths[0], 'utf8').replace(/^﻿/, ''));
     const head = (rows.shift() || []).map((h) => h.trim().toLowerCase());
@@ -279,19 +286,20 @@ function registerPasswords(opts) {
       const origin = originOf((row[iUrl] || '').trim());
       const password = row[iPass] || '';
       if (!origin || !password) { skipped++; continue; }
-      const res = upsert({ origin, username: iUser === undefined ? '' : (row[iUser] || '').trim(), password });
+      const res = upsert({ origin, username: iUser === undefined ? '' : (row[iUser] || '').trim(), password }, P);
       if (res === 'saved') added++; else if (res === 'updated') updated++; else skipped++;
     }
     return { added, updated, skipped };
   });
-  handleUi('pw:export', async () => {
+  handleUi('pw:export', async (e) => {
+    const P = partitionFor(e.sender);
     if (!(await verifyUser())) return { error: 'auth' };
-    const r = await dialog.showSaveDialog(win(), { title: tl('Export passwords'), defaultPath: 'Kona Passwords.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
+    const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender) || win(), { title: tl('Export passwords'), defaultPath: 'Kona Passwords.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
     if (r.canceled || !r.filePath) return null;
     const lines = ['name,url,username,password,note'];
-    for (const e of store().entries) lines.push([hostOf(e.origin), `${e.origin}/`, e.username, dec(e.pass) || '', ''].map(csvCell).join(','));
+    for (const e of store(P).entries) lines.push([hostOf(e.origin), `${e.origin}/`, e.username, dec(e.pass) || '', ''].map(csvCell).join(','));
     fs.writeFileSync(r.filePath, `${lines.join('\n')}\n`);
-    return { count: store().entries.length };
+    return { count: store(P).entries.length };
   });
 
   // navegou depois de enviar o login: hora de oferecer salvar

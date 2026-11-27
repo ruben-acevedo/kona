@@ -11,7 +11,7 @@ const live = new Map(); // id → DownloadItem em andamento
 const held = new Map(); // id → download arriscado esperando "Manter" ou "Descartar" (N14)
 let seq = 0;
 let broadcast = () => {};
-let currentSession = () => null;
+let sessionFor = () => null; // webContents da janela → sessão do perfil dela (O7)
 
 /* ───────────── Arquivos baixados pelo Kona ───────────── */
 let known = null;
@@ -164,14 +164,14 @@ function registerDownloads(opts) {
     broadcast('download:done', { ...(h.info || { id: Number(id) }), path: null, state: 'cancelled', discarded: true });
     return true;
   });
-  currentSession = opts.currentSession;
+  sessionFor = opts.sessionFor;
   const byId = (id) => live.get(Number(id));
   handleUi('download:pause', (_e, id) => { byId(id)?.pause(); return true; });
   handleUi('download:resume', (_e, id) => { const it = byId(id); if (it?.canResume()) it.resume(); return true; });
   handleUi('download:cancel', (_e, id) => { byId(id)?.cancel(); return true; });
-  handleUi('download:retry', (_e, url) => {
+  handleUi('download:retry', (e, url) => {
     if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return false;
-    currentSession()?.downloadURL(url);
+    sessionFor(e.sender)?.downloadURL(url);
     return true;
   });
   handleUi('download:open', async (_e, file) => (isKnown(file) ? (await shell.openPath(file)) === '' : false));

@@ -6,7 +6,8 @@ const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm
   'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked', 'site:jsblocked', 'apps:changed', 'app:navigate',
   'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
   'session:restore-tabs', 'tab:crashed', 'tab:responsive',
-  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select', 'safe:blocked', 'safe:download-blocked'];
+  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select', 'safe:blocked', 'safe:download-blocked',
+  'win:identity', 'dns:changed'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -135,7 +136,11 @@ contextBridge.exposeInMainWorld('kona', {
   clearBrowsingData: (partition, what) => ipcRenderer.invoke('data:clear', partition, what),
   installUpdate: () => ipcRenderer.send('update:install'),
   privateClose: (partition) => ipcRenderer.invoke('private:close', partition),
-  profileUse: (partition) => ipcRenderer.invoke('profile:use', partition),
+  profileUse: (partition, info) => ipcRenderer.invoke('profile:use', partition, info),
+  profileOpenWindow: (partition) => ipcRenderer.invoke('profile:open-window', partition),
+  profileIdentity: (info) => ipcRenderer.send('profile:identity', info),
+  dnsGet: () => ipcRenderer.invoke('dns:get'),
+  dnsSet: (on) => ipcRenderer.invoke('dns:set', on),
   profileForget: (partition) => ipcRenderer.invoke('profile:forget', partition),
   defaultStatus: () => ipcRenderer.invoke('default:status'),
   defaultSet: () => ipcRenderer.invoke('default:set'),

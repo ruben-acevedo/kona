@@ -160,9 +160,10 @@ const isLocalHost = (h) => !h.includes('.') || /^[\d.]+$/.test(h) || h.startsWit
   || /\.(localhost|local|lan|internal|home\.arpa|test)$/i.test(h);
 
 function createPolicy(ctx) {
-  // ctx: { win(), winFor(webContents), uaHints(), currentPartition(), isPrivate(p), onPrefs(partition) }
-  const prefsFor = (partition) => prefsByPartition.get(ctx.isPrivate(partition) ? ctx.currentPartition() : partition)
-    || prefsByPartition.get(ctx.currentPartition()) || DEFAULT_PREFS;
+  // ctx: { win(), winFor(webContents), uaHints(), parentOf(privatePartition), isPrivate(p), onPrefs(partition) }
+  // janela privada: os ajustes do perfil de onde ela foi aberta (O7)
+  const prefsFor = (partition) => prefsByPartition.get(ctx.isPrivate(partition) ? ctx.parentOf(partition) : partition)
+    || prefsByPartition.get('persist:kona') || DEFAULT_PREFS;
 
   // Configurações por site. Nas janelas privadas, o que se muda lá vale só para aquela sessão
   // (fica aqui na memória, por cima das do perfil) e some quando ela fecha.

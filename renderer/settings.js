@@ -41,6 +41,10 @@ const stSwitch = (key, on = !!settings[key]) => `<button class="sw${on ? ' on' :
 const stButton = (label, act, cls = 'btn-secondary', data = '') => `<button class="${cls}" data-do="${act}" ${data}>${label}</button>`;
 
 let appInfo = null;
+// DNS seguro: geral, guardado no processo principal (vale para todos os perfis)
+let globalDns = settings.secureDns !== false;
+api?.dnsGet?.().then((v) => { if (typeof v === 'boolean' && v !== globalDns) { globalDns = v; if (active()?.url === SETTINGS) settingsPage.refresh(); } });
+api?.on('dns:changed', (v) => { globalDns = !!v; if (active()?.url === SETTINGS) settingsPage.refresh(); });
 const safeInfo = { asked: false, updated: 0, entries: 0 };
 
 const settingsPage = {
@@ -173,7 +177,7 @@ const settingsPage = {
       stRow(tl('Delete cookies and site data when Kona closes'), tl('You’ll be signed out of every account each time you close Kona.'), stSwitch('clearOnExit')) +
       stRow(tl('Ask sites not to sell or share your data'), tl('Sends the Global Privacy Control (GPC) signal. Some places require sites by law to honor it.'), stSwitch('gpc')) +
       stRow(tl('Always use secure connections'), tl('Opens sites over HTTPS. If a site doesn’t support HTTPS, it loads normally without encryption.'), stSwitch('httpsFirst')) +
-      stRow(tl('Secure DNS'), tl('Encrypts DNS lookups (Quad9) and blocks known scam and malware sites. Turn it off if an address on your company network won’t open.'), stSwitch('secureDns')) +
+      stRow(tl('Secure DNS'), `${tl('Encrypts DNS lookups (Quad9) and blocks known scam and malware sites. Turn it off if an address on your company network won’t open.')} ${tl('Applies to all profiles.')}`, stSwitch('secureDns', globalDns)) +
       stRow(tl('Site data'), tl('See which sites store cookies in this profile and delete the ones you want.'), stButton(tl('View site data…'), 'sites')) +
       stRow(tl('Clear browsing data'), tl('History, cookies and cached files.'), stButton(tl('Clear…'), 'clear-data')),
       tl('These options apply to the current profile. Private browsing follows the same rules and also deletes everything when you leave it.'));
@@ -231,7 +235,7 @@ const settingsPage = {
     const rows = PROFILES.list.map((p) => `
       <div class="st-row">
         <div class="st-text st-profile">${avatarHtml(p.avatar, p.name, 'md')}<b>${escapeHtml(p.name)}</b>${p.id === PROFILES.current ? `<span class="st-tag">${tl('in use')}</span>` : ''}</div>
-        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton(tl('Use'), 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton(tl('Edit…'), 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
+        <div class="st-ctrl">${p.id !== PROFILES.current ? stButton(tl('Open'), 'profile-use', 'btn-secondary', `data-id="${p.id}"`) : ''}${stButton(tl('Edit…'), 'profile-edit', 'btn-secondary', `data-id="${p.id}"`)}</div>
       </div>`).join('');
     return this.section('perfis', /*i18n*/'Profiles', rows + `<div class="st-row"><div class="st-text"></div><div class="st-ctrl">${stButton(tl('New profile'), 'profile-new', 'btn-primary')}</div></div>`,
       tl('Each profile has its own history, favorites, settings, sign-ins and extensions.'));
@@ -310,6 +314,8 @@ $('#st-main').addEventListener('input', (e) => {
 });
 $('#st-main').addEventListener('click', async (e) => {
   const sw = e.target.closest('[data-toggle]');
+  // DNS seguro: um ajuste do Kona inteiro (o Chromium tem um DNS só), não do perfil (O7)
+  if (sw?.dataset.toggle === 'secureDns') { globalDns = !globalDns; api?.dnsSet(globalDns); settingsPage.refresh(); return; }
   if (sw) { const k = sw.dataset.toggle; settings[k] = !settings[k]; afterSetting(k); return; }
   const th = e.target.closest('[data-theme-set]');
   if (th) { settings.theme = th.dataset.themeSet; saveSettings(); applyTheme(true); settingsPage.refresh(); return; }

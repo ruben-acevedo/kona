@@ -952,8 +952,16 @@ function render() {
   if (!onStart) { toggleCustomize(false); closeFolderPop(); }
   $('#back').disabled = !(a.canBack || (a.fromStart && !onStart));
   $('#fwd').disabled = !a.canFwd;
-  document.title = APP_MODE ? (a.title || APP_MODE.name) : onStart || !a.title ? 'Kona' : `${a.title} — Kona`;
+  updateWindowTitle();
 }
+/** Título da janela (barra de tarefas, Alt+Tab). Com mais de um perfil aberto, leva o nome do perfil (O7). */
+let winProfileTag = '';
+function updateWindowTitle() {
+  const a = active();
+  const brand = winProfileTag ? `Kona (${winProfileTag})` : 'Kona';
+  document.title = APP_MODE ? (a?.title || APP_MODE.name) : !a || a.url === START || !a.title ? brand : `${a.title} — ${brand}`;
+}
+api?.on('win:identity', (d) => { winProfileTag = typeof d?.profile === 'string' ? d.profile : ''; updateWindowTitle(); });
 
 function goBack() {
   const a = active();
@@ -1672,7 +1680,7 @@ refreshExtensions();
 applyTheme();
 
 syncPrefs();
-const profileReady = api?.profileUse(PROFILES.currentProfile().partition) ?? Promise.resolve();
+const profileReady = api?.profileUse(PROFILES.currentProfile().partition, { name: PROFILES.currentProfile().name }) ?? Promise.resolve();
 library.boot();
 
 const initial = params.get('state');

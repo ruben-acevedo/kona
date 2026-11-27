@@ -8,12 +8,13 @@ const { onUi, handleUi } = require('./ipc');
 
 const managers = new Map(); // partição → ElectronChromeExtensions
 let win = () => null; // janela em foco
+let winOfPartition = () => null; // uma janela do perfil (O7: cada janela tem o seu)
 let winFor = () => null; // janela que hospeda uma aba
 
 /** Aba nova pedida por uma extensão (chrome.tabs.create): a interface cria e devolve o webview. */
 const waiting = new Map();
 let reqSeq = 0;
-function createTabFromExtension(details) {
+function createTabFromExtension(details, partition) {
   return new Promise((resolve, reject) => {
     const id = ++reqSeq;
     const timer = setTimeout(() => { waiting.delete(id); reject(new Error('tab not created')); }, 8000);
@@ -22,7 +23,7 @@ function createTabFromExtension(details) {
       const wc = webContents.fromId(wcId);
       if (wc) resolve([wc, winFor(wc)]); else reject(new Error('tab not found'));
     });
-    win()?.webContents.send('ext:tab-create', { id, url: details.url || '', active: details.active !== false });
+    (winOfPartition(partition) || win())?.webContents.send('ext:tab-create', { id, url: details.url || '', active: details.active !== false });
   });
 }
 onUi('ext:tab-created', (_e, id, wcId) => { waiting.get(id)?.(Number(wcId)); waiting.delete(id); });
@@ -37,14 +38,14 @@ function attach(ses, partition) {
   if (managers.has(partition)) return managers.get(partition);
   const m = new ElectronChromeExtensions({
     session: ses,
-    createTab: createTabFromExtension,
+    createTab: (details) => createTabFromExtension(details, partition),
     // só quando uma extensão pede (chrome.tabs.update); a biblioteca também "seleciona" a 1ª aba que
     // conhece numa janela, e isso fazia uma aba carregando em segundo plano roubar a vez da atual
     selectTab: (wc) => { if (!registering) hostOf(wc)?.send('ext:tab-select', wc.id); },
     removeTab: (wc) => hostOf(wc)?.send('ext:tab-remove', wc.id),
     createWindow: async (details) => { // a "janela nova" de uma extensão vira uma aba da janela em foco
       const url = Array.isArray(details.url) ? details.url[0] : details.url;
-      const [wc] = await createTabFromExtension({ url, active: true });
+      const [wc] = await createTabFromExtension({ url, active: true }, partition);
       return winFor(wc);
     },
   });
@@ -87,6 +88,7 @@ function contextItems(contents, params) {
 function registerExtensions(opts) {
   win = opts.win;
   winFor = opts.winFor;
+  winOfPartition = opts.winOfPartition || (() => null);
   handleUi('ext:tab-selected', (_e, wcId) => {
     const wc = webContents.fromId(Number(wcId));
     if (wc) managerOf(wc.session)?.selectTab(wc);

@@ -303,6 +303,15 @@ Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. M
 - [x] **N21. Reescrever o README** (abaixo).
 - [ ] **O6. Comparar o consumo de memória com Chrome e Edge** (deixado para o final, pedido em 2026-11-27): mesmas 10 páginas reais, perfis temporários, memória somada de todos os processos depois de 40 s; com 1 aba e com 10. Precisa da tela ligada e do PC sem uso pesado durante a medição.
 - [ ] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen.
+- [x] **O7. Um perfil por janela (como o Chrome).** Pedido em 2026-11-27. Antes havia um "perfil atual" único para o Kona inteiro, e trocar de perfil pedia fechar as outras janelas.
+  - Escolher outro perfil (menu de perfis ou Configurações › Perfis › Open): traz para a frente a janela dele, se houver; senão abre uma janela nova dele. Só troca na própria janela quando ela está sozinha e vazia (só a nova aba), ou ao apagar o perfil dela.
+  - Cada janela guarda o seu perfil (`PROFILES.win`, vindo de `?partition=`; `data.current` é só o último usado, que decide a próxima abertura). A janela principal (guarda as abas e mostra os grupos) é uma por perfil; Ctrl+N abre no mesmo perfil.
+  - Processo principal: `winPart` (janela → perfil) e `partitionFor(webContents)`; senhas, endereços/cartões (e os ajustes "oferecer salvar"), importação, extensões, downloads ("Retry") e a economia de memória usam o perfil da janela/aba que pediu. Extensão que abre aba usa uma janela do próprio perfil. Janela privada segue os ajustes do perfil de onde foi aberta.
+  - Abas só mudam entre janelas do mesmo perfil (arrastar, "Mover para a janela", "Ir para a aba"). Recuperar depois de travamento: cada janela volta no seu perfil.
+  - Com mais de um perfil aberto: o nome no título da janela ("Kona (Work)", aparece no Alt+Tab) e o avatar sobre o ícone na barra de tarefas.
+  - DNS seguro virou ajuste geral (`kona-global.json`; o Chromium tem um DNS só): "Vale para todos os perfis".
+  - Apagar um perfil com janela aberta é recusado ("Feche as janelas de … para apagá-lo").
+  - Teste: `tests/debug/profile-windows.js` + windows, passwords, autofill, crash-recovery, extensions-bar, downloads, settings-smoke, first-profile, apps.
 - Opcional, depois: bloqueio de anúncios e rastreadores embutido (hoje dá com uma extensão, ex.: uBlock Origin Lite).
 
 ### Por último

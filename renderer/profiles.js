@@ -41,8 +41,11 @@ const PROFILES = {
     try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); return true; } catch { return false; }
   },
   get list() { return this.data.list; },
-  get current() { return this.data.current; },
-  currentProfile() { return this.byId(this.data.current) || this.data.list[0]; },
+  // O perfil desta janela (O7: cada janela tem o seu). "data.current" é só o último usado, que decide
+  // o perfil da próxima abertura do Kona; uma janela aberta para outro perfil vem com ?partition=.
+  win: null,
+  get current() { return this.win || this.data.current; },
+  currentProfile() { return this.byId(this.current) || this.data.list[0]; },
   byId(id) { return this.data.list.find((p) => p.id === id); },
 
   // photo: a única foto enviada do perfil (fica guardada mesmo com um avatar pronto escolhido;
@@ -66,7 +69,7 @@ const PROFILES = {
     for (const kind of ['settings', 'history']) localStorage.removeItem(`kona:${kind}:${id}`);
     this.save();
   },
-  setCurrent(id) { this.data.current = id; this.save(); },
+  setCurrent(id) { this.win = id; this.data.current = id; this.save(); },
   get needsSetup() { return !!this.data.setup; },
   finishSetup() { delete this.data.setup; this.save(); },
 };
@@ -75,3 +78,8 @@ const PROFILES = {
 const profileKey = (kind) => `kona:${kind}:${PROFILES.current}`;
 
 PROFILES.load();
+{
+  const part = new URLSearchParams(location.search).get('partition');
+  const p = part && PROFILES.list.find((x) => x.partition === part);
+  PROFILES.win = (p || PROFILES.currentProfile()).id;
+}

@@ -28,7 +28,8 @@ async function restoreSession() {
   const [mine] = data.windows;
   // a janela principal: um grupo já voltou sozinho (fica guardado), e com "Restore tabs" as abas
   // sem grupo também; senão elas entram aqui
-  if (mine && mine.set === 'default' && settings.startup !== 'restore') openRecoveredTabs(mine);
+  const own = mine && (!mine.partition || mine.partition === PROFILES.currentProfile().partition); // O7: só as do próprio perfil
+  if (own && mine.set === 'default' && settings.startup !== 'restore') openRecoveredTabs(mine);
   await api?.sessionRestore();
   sfx.play('select');
 }
