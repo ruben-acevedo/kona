@@ -390,7 +390,11 @@ async function suitePages() {
   await js(`newTab(${JSON.stringify(base + '/popup')}, false); 0`);
   await until(() => js(`!active().loading && active().url.includes('/popup')`), 15000);
   const before = await js('tabs.length');
-  await (await guestOf()).executeJavaScript(`document.getElementById('open').click(); 0`, true);
+  // clique de verdade (o bloqueio de pop-ups só deixa abrir logo depois de um clique da pessoa)
+  const g = await guestOf();
+  const [bx, by] = await g.executeJavaScript(`(() => { const r = document.getElementById('open').getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; })()`);
+  g.sendInputEvent({ type: 'mouseDown', x: bx, y: by, button: 'left', clickCount: 1 });
+  g.sendInputEvent({ type: 'mouseUp', x: bx, y: by, button: 'left', clickCount: 1 });
   const popOk = await until(() => js(`tabs.length === ${before + 1} && tabs.some((t) => t.url.endsWith('/text') && t !== tabs[0])`), 5000);
   record('bugs', 'window.open() do site abre nova aba', popOk ? 'PASS' : 'FAIL');
 
@@ -549,7 +553,7 @@ async function suiteBugs() {
   ]`);
   const expect = {
     'kona.dev': 'https://kona.dev', 'localhost:3000': 'http://localhost:3000', '127.0.0.1:8080/a': 'http://127.0.0.1:8080/a',
-    'como fazer pão': 'https://www.google.com/search?q=como%20fazer%20p%C3%A3o', 'http://x.y/z': 'http://x.y/z', '   ': null,
+    'como fazer pão': 'https://www.google.com/search?q=como%20fazer%20p%C3%A3o&oq=como%20fazer%20p%C3%A3o&sourceid=chrome&ie=UTF-8', 'http://x.y/z': 'http://x.y/z', '   ': null,
   };
   const wrong = cases.filter(([i, o]) => i in expect && expect[i] !== o);
   record(S, 'endereço digitado vira URL ou busca', wrong.length ? 'FAIL' : 'PASS', wrong.map(([i, o]) => `“${i}” → ${o}`).join('; '));
@@ -800,7 +804,7 @@ async function suiteLibrary() {
   await perf(S, 'abrir a subtela de Histórico', () => click('[data-view="history"]'), { ms: 700 });
   await sleep(200);
   const hist = await js(`({ day: document.querySelector('#sb-list .sb-day')?.textContent, n: document.querySelectorAll('#sb-list .sb-row').length })`);
-  record(S, 'histórico agrupado por dia', hist.day === 'Hoje' && hist.n >= 2 ? 'PASS' : 'FAIL', JSON.stringify(hist));
+  record(S, 'histórico agrupado por dia', hist.day === await js("tl('Today')") && hist.n >= 2 ? 'PASS' : 'FAIL', JSON.stringify(hist));
   wc.insertText('pesada'); await sleep(300);
   const found = await js(`[...document.querySelectorAll('#sb-list .sb-row b')].map((b) => b.textContent)`);
   record(S, 'busca no histórico', found.length === 1 && found[0] === 'Página pesada' ? 'PASS' : 'FAIL', JSON.stringify(found));
@@ -861,7 +865,7 @@ async function suiteSettings() {
   await perf(S, 'abrir as Configurações (Ctrl+,)', async () => key(',', ['control']), { ms: 800 });
   await sleep(400);
   const open = await js(`({ url: active().url, show: document.getElementById('settings').classList.contains('show'), secs: document.querySelectorAll('.st-sec').length })`);
-  record(S, 'Ctrl+, abre a página com as 8 seções', open.url === SETTINGS_URL && open.show && open.secs === 8 ? 'PASS' : 'FAIL', JSON.stringify(open));
+  record(S, 'Ctrl+, abre a página com as 12 seções', open.url === SETTINGS_URL && open.show && open.secs === 12 ? 'PASS' : 'FAIL', JSON.stringify(open));
   await click('.st-nav-item[data-go="downloads"]'); await sleep(900);
   const marked = await js(`document.querySelector('.st-nav-item.on')?.dataset.go`);
   record(S, 'navegação lateral leva à seção', marked === 'downloads' ? 'PASS' : 'FAIL', `marcada: ${marked}`);
@@ -1018,14 +1022,28 @@ async function suiteOmnibox() {
   await openUrlInActiveTab(`${base}/text`); await sleep(400);
   key('T', ['control']); await sleep(400); wc.insertText('artigo'); await sleep(400);
   const vis = await js(`[...document.querySelectorAll('#omnibox .om-row')].map((r) => r.innerText.trim())`);
-  record(S, 'site visitado aparece ao digitar parte do título', vis.some((t) => t.includes('Artigo de teste') && t.includes('127.0.0.1')) ? 'PASS' : 'FAIL', JSON.stringify(vis.slice(0, 4)));
+  const switchTab = await js("tl('Switch to this tab')"); // o site está aberto em outra aba: a sugestão é ir até ela
+  record(S, 'site visitado aparece ao digitar parte do título', vis.some((t) => t.includes('Artigo de teste') && (t.includes('127.0.0.1') || t.includes(switchTab))) ? 'PASS' : 'FAIL', JSON.stringify(vis.slice(0, 4)));
   await js(`document.activeElement.blur(); 0`);
   await js(`while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id); 0`); await sleep(500);
   return st;
 }
 
+// deixa a janela "sozinha e vazia" (só a nova aba): desde o O7, só assim a troca de perfil acontece nela mesma
+async function emptyWindow() {
+  await js(`(() => { const s = tabs.find((t) => t.url === START && !t.pinned) || makeTab(START);
+    activate(s.id); tabs.filter((t) => t !== s).forEach((t) => closeTab(t.id, { force: true })); })(); 0`);
+  await sleep(500);
+}
+
 async function suiteProfiles() {
   const S = 'perfis';
+  // desde o O7, trocar de perfil só acontece na própria janela quando ela está sozinha e vazia;
+  // janelas que sobraram de suítes anteriores fariam o perfil abrir numa janela nova
+  const extra = require('electron').BrowserWindow.getAllWindows().filter((x) => x !== win);
+  record(S, 'janelas extras antes dos perfis', 'INFO', `${extra.length}: ${extra.map((x) => x.webContents.getURL().slice(-40)).join(', ')}`);
+  for (const x of extra) x.destroy();
+  await sleep(300);
   await resetUI(); await goStart();
   const first = await js('PROFILES.current');
   await js(`settings.wallpaper = 'aurora'; saveSettings(); applyWallpaper(); browseHistory.addSearch('busca do perfil 1'); 0`);
@@ -1033,7 +1051,7 @@ async function suiteProfiles() {
   await js(`newTab(${JSON.stringify(base + '/text')}, false); 0`);
   await until(() => js('!active().loading'), 8000);
   await (await guestOf()).executeJavaScript(`document.cookie = 'kona_teste=perfil1; max-age=3600'; 0`);
-  await js(`while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id); 0`); await sleep(400);
+  await emptyWindow();
 
   // criar pela interface
   await js('toggleSidebar(); 0'); await sleep(500);
@@ -1059,6 +1077,8 @@ async function suiteProfiles() {
   const part2 = await js(`active().wv.getAttribute('partition')`);
   record(S, 'perfil novo começa sem histórico', hist2 === 0 ? 'PASS' : 'FAIL', `${hist2} buscas`);
   record(S, 'perfil novo tem sessão própria (cookies não vazam)', !cookie2.includes('kona_teste') && part2 === p2.part ? 'PASS' : 'FAIL', `cookie: “${cookie2}” · sessão ${part2}`);
+  // janela sozinha e vazia: a troca acontece nela mesma (com páginas abertas, o perfil abriria numa janela nova)
+  await emptyWindow();
   await perf(S, 'trocar de perfil', () => js(`switchProfile(${JSON.stringify(first)}); 0`), { ms: 1000 });
   await sleep(500);
   // as abas de cada perfil ficam guardadas nele: voltar reabre as abas do perfil 1

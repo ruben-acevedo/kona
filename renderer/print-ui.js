@@ -40,7 +40,10 @@ async function openPrint(t = active()) {
   $('#pr-count').textContent = '';
   openSheet('#print-sheet');
   updateDest();
-  preview(true);
+  // a prévia (um processo novo com o leitor de PDF) só começa depois da animação de abrir a janela
+  // (.45s): criada no meio dela, a janela perdia quadros
+  $('#pr-busy').classList.add('show');
+  preview(true, 470);
   pr.printers = (await api?.print.printers(wcId).catch(() => [])) || [];
   if (pr.t !== t) return;
   // a "Microsoft Print to PDF" e afins ficam na lista; o destino é o último usado ou a impressora padrão
@@ -66,7 +69,7 @@ function showCount() {
 }
 
 /** Gera a prévia de novo (com uma pequena espera, para não refazer a cada tecla). */
-function preview(now = false) {
+function preview(now = false, delay = now ? 0 : 350) {
   clearTimeout(pr.timer);
   pr.timer = setTimeout(async () => {
     if (!pr.t) return;
@@ -96,15 +99,16 @@ function preview(now = false) {
       pr.wv = wv;
     } else pr.wv.loadURL(r.url).catch(() => {});
     showCount();
-  }, now ? 0 : 350);
+  }, delay);
 }
 
 function closePrint() {
   if (!pr.t) return;
-  api?.print.done(pr.wcId);
   pr.t = null; pr.seq++;
   clearTimeout(pr.timer);
+  // a prévia sai antes: enquanto ela mostra o PDF, o Windows não deixa apagá-lo
   pr.wv?.remove(); pr.wv = null;
+  api?.print.done(pr.wcId);
   closeSheet('#print-sheet');
 }
 

@@ -20,6 +20,9 @@
 // de rodar; o electron-builder assina o Kona.exe e o motor. As duas janelas (Kona-Setup e
 // Kona Uninstaller) ainda precisam ser assinadas com o mesmo certificado — ver ROADMAP (E1).
 // Sem certificado tudo sai sem assinatura (o Windows SmartScreen avisa na 1ª instalação).
+// Sem assinatura, o package.json tem "verifyUpdateCodeSignature": false: senão o Kona instalado recusa
+// toda atualização (exigiria a assinatura do editor). A atualização continua conferida pelo SHA-512
+// do latest.yml, baixado do GitHub por HTTPS. Com certificado, trocar por signtoolOptions.publisherName.
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');

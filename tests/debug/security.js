@@ -21,8 +21,8 @@ app.whenReady().then(async () => {
 
   let g = await go('http://example.com/');
   log('HTTPS primeiro (example.com):', g.getURL());
-  g = await go('http://neverssl.com/', 9000);
-  log('Volta para HTTP (neverssl.com):', g.getURL(), '·', (await g.executeJavaScript('document.title')).slice(0, 40));
+  g = await go('http://http.badssl.com/', 9000);
+  log('Volta para HTTP (http.badssl.com, só HTTP):', g.getURL(), '·', (await g.executeJavaScript('document.title')).slice(0, 40));
 
   g = await go('https://on.quad9.net/', 6000);
   log('DNS seguro (on.quad9.net):', /YES/i.test(await g.executeJavaScript('document.body.innerText')) ? 'usando Quad9' : 'NÃO usa Quad9');

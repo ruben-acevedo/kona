@@ -97,9 +97,13 @@ function register() {
 
   // a prévia: PDF numa pasta temporária (a anterior desta aba é apagada)
   const lastFile = new Map();
+  const open = new Set(); // abas com a tela de imprimir aberta
+  // no Windows o PDF fica preso enquanto a prévia o mostra: tenta apagar de novo um pouco depois
+  const discard = (f, tries = 4) => fs.rm(f, { force: true }, (err) => { if (err && tries > 1) setTimeout(() => discard(f, tries - 1), 1500); });
   handleUi('print:preview', async (_e, wcId, opts) => {
     const wc = pageOf(wcId);
     if (!wc) return { error: 'gone' };
+    open.add(wcId);
     const o = sanitize(opts);
     try {
       const total = await totalPages(wc, o);
@@ -109,8 +113,10 @@ function register() {
       fs.mkdirSync(tmpDir(), { recursive: true });
       const file = path.join(tmpDir(), `${crypto.randomBytes(6).toString('hex')}.pdf`);
       fs.writeFileSync(file, buf);
+      // a tela fechou enquanto o PDF era gerado: não fica arquivo para trás
+      if (!open.has(wcId)) { discard(file); return { error: 'gone' }; }
       const old = lastFile.get(wcId);
-      if (old) fs.rm(old, { force: true }, () => {});
+      if (old) discard(old);
       lastFile.set(wcId, file);
       return { url: `file:///${file.replace(/\\/g, '/')}#toolbar=0&navpanes=0&view=Fit`, pages: countPages(buf), total };
     } catch (err) {
@@ -119,8 +125,9 @@ function register() {
   });
   handleUi('print:done', (_e, wcId) => {
     const f = lastFile.get(wcId);
-    if (f) fs.rm(f, { force: true }, () => {});
+    if (f) discard(f);
     lastFile.delete(wcId);
+    open.delete(wcId);
     return true;
   });
 

@@ -18,7 +18,11 @@ app.whenReady().then(async () => {
     const p = await js(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) } })()`);
     wc.sendInputEvent({ type: 'mouseDown', ...p, button: 'left', clickCount: 1 }); wc.sendInputEvent({ type: 'mouseUp', ...p, button: 'left', clickCount: 1 }); await sleep(400);
   };
-  // primeiro uso: perfil novo → a oferta aparece sozinha
+  // primeiro uso: "Crie seu perfil" vem antes; depois de criar, a oferta de importar aparece sozinha
+  await until(`document.querySelector('#profile-sheet').classList.contains('show')`, 20000);
+  await js("document.getElementById('pf-name').focus(); 0");
+  wc.insertText('Teste'); await sleep(200);
+  await js("document.querySelector('#pf-save').click(); 0");
   const offered = await until(`document.querySelector('#import-sheet').classList.contains('show') && !!document.querySelector('#imp-body .imp-list')`, 20000);
   log('oferta no primeiro uso:', offered, '·', await js(`document.querySelector('#imp-title').textContent + ' / ' + document.querySelector('#imp-cancel').textContent`));
   await js(`settings.sounds = false; 0`);

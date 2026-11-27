@@ -47,7 +47,22 @@ function setRow({ key, ic, label, count, actions = '' }) {
     </div>${current ? tabRows() : ''}`;
 }
 
-function renderMain() {
+// Redesenhar o menu (uma aba carregou, mudou de título…) recria o campo de edição em linha: o texto
+// digitado, o foco e o cursor passam para o campo novo, e a saída do campo antigo não conta como "terminou".
+function keepEditor(render) {
+  const old = $('#sidebar .sb-edit');
+  const kept = old && { kind: old.dataset.edit, value: old.value, focused: document.activeElement === old, a: old.selectionStart, b: old.selectionEnd };
+  const was = sb.rendering; // um redesenho pode chamar outro
+  sb.rendering = true;
+  try { render(); } finally { sb.rendering = was; }
+  const input = $('#sidebar .sb-edit');
+  if (!kept || !input || input.dataset.edit !== kept.kind) return;
+  input.value = kept.value;
+  if (kept.focused) { input.focus(); input.setSelectionRange(kept.a, kept.b); }
+}
+
+function renderMain() { keepEditor(renderMainNow); }
+function renderMainNow() {
   const d = tabSets.data;
   const own = library.primary ? d.default.tabs.length : library.ownTabs?.tabs.length;
   const nDefault = library.currentKey() === 'default' ? tabs.length : own || 1;
@@ -121,7 +136,8 @@ function sidebarEscape() {
 // o ícone do site, como na nova aba (ícone do app, ícone grande do site, favicon e, sem nenhum, a inicial)
 const siteRowIcon = (url) => `<span class="sb-fav">${siteIcon(url)}</span>`;
 
-function renderSub() {
+function renderSub() { keepEditor(renderSubNow); }
+function renderSubNow() {
   const list = $('#sb-list');
   if (sb.view === 'bookmarks') {
     const newFolder = sb.editing?.kind === 'newfolder'
@@ -322,7 +338,7 @@ $('#sidebar').addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sb.editing = null; renderMain(); if (sb.view) renderSub(); }
 });
 $('#sidebar').addEventListener('focusout', (e) => {
-  if (e.target.classList?.contains('sb-edit') && sb.editing) commitEdit(e.target);
+  if (e.target.classList?.contains('sb-edit') && sb.editing && !sb.rendering) commitEdit(e.target);
 });
 
 async function deleteGroup(id) {

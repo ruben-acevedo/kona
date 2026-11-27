@@ -97,7 +97,7 @@ body.on-web #toolbar::before, body.ov-open #toolbar::before { background-color: 
 
 .group { display: flex; align-items: center; height: 36px; padding: 0 3px; border-radius: 999px; flex: none; }
 .tb {
-  width: 34px; height: 30px; border-radius: 999px; display: grid; place-items: center; color: var(--text);
+  width: 34px; height: 30px; border-radius: 999px; display: grid; place-items: center; color: var(--text); flex: none;
   transition: background .15s, opacity .15s, transform .15s var(--ease);
 }
 .tb .ic { width: 19px; height: 19px; }
@@ -106,6 +106,8 @@ body.on-web #toolbar::before, body.ov-open #toolbar::before { background-color: 
 .tb:disabled { opacity: 0.28; background: none; transform: none; }
 .tb.text { width: auto; padding: 0 14px; font-weight: 600; color: var(--accent-text); }
 .tb.small { width: 28px; height: 28px; }
+/* ícone com tamanho par num botão par: margens inteiras, o × fica no centro exato (sem meio pixel) */
+.tb.small .ic { width: 18px; height: 18px; }
 .tb.on { color: var(--accent-text); }
 
 /* Controles da janela (estilo Windows, monocromáticos) */
@@ -430,7 +432,7 @@ body.sidebar-open #sidebar { transform: none; opacity: 1; }
 .page-thumb .big-mono { width: 54px; height: 54px; border-radius: 15px; display: grid; place-items: center; font-size: 22px; font-weight: 650; background: var(--glass-press); }
 .page-thumb .host { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 11.5px; color: var(--text-2); }
 .ov-card .ov-x { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; opacity: 0; transition: opacity .15s; }
-.ov-card .ov-x .ic { width: 11px; height: 11px; stroke-width: 2.4; }
+.ov-card .ov-x .ic { width: 12px; height: 12px; stroke-width: 2.3; }
 .ov-card:hover .ov-x, .ov-card.sel .ov-x { opacity: 1; }
 .ov-card .cap { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12.5px; font-weight: 500; min-width: 0; }
 .ov-card .cap .tfav { display: grid; }
@@ -587,7 +589,7 @@ body.warming #overview :is(.ov-grid, .ov-card) { opacity: 1 !important; transfor
 .om-x { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; opacity: 0; color: inherit; flex: none; transition: opacity .12s, background .12s; }
 .om-row:hover .om-x, .om-row.sel .om-x { opacity: 0.85; }
 .om-x:hover { background: rgba(127, 127, 127, 0.28); opacity: 1; }
-.om-x .ic { width: 11px; height: 11px; stroke-width: 2.4; }
+.om-x .ic { width: 12px; height: 12px; stroke-width: 2.3; }
 
 /* ───────────── Perfis ───────────── */
 .popover-pf {
@@ -1003,6 +1005,7 @@ body.infobar-on #infobar { display: flex; animation: fade .3s var(--ease) both; 
 #find-bar.show { opacity: 1; transform: none; pointer-events: auto; }
 #find-bar > [data-icon] { width: 16px; height: 16px; display: grid; place-items: center; color: var(--text-2); }
 #find-bar > [data-icon] .ic { width: 15px; height: 15px; }
+#find-bar > .tb.small .ic { width: 16px; height: 16px; } /* par no botão de 28 px: × no centro exato */
 #fb-input { width: 200px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; font-size: 13px; padding: 0 4px; }
 #fb-count { min-width: 64px; text-align: right; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; padding-right: 4px; }
 #find-bar.none #fb-count { color: var(--close); }
@@ -1379,8 +1382,7 @@ body.app-mode #tabs { padding-left: 6px !important; }
 /* ───────────── Pré-visualização de impressão (N13) ───────────── */
 #print-sheet { width: min(1100px, 92vw); height: min(760px, 88vh); max-height: none; flex-direction: row; }
 .pr-preview { position: relative; flex: 1; min-width: 0; background: color-mix(in srgb, var(--text) 8%, transparent); }
-.pr-preview webview { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pr-preview.bw webview { filter: grayscale(1); }
+.pr-preview webview { position: absolute; inset: 0; width: 100%; height: 100%; }.pr-preview.bw webview { filter: grayscale(1); }
 .pr-busy { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 2; }
 .pr-busy.show { opacity: 1; }
 .pr-error { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; text-align: center; color: var(--text-2); font-size: 13.5px; z-index: 3; background: var(--glass-strong); margin: 0; }
