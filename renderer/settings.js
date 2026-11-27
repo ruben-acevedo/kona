@@ -41,6 +41,7 @@ const stSwitch = (key, on = !!settings[key]) => `<button class="sw${on ? ' on' :
 const stButton = (label, act, cls = 'btn-secondary', data = '') => `<button class="${cls}" data-do="${act}" ${data}>${label}</button>`;
 
 let appInfo = null;
+const safeInfo = { asked: false, updated: 0, entries: 0 };
 
 const settingsPage = {
   built: false,
@@ -154,7 +155,16 @@ const settingsPage = {
   },
 
   privacy() {
+    // proteção contra golpes e malware (O2): estado das listas (chega do processo principal)
+    if (!safeInfo.asked) { safeInfo.asked = true; api?.safeStatus?.().then((s) => { Object.assign(safeInfo, s); this.refresh(); }); }
+    const fmt = new Intl.NumberFormat(document.documentElement.lang || 'en');
+    const when = safeInfo.updated ? new Intl.DateTimeFormat(document.documentElement.lang || 'en', { dateStyle: 'short', timeStyle: 'short' }).format(safeInfo.updated) : null;
+    const safeDesc = tl('Warns you before you open a scam site or a site that spreads malware, and blocks downloads from them. Uses open lists (URLhaus, OpenPhish, Phishing.Database), checked on this computer: the sites you visit aren’t sent anywhere.')
+      + (settings.safeBrowsing ? ` <span class="st-safe-status">${when ? tl('Lists updated {when} · {n} sites.', { when, n: fmt.format(safeInfo.entries || 0) }) : tl('Downloading the lists…')}</span>` : '');
     return this.section('privacidade', /*i18n*/'Privacy and security',
+      stRow(tl('Protection against scams and malware'), safeDesc, stSwitch('safeBrowsing')) +
+      (settings.safeBrowsing ? stRow(tl('Google Safe Browsing key (optional)'), tl('With your own free key from Google, Google also checks the pages you open (their address is sent to Google). Leave empty to use only the open lists.'),
+        `<input class="pf-input st-key" data-set="safeBrowsingKey" value="${escapeHtml(settings.safeBrowsingKey || '')}" placeholder="AIza…" spellcheck="false" autocomplete="off" />`) : '') +
       stRow(tl('Cookies'), {
         allow: tl('All sites can save and read cookies.'),
         'block-third-party': tl('Recommended. Blocks cookies that other sites (ads, trackers) use inside the page you’re viewing.'),
@@ -259,6 +269,7 @@ function afterSetting(key) {
   if (key === 'offerPasswords') api?.pw.setOffer(settings.offerPasswords !== false);
   if ((key === 'autofillAddresses' || key === 'autofillCards') && typeof syncAfPrefs === 'function') syncAfPrefs();
   if (key === 'sounds') { applySections(); if (settings.sounds) sfx.play('select'); }
+  if (key === 'safeBrowsing') safeInfo.asked = false; // ligou de novo: busca o estado das listas
   settingsPage.refresh();
 }
 

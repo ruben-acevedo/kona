@@ -1,8 +1,9 @@
 // Políticas aplicadas a cada sessão (perfil ou privada): client hints, cookies de terceiros,
 // Global Privacy Control, permissões de sites e downloads. Os ajustes vêm da interface (prefs:set).
-const { app, dialog, shell, session } = require('electron');
+const { app, dialog, shell, session, webContents } = require('electron');
 const { onUi, handleUi } = require('./ipc');
 const downloads = require('./downloads');
+const safe = require('./safe-browsing');
 const path = require('path');
 const fs = require('fs');
 
@@ -19,6 +20,8 @@ const DEFAULT_PREFS = {
   downloadAsk: false,
   httpsFirst: true, // tenta HTTPS antes de HTTP (volta para HTTP se o site não tiver)
   secureDns: true, // DNS criptografado (Quad9), que também bloqueia domínios de malware e phishing
+  safeBrowsing: true, // O2: avisa antes de abrir site de golpe ou que distribui malware (safe-browsing.js)
+  safeBrowsingKey: '', // chave própria do Google Safe Browsing (opcional): o Google também confere
 };
 const PERM_KINDS = Object.keys(DEFAULT_PREFS.permissions);
 const prefsByPartition = new Map();
@@ -44,6 +47,8 @@ function sanitize(p = {}) {
     downloadAsk: !!p.downloadAsk,
     httpsFirst: p.httpsFirst !== false,
     secureDns: p.secureDns !== false,
+    safeBrowsing: p.safeBrowsing !== false,
+    safeBrowsingKey: typeof p.safeBrowsingKey === 'string' && /^[\w-]{20,80}$/.test(p.safeBrowsingKey.trim()) ? p.safeBrowsingKey.trim() : '',
   };
 }
 
@@ -137,6 +142,7 @@ function createPolicy(ctx) {
   // (fica aqui na memória, por cima das do perfil) e some quando ela fecha.
   const privateRules = new Map(); // partição privada → { site: { js, popups, cookies } }
   const partitionOfSession = new WeakMap();
+  app.whenReady().then(() => safe.start()); // listas de golpes e malware: carrega as guardadas e atualiza
   onUi('siterules:private', (_e, partition, rules) => {
     if (!ctx.isPrivate(partition)) return;
     privateRules.set(partition, sanitizeRules(rules));
@@ -206,8 +212,26 @@ function createPolicy(ctx) {
         .filter((l, i, a) => l && a.indexOf(l) === i);
       if (want.length) ses.setSpellCheckerLanguages(want);
     } catch { /* sem corretor: segue sem */ }
-    ses.webRequest.onBeforeRequest({ urls: ['http://*/*'] }, (details, callback) => {
-      if (details.resourceType !== 'mainFrame' || !prefsFor(partition).httpsFirst) { callback({}); return; }
+    // Um só interceptador por sessão (o Electron guarda o último): proteção contra golpes e, depois,
+    // HTTPS primeiro. Só páginas e frames (não cada imagem ou script), para não pesar.
+    ses.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*'], types: ['mainFrame', 'subFrame'] }, (details, callback) => {
+      const pr = prefsFor(partition);
+      if (pr.safeBrowsing && !safeAllowed(partition, details.url)) {
+        const threat = safe.check(details.url);
+        if (threat) {
+          callback({ cancel: true });
+          if (details.resourceType === 'mainFrame') tellBlocked(details.webContents, details.url, threat);
+          return;
+        }
+        // com a chave do Google: confere também lá, sem segurar a página (se for perigosa, para e avisa)
+        if (pr.safeBrowsingKey && details.resourceType === 'mainFrame') {
+          const wc = details.webContents;
+          safe.checkGoogle(details.url, pr.safeBrowsingKey).then((t) => {
+            if (t && wc && !wc.isDestroyed()) { wc.stop(); tellBlocked(wc, details.url, t); }
+          });
+        }
+      }
+      if (details.resourceType !== 'mainFrame' || !details.url.startsWith('http:') || !pr.httpsFirst) { callback({}); return; }
       let u;
       try { u = new URL(details.url); } catch { callback({}); return; }
       const host = u.hostname;
@@ -292,8 +316,16 @@ function createPolicy(ctx) {
       return kinds.every((k) => decide(p, origin, k) === 'allow');
     });
 
-    ses.on('will-download', (_e, item) => {
+    ses.on('will-download', (_e, item, wc) => {
       const p = prefsFor(partition);
+      // arquivo vindo de um endereço conhecido por distribuir malware: nem começa
+      const bad = p.safeBrowsing && item.getURLChain().map((u) => !safeAllowed(partition, u) && safe.check(u)).find(Boolean);
+      if (bad) {
+        item.cancel();
+        const host = wc?.hostWebContents || wc;
+        if (host && !host.isDestroyed()) host.send('safe:download-blocked', { name: item.getFilename(), threat: bad });
+        return;
+      }
       const askThis = item.getURLChain().some((u) => askUrls.delete(u));
       const dir = p.downloadDir && fs.existsSync(p.downloadDir) ? p.downloadDir : app.getPath('downloads');
       // arquivo que pode rodar programas, ou que veio sem criptografia: fica guardado à parte até a
@@ -381,6 +413,27 @@ function createPolicy(ctx) {
     Promise.all(targets.map((part) => session.fromPartition(part).clearStorageData().catch(() => {})))
       .finally(() => app.quit());
   });
+
+  /* Proteção contra golpes e malware (O2): o aviso é a interface que mostra (por cima da aba);
+     "Continuar mesmo assim" libera aquele site até o Kona fechar (só naquele perfil). */
+  const allowedSites = new Map(); // partição → Set de hosts liberados
+  const hostKey = (url) => { try { return new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { return ''; } };
+  function safeAllowed(partition, url) { return !!allowedSites.get(partition)?.has(hostKey(url)); }
+  function tellBlocked(wc, url, threat) {
+    const host = wc?.hostWebContents;
+    if (host && !host.isDestroyed()) host.send('safe:blocked', { wcId: wc.id, url, threat });
+  }
+  handleUi('safe:allow', (e, wcId, url) => {
+    const wc = Number.isInteger(wcId) && webContents.fromId(wcId);
+    if (!wc || wc.isDestroyed() || wc.hostWebContents !== e.sender || typeof url !== 'string') return false;
+    const part = partitionOfSession.get(wc.session);
+    if (!part) return false;
+    if (!allowedSites.has(part)) allowedSites.set(part, new Set());
+    allowedSites.get(part).add(hostKey(url));
+    return true;
+  });
+  handleUi('safe:status', () => safe.status());
+  handleUi('safe:update', async () => { await safe.update({ force: true }); return safe.status(); });
 
   /* Economia de memória (O1): abas que precisam continuar vivas, como no Chrome: com câmera ou
      microfone liberados nesta página, ou de um site com notificações permitidas (WhatsApp, Gmail…). */

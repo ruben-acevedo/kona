@@ -61,6 +61,17 @@
     <p>Something made the page stop working. Reload to try again.</p>
     <button class="btn-primary" id="crash-reload">Reload</button>
   </div>
+  <!-- Proteção contra golpes e malware (O2): aviso por cima da aba, antes de abrir o site -->
+  <div id="safe-pane" role="alertdialog" aria-labelledby="safe-title" aria-describedby="safe-text" hidden>
+    <div class="sp-card">
+      <span class="sp-ic" data-icon="shield"></span>
+      <h2 id="safe-title">Deceptive site ahead</h2>
+      <p id="safe-text"></p>
+      <p class="sp-url" id="safe-url"></p>
+      <button class="btn-primary sp-back" id="safe-back">Back to safety</button>
+      <button class="btn-link sp-go" id="safe-go">Open anyway (not recommended)</button>
+    </div>
+  </div>
   <!-- Barra lateral flutuante -->
   <aside id="sidebar" class="glass panel" tabindex="-1" aria-label="Sidebar">
     <div class="sb-views">
@@ -515,6 +526,7 @@
   <script src="autofill-ui.js"></script>
   <script src="default-browser.js"></script>
   <script src="session-ui.js"></script>
+  <script src="safe-ui.js"></script>
   <script src="a11y.js"></script>
 </body>
 </html>

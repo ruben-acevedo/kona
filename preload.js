@@ -6,7 +6,7 @@ const CHANNELS = ['win:state', 'win:shown', 'tab:open', 'shortcut', 'ext:confirm
   'pw:suggest', 'pw:suggest-hide', 'pw:offer-save', 'pw:saved', 'pw:changed', 'tab:audio', 'reader:state', 'popup:blocked', 'site:jsblocked', 'apps:changed', 'app:navigate',
   'share:pick', 'share:sources', 'share:started', 'share:ended', 'tab:adopt', 'win:promote', 'media:list',
   'session:restore-tabs', 'tab:crashed', 'tab:responsive',
-  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select'];
+  'af:suggest', 'af:suggest-hide', 'af:offer-save', 'af:changed', 'tab:select', 'safe:blocked', 'safe:download-blocked'];
 
 contextBridge.exposeInMainWorld('kona', {
   platform: process.platform,
@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld('kona', {
   tabStash: (wcId) => ipcRenderer.invoke('tab:stash', wcId),
   tabStashDrop: (token) => ipcRenderer.send('tab:stash-drop', token),
   sysMemory: () => ipcRenderer.invoke('sys:memory'),
+  // proteção contra golpes e malware (O2)
+  safeAllow: (wcId, url) => ipcRenderer.invoke('safe:allow', wcId, url),
+  safeStatus: () => ipcRenderer.invoke('safe:status'),
+  safeUpdate: () => ipcRenderer.invoke('safe:update'),
   otherTabs: () => ipcRenderer.invoke('win:tabs'),
   focusTab: (winId, tabId) => ipcRenderer.invoke('win:focus-tab', winId, tabId),
   windowPrivate: (on) => ipcRenderer.send('win:private', !!on),

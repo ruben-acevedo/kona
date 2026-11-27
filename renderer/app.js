@@ -224,6 +224,7 @@ const DEFAULTS = {
   memorySaver: true, memorySaverMode: 'balanced', keepActive: [],
   // Privacidade (aplicadas no processo principal — ver session-policy.js)
   cookies: 'block-third-party', clearOnExit: false, gpc: true, httpsFirst: true, secureDns: true,
+  safeBrowsing: true, safeBrowsingKey: '', // proteção contra golpes e malware (O2)
   permissions: { camera: 'ask', microphone: 'ask', location: 'ask', notifications: 'ask', clipboard: 'ask', apps: 'ask' },
   sites: {},
   siteZoom: {}, // zoom guardado por site (host → fator), como no Chrome
@@ -256,7 +257,7 @@ function reloadSettings() {
   syncPrefs();
 }
 /** Envia ao processo principal os ajustes que ele aplica (cookies, GPC, permissões, downloads). */
-const PREF_KEYS = ['cookies', 'gpc', 'clearOnExit', 'httpsFirst', 'secureDns', 'permissions', 'sites', 'siteRules', 'downloadDir', 'downloadAsk'];
+const PREF_KEYS = ['cookies', 'gpc', 'clearOnExit', 'httpsFirst', 'secureDns', 'safeBrowsing', 'safeBrowsingKey', 'permissions', 'sites', 'siteRules', 'downloadDir', 'downloadAsk'];
 function syncPrefs() {
   const p = {};
   for (const k of PREF_KEYS) p[k] = settings[k];
@@ -488,6 +489,7 @@ function ensureWebview(t) {
   // o código-fonte (view-source:) chega como o endereço da página: mantém o prefixo e não entra no histórico
   const viewSource = (url) => (t.url.startsWith('view-source:') && !url.startsWith('view-source:') ? `view-source:${url}` : url);
   on('did-navigate', (e) => {
+    t.blocked = null; // abriu outra página (ex.: voltar): o aviso de site perigoso some
     t.reader = null; // o modo leitura vale por página
     t.blockedPopups = null; // e os pop-ups bloqueados também
     t.siteRulesLoaded = null; // a página nova já vem com as configurações do site escolhidas agora
@@ -514,6 +516,7 @@ function discardParked(t) {
 
 function navigate(t, url) {
   discardParked(t);
+  t.blocked = null; // outro endereço: o aviso de site perigoso some
   if (t.url === START) t.fromStart = true;
   t.url = url;
   t.title = hostOf(url);
@@ -898,6 +901,7 @@ function syncToolbarTone() {
 
 let startShownFor = null;
 function render() {
+  if (typeof paintSafe === 'function') paintSafe(); // aviso de site perigoso da aba atual (safe-ui.js)
   const strip = $('#tabs');
   $$('.tab:not(.leaving)', strip).forEach((el) => {
     if (tabs.some((t) => String(t.id) === el.dataset.id)) return;

@@ -48,6 +48,7 @@
       "page-preload.js",
       "ipc.js",
       "session-policy.js",
+      "safe-browsing.js",
       "apps.js",
       "print.js",
       "updater.js",
