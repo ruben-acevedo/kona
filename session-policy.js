@@ -6,6 +6,32 @@ const downloads = require('./downloads');
 const safe = require('./safe-browsing');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { execFile } = require('child_process');
+const { pathToFileURL } = require('url');
+
+/**
+ * "Windows 11 23H2 (build 22631.4602)", para o "Relatar um problema" (O4). O Windows 11 ainda se
+ * apresenta como 10.0: o que diferencia é o build (22000 em diante). A versão de exibição (23H2)
+ * e a revisão vêm do registro; sem elas, fica só o build.
+ */
+let osCache = null;
+function osInfo() {
+  if (osCache) return osCache;
+  osCache = new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve(`${os.type()} ${os.release()}`); return; }
+    const build = Number(os.release().split('.')[2]) || 0;
+    const name = build >= 22000 ? 'Windows 11' : 'Windows 10';
+    execFile('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion'], { windowsHide: true, timeout: 3000 }, (err, out) => {
+      const val = (k) => (String(out || '').match(new RegExp(`^\\s*${k}\\s+REG_\\w+\\s+(.+)$`, 'm')) || [])[1]?.trim();
+      const display = !err && val('DisplayVersion');
+      const ubr = !err && val('UBR'); // revisão, em hexadecimal (0x1202)
+      const rev = ubr ? `.${parseInt(ubr, 16)}` : '';
+      resolve(`${name}${display ? ` ${display}` : ''} (build ${build}${rev})`);
+    });
+  });
+  return osCache;
+}
 
 const DEFAULT_PREFS = {
   cookies: 'block-third-party', // 'allow' | 'block-third-party' | 'block-all'
@@ -362,9 +388,17 @@ function createPolicy(ctx) {
     const r = await dialog.showOpenDialog(ctx.win(), { properties: ['openDirectory', 'createDirectory'] });
     return r.canceled ? null : r.filePaths[0];
   });
-  handleUi('app:info', () => ({
-    version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome,
+  // licenças de terceiros (gerado por scripts/licenses.js)
+  handleUi('app:licenses', () => JSON.parse(fs.readFileSync(path.join(__dirname, 'assets', 'licenses.json'), 'utf8')));
+  handleUi('app:info', async () => ({
+    version: require('./package.json').version, electron: process.versions.electron, chrome: process.versions.chrome,
     node: process.versions.node, v8: process.versions.v8, downloads: app.getPath('downloads'),
+    os: await osInfo(), arch: process.arch, packaged: app.isPackaged,
+    // as licenças do Chromium vêm com o Electron, ao lado do executável (no app instalado e no de desenvolvimento)
+    chromiumLicenses: (() => {
+      const f = path.join(path.dirname(process.execPath), 'LICENSES.chromium.html');
+      return fs.existsSync(f) ? pathToFileURL(f).href : null;
+    })(),
   }));
 
   // Dados de sites (cookies agrupados por site)

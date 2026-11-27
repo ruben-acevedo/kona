@@ -1346,7 +1346,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if ($('#perm-sheet').classList.contains('show')) { answerPerm(false); return; }
     if ($('#import-sheet').classList.contains('show')) { closeImport(); return; }
-    for (const id of ['#ss-sheet', '#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet', '#app-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
+    for (const id of ['#lic-sheet', '#ss-sheet', '#af-sheet', '#pw-sheet', '#sites-sheet', '#clear-sheet', '#fav-sheet', '#app-sheet']) if ($(id).classList.contains('show')) { closeSheet(id); return; }
     if (closeFolderPop()) return;
     if (findBar.close()) return;
     if (closeProfileLayers()) return;

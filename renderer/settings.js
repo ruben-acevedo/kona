@@ -257,6 +257,10 @@ const settingsPage = {
     ];
     return this.section('sobre', /*i18n*/'About Kona',
       stRow('<img class="st-logo" src="../assets/icon.svg" alt="" />Kona', `${tl('Version')} ${escapeHtml(v.version || '—')} · Electron ${escapeHtml(v.electron || '—')} · Chromium ${escapeHtml(v.chrome || '—')}`, '') +
+      stRow(tl('Report a problem'), tl('Opens a new issue on GitHub with your Kona and Windows versions filled in. Nothing is sent until you post it.'),
+        stButton(tl('Report a problem…'), 'report')) +
+      stRow(tl('Open-source licenses'), tl('Kona is open source (MIT) and built on Chromium, Electron and other projects.'),
+        stButton(tl('View…'), 'licenses')) +
       `<div class="st-keys">${keys.map(([k, d]) => `<div><kbd>${k}</kbd><span>${tl(d)}</span></div>`).join('')}</div>`);
   },
 };
@@ -347,6 +351,8 @@ $('#st-main').addEventListener('click', async (e) => {
     case 'extensions': openExtensions(); break;
     case 'store': newTab(STORE_URL, false); break;
     case 'site-search': openSiteSearchSheet(); break;
+    case 'report': reportProblem(); break;
+    case 'licenses': openLicenses(); break;
     default:
   }
 });

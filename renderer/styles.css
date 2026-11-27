@@ -1512,3 +1512,28 @@ body.sidebar-open #sidebar { visibility: visible; transition-delay: 0s; }
 .st-key { width: 260px; height: 32px; font-size: 12.5px; font-family: ui-monospace, Consolas, monospace; }
 .st-safe-status { display: block; margin-top: 4px; color: var(--text-2); font-weight: 500; }
 #safe-pane :focus-visible { outline-color: #fff; }
+
+/* ───────────── Licenças de código aberto (About Kona, O4) ───────────── */
+.lic-list { display: flex; flex-direction: column; gap: 2px; max-height: min(520px, calc(100vh - 220px)); overflow: hidden auto; padding-bottom: 6px; }
+.lic-sec { margin: 14px 8px 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-2); }
+.lic-sec:first-child { margin-top: 2px; }
+.lic-item { border-radius: 10px; }
+.lic-item.open { background: var(--glass-hover); }
+.lic-head { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 8px 6px 10px; border-radius: 10px; text-align: left; }
+button.lic-head:hover { background: var(--glass-hover); }
+.lic-name { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.lic-name b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lic-name span, .lic-type { font-size: 12px; color: var(--text-2); }
+.lic-type { white-space: nowrap; }
+.lic-chev { display: inline-flex; color: var(--text-2); transition: transform 0.18s ease; }
+.lic-chev svg { width: 12px; height: 12px; }
+.lic-item.open .lic-chev { transform: rotate(180deg); }
+.lic-body { padding: 0 10px 10px; }
+.lic-note { margin: 2px 0 8px; font-size: 12px; color: var(--text-2); }
+.lic-text { margin: 0 0 6px; max-height: 240px; overflow: auto; padding: 10px 12px; border-radius: 8px; background: var(--stroke); font: 11px/1.5 Consolas, ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.lic-body .btn-link, .lic-chromium .btn-link { margin-left: -10px; }
+.lic-chromium { display: flex; align-items: center; padding-right: 10px; }
+.lic-chromium .lic-head { flex: 1; min-width: 0; padding-right: 4px; }
+.lic-chromium .lic-type { overflow: hidden; text-overflow: ellipsis; }
+.lic-chromium .btn-link { margin-left: 0; white-space: nowrap; flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .lic-chev { transition: none; } }

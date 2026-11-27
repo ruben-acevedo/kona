@@ -290,13 +290,16 @@ Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. M
   - Site perigoso: a navegação é cancelada antes de abrir e aparece o aviso vermelho por cima da aba ("Site enganoso à frente" / "Site perigoso à frente"), com "Voltar à segurança" e "Abrir mesmo assim (não recomendado)" (libera o site até o Kona fechar). Download de endereço de malware: nem começa, com aviso.
   - Configurações › Privacidade e segurança: liga/desliga com a data das listas e quantos sites; chave própria do Google Safe Browsing opcional (aí o Google também confere, sem segurar a página).
   - `safe-browsing.js` (processo principal, no interceptador único de navegações junto com o HTTPS primeiro, só páginas e frames), `renderer/safe-ui.js`. Testado: `tests/debug/safe-browsing.js` + download-danger, downloads, site-settings. (O teste https-fallback antigo já falhava igual antes: depende de um site real.)
-- [ ] **O3. Terminar o que está pela metade:** J1 (verificação do Google na 1ª busca), L4 (senhas), N16 (controle de mídia).
+- [~] **O3. Terminar o que está pela metade:** J1 (verificação do Google na 1ª busca), L4 (senhas), N16 (controle de mídia).
   - Parado em 2026-11-27 (retomar daqui). O código dos três está feito; o que falta em cada um é verificação real, que depende do usuário:
     - J1: comparação limpa com o IP "frio": 1 busca no Chrome com perfil novo e 1 no Kona com perfil novo (não repetir buscas automáticas seguidas do mesmo IP).
     - L4: Windows Hello (mostrar/copiar/exportar senha), importar o CSV do Chrome e logins reais.
     - N16: teclas de mídia do teclado, painel de mídia do Windows e YouTube/Spotify de verdade.
-  - Próximo passo combinado: montar um roteiro curto de teste manual para os três, e corrigir o que aparecer.
-- [ ] **O4. "Relatar um problema".** Em "Sobre o Kona": abre uma issue no GitHub já preenchida com versão, Windows e detalhes (sem servidor e sem coleta automática). Junto, o link para as licenças de terceiros (o electron-builder já inclui as do Chromium).
+  - Roteiro de teste manual entregue em 2026-11-27; o usuário preferiu testar depois e seguir para o O4. Fica pendente do teste dele (corrigir o que aparecer).
+- [x] **O4. "Relatar um problema" e licenças.** Em Settings › About Kona (a janela principal não tem menu ⋯; o único lugar é este).
+  - "Report a problem…": abre numa aba a issue nova do GitHub com o modelo (o que aconteceu, passos, o que esperava) e o ambiente preenchido: versão do Kona (e "development" fora do instalador), Chromium/Electron, Windows com versão e build ("Windows 11 25H2 (build 26200.9974)", do registro), arquitetura e idioma. Nada vai sozinho; sem sites, extensões nem histórico.
+  - "Open-source licenses": tela com o Kona (MIT), Chromium ("View licenses" abre o `LICENSES.chromium.html` que vem ao lado do Kona.exe), Electron, as 28 bibliotecas de produção com o texto de cada licença (clicar expande) e as listas de golpes/malware usadas pelo Safe Browsing.
+  - `scripts/licenses.js` gera `assets/licenses.json` (roda no `npm run dist`; o arquivo fica no repositório). `renderer/about.js`, `app:info`/`app:licenses` em `session-policy.js`. Teste: `tests/debug/about.js`.
 - [ ] **N21. Reescrever o README** (abaixo).
 - [ ] **O6. Comparar o consumo de memória com Chrome e Edge** (deixado para o final, pedido em 2026-11-27): mesmas 10 páginas reais, perfis temporários, memória somada de todos os processos depois de 40 s; com 1 aba e com 10. Precisa da tela ligada e do PC sem uso pesado durante a medição.
 - [ ] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen.

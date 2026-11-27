@@ -94,6 +94,7 @@ const dirSize = (d) => fs.readdirSync(d, { withFileTypes: true })
 if (!installerOnly) {
   fs.rmSync(path.join(ROOT, 'build-extra'), { recursive: true, force: true });
   compile({ outFile: path.join(ROOT, 'build-extra', 'Kona Uninstaller.exe'), uninstall: true });
+  execFileSync('node', [path.join(__dirname, 'licenses.js')], { cwd: ROOT, stdio: 'inherit' }); // assets/licenses.json em dia
   const r = spawnSync('npx', ['electron-builder', '--win', '--x64', '--publish', publish ? 'always' : 'never',
     `-c.electronDist=${electronDist}`, `-c.electronVersion=${electronWin.PLAIN_VERSION}`, `-c.directories.output=${out}`], { cwd: ROOT, env, stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status ?? 1);

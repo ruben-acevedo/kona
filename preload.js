@@ -128,6 +128,7 @@ contextBridge.exposeInMainWorld('kona', {
   downloadDrag: (file) => ipcRenderer.send('download:drag', file),
   pickFolder: () => ipcRenderer.invoke('dialog:folder'),
   appInfo: () => ipcRenderer.invoke('app:info'),
+  appLicenses: () => ipcRenderer.invoke('app:licenses'),
   sitesList: (partition) => ipcRenderer.invoke('sites:list', partition),
   sitesRemove: (partition, site) => ipcRenderer.invoke('sites:remove', partition, site),
   privateOpen: () => ipcRenderer.invoke('private:open'),
