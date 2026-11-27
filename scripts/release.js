@@ -14,6 +14,13 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const PKG = path.join(ROOT, 'package.json');
 const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', ...opts });
+const releaseNotes = (v) => `**To install Kona, download \`Kona-Setup-${v}.exe\`** below and run it.
+
+Windows may show a blue "Windows protected your PC" screen the first time, because the installer isn't signed yet: click **More info → Run anyway**.
+
+Already have Kona? It updates itself — no need to download anything.
+
+<sub>The other files (\`Kona-${v}-update.exe\`, \`.blockmap\`, \`latest.yml\`) are used by the automatic updater.</sub>`;
 const fail = (msg) => { console.error(msg); process.exit(1); };
 
 const branch = sh('git', ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
@@ -38,4 +45,6 @@ sh('git', ['push', '-q', 'origin', 'main'], { stdio: 'inherit' });
 // o electron-builder cria o Release e a tag vX no commit atual da main
 sh('node', ['scripts/dist.js', '--publish'], { stdio: 'inherit' });
 const { owner, repo } = pkg.build.publish[0];
+// texto da página da versão: diz qual arquivo baixar (os outros são do atualizador)
+sh('gh', ['release', 'edit', tag, '--repo', `${owner}/${repo}`, '--notes', releaseNotes(version)]);
 console.log(`\nPublicado: https://github.com/${owner}/${repo}/releases/tag/${tag}`);
