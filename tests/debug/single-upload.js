@@ -38,11 +38,11 @@ app.whenReady().then(async () => {
   const p1 = await js(`draft.photo.slice(-40)`);
   await js(`upload('#avatar-file', '#ffff00')`);
   log('perfil: fotos na grade:', await photoTiles(), '· a segunda substituiu a primeira:', p1 !== await js(`draft.photo.slice(-40)`));
-  await js(`document.querySelector('#pf-grid [data-av]').click(); 0`); await sleep(200);
+  await js(`document.querySelector('#pf-grid [data-group]').click(); 0`); await sleep(200);
   await js(`saveProfile(); 0`); await sleep(500);
   await js(`openProfileSheet('edit', PROFILES.current); 0`); await sleep(400);
   log('perfil: depois de salvar com avatar pronto, a foto continua disponível:', await photoTiles(), '· avatar atual:', await js(`PROFILES.currentProfile().avatar.type`),
-    '· prontos:', await js(`document.querySelectorAll('#pf-grid [data-av]').length`));
+    '· grupos de avatares:', await js(`document.querySelectorAll('#pf-grid [data-group]').length`));
   await js(`document.querySelector('#pf-grid [data-photo]').click(); saveProfile(); 0`); await sleep(500);
   log('perfil: voltar para a foto:', await js(`PROFILES.currentProfile().avatar.type`));
   app.exit(0);

@@ -167,6 +167,7 @@ hydrateIcons($('#import-sheet'));
 /* Primeiro uso: perfil ainda vazio (favoritos padrão e quase nenhum histórico) e um navegador para importar */
 (async () => {
   if (localStorage.getItem(IMPORT_OFFERED) || library.isPrivate?.() || params.get('nowelcome')) return;
+  await profileSetup; // primeiro o perfil (profiles-ui.js), depois a importação
   localStorage.setItem(IMPORT_OFFERED, '1');
   if (!bookmarks.isDefaultList() || browseHistory.data.visits.length > 5) return;
   const list = (await api?.importSources()) || [];

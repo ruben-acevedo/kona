@@ -1042,11 +1042,12 @@ async function suiteProfiles() {
   await click('#pf-new'); await sleep(600);
   await js(`document.getElementById('pf-name').select(); 0`);
   wc.insertText('Trabalho');
-  await click('.pf-tile[data-av="planeta"]'); await sleep(150);
+  await click('.pf-tile[data-group="dog"]'); await sleep(250);
+  await click('#pf-variants .pf-tile[data-av="dog-pug"]'); await sleep(150);
   await perf(S, 'criar perfil e trocar para ele', () => click('#pf-save'), { ms: 1000 });
   await sleep(600);
   const p2 = await js(`({ id: PROFILES.current, name: PROFILES.currentProfile().name, av: PROFILES.currentProfile().avatar, sb: document.querySelector('#sb-profile .pf-name').textContent, part: PROFILES.currentProfile().partition })`);
-  record(S, 'criar perfil pela interface (nome + avatar) e trocar para ele', p2.id !== first && p2.name === 'Trabalho' && p2.av.id === 'planeta' && p2.sb === 'Trabalho' ? 'PASS' : 'FAIL', JSON.stringify(p2));
+  record(S, 'criar perfil pela interface (nome + avatar) e trocar para ele', p2.id !== first && p2.name === 'Trabalho' && p2.av.id === 'dog-pug' && p2.sb === 'Trabalho' ? 'PASS' : 'FAIL', JSON.stringify(p2));
 
   // isolamento: ajustes, histórico, cookies
   await js(`settings.wallpaper = 'oceano'; saveSettings(); applyWallpaper(); 0`);

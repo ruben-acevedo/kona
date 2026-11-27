@@ -246,6 +246,18 @@ body.sidebar-open #sidebar { transform: none; opacity: 1; }
 .avatar.md { width: 30px; height: 30px; font-size: 30px; }
 .avatar.tile { width: 46px; height: 46px; font-size: 46px; }
 .avatar.lg { width: 84px; height: 84px; font-size: 84px; box-shadow: inset 0 0 0 0.5px rgba(255,255,255,.3), 0 8px 24px rgba(0,0,0,.25); }
+.avatar.art { background: none; }
+/* Passar o mouse (ou o teclado) num avatar: o ícone pula e gira de leve, e um reflexo de luz o atravessa.
+   O desenho fica parado; quem se mexe é o ícone. */
+.avatar { position: relative; transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.avatar::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, .5) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+:is(.pf-tile, #sb-profile, .pf-row, .pf-preview):is(:hover, :focus-visible) .avatar { transform: translateY(-2px) rotate(-7deg) scale(1.08); }
+:is(.pf-tile, #sb-profile, .pf-row, .pf-preview):is(:hover, :focus-visible) .avatar::after { animation: avatar-glare .75s var(--ease) both; }
+@keyframes avatar-glare { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
 
 /* ───────────── Área principal ───────────── */
 #main { position: fixed; inset: 0; }
@@ -613,7 +625,18 @@ body.warming #overview :is(.ov-grid, .ov-card) { opacity: 1 !important; transfor
   position: relative; width: 46px; height: 46px; justify-self: center; border-radius: 50%; display: grid; place-items: center;
   transition: transform .2s var(--ease);
 }
-.pf-tile:hover { transform: scale(1.07); }
+.pf-tile.upload:hover { transform: scale(1.07); }
+/* opções do grupo escolhido: logo abaixo da grade */
+.pf-variants {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 14px;
+  background: var(--glass-press);
+}
+.pf-variants[hidden] { display: none; }
+.pf-var-label { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.pf-variants.enter { animation: rise .35s var(--ease) both; }
+.pf-variants.enter .pf-tile { animation: rise .4s var(--ease) both; }
+.pf-variants.enter .pf-tile:nth-of-type(2) { animation-delay: 30ms; } .pf-variants.enter .pf-tile:nth-of-type(3) { animation-delay: 60ms; }
+.pf-variants.enter .pf-tile:nth-of-type(4) { animation-delay: 90ms; }
 .pf-tile.sel::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 0 2.5px var(--accent); }
 .pf-tile.upload { background: var(--glass-press); color: var(--text-2); display: flex; flex-direction: column; gap: 1px; font-size: 10px; font-weight: 600; }
 .pf-tile.upload .ic { width: 18px; height: 18px; }
