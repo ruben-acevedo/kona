@@ -275,5 +275,16 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Primeira abertura: "Crie seu perfil" (nome e avatar) aparece antes de tudo, sem cancelar; a oferta de importar vem depois. Testado: `tests/debug/first-profile.js`.
   - Desenhos: `scripts/avatars/` (Python) gera `renderer/avatars.js`; no app cada um é uma imagem isolada (`data:` SVG), pré-decodificada depois da abertura. Testado: `tests/debug/avatars.js` + suíte perfis + single-upload.
 
+## O. Navegador principal (2026-11-27)
+Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. Mas quem baixar (e o próprio usuário, que vai usá-lo como navegador principal) precisa ter uma experiência tão funcional quanto a de qualquer outro navegador. Licenças comerciais não importam; segurança e uso diário importam. Ordem combinada:
+
+- [ ] **O1. Economia de memória.** Suspender abas paradas há um tempo (como "Economia de memória" do Chrome / abas em suspensão do Edge): a aba continua na barra, a página sai da memória e recarrega ao voltar. Exceções: aba tocando som, com download, compartilhando a tela, fixadas (a decidir), formulário preenchido. Ajuste nas Configurações.
+- [ ] **O2. Proteção contra golpes e malware (Safe Browsing).** Usar a API gratuita (uso não comercial) do Google Safe Browsing, com listas locais (o endereço não é enviado ao Google). Aviso em tela cheia antes de abrir um site perigoso e no download de arquivo perigoso. Fecha a lacuna apontada na auditoria B2.
+- [ ] **O3. Terminar o que está pela metade:** J1 (verificação do Google na 1ª busca), L4 (senhas), N16 (controle de mídia).
+- [ ] **O4. "Relatar um problema".** Em "Sobre o Kona": abre uma issue no GitHub já preenchida com versão, Windows e detalhes (sem servidor e sem coleta automática). Junto, o link para as licenças de terceiros (o electron-builder já inclui as do Chromium).
+- [ ] **N21. Reescrever o README** (abaixo).
+- [ ] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen.
+- Opcional, depois: bloqueio de anúncios e rastreadores embutido (hoje dá com uma extensão, ex.: uBlock Origin Lite).
+
 ### Por último
 - [ ] **N21. Reescrever o README** com tudo o que há de novo, seguindo a filosofia do navegador: **design, funcionalidade e performance**. Pedido em 2026-11-26. Atualizar capturas de tela, recursos (pastas, importação, downloads, menu de contexto, Ctrl+F/zoom, Netflix/Spotify, PDF, extensões completas, senhas, tela cheia/som, modo leitura, compartilhar a tela, pop-ups, autocompletar…) e atalhos; sem passos de desenvolvimento nem menção à ajuda de IA.
