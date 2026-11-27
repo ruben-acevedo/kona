@@ -301,7 +301,17 @@ Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. M
   - "Open-source licenses": tela com o Kona (MIT), Chromium ("View licenses" abre o `LICENSES.chromium.html` que vem ao lado do Kona.exe), Electron, as 28 bibliotecas de produção com o texto de cada licença (clicar expande) e as listas de golpes/malware usadas pelo Safe Browsing.
   - `scripts/licenses.js` gera `assets/licenses.json` (roda no `npm run dist`; o arquivo fica no repositório). `renderer/about.js`, `app:info`/`app:licenses` em `session-policy.js`. Teste: `tests/debug/about.js`.
 - [x] **N21. Reescrever o README** (abaixo).
-- [ ] **O6. Comparar o consumo de memória com Chrome e Edge** (deixado para o final, pedido em 2026-11-27): mesmas 10 páginas reais, perfis temporários, memória somada de todos os processos depois de 40 s; com 1 aba e com 10. Precisa da tela ligada e do PC sem uso pesado durante a medição.
+- [x] **O6. Comparar o consumo de memória com Chrome e Edge** (feito em 2026-11-27). Mesmas páginas reais (Wikipedia, YouTube, GitHub, Reddit, BBC, Amazon, Stack Overflow, The Verge, docs do Python, NYT), perfis temporários, janela maximizada, medido depois de 40 s parado; soma da memória privada (a coluna "Memória" do Gerenciador de Tarefas) de todos os processos do navegador. Média de 2 rodadas (variaram menos de 2%):
+
+  | | 1 aba | 10 abas | processos (10 abas) |
+  |---|---|---|---|
+  | Kona | 222 MB | 1636 MB | 32 |
+  | Chrome | 230 MB | 1798 MB | 55 |
+  | Edge | 194 MB | 1418 MB | 35 |
+
+  - O Kona gasta 9% menos que o Chrome com 10 abas e fica empatado com 1 aba. O Edge gasta 13% menos que o Kona com 10 abas, quase tudo nas páginas: 1145 MB contra 1367 MB, com o mesmo número de processos.
+  - O processo de vídeo (GPU) do Kona usa mais: 133 MB contra cerca de 95 MB no Chrome e no Edge, por causa dos efeitos da interface (desfoque, transparência). O processo principal usa menos: 86 MB contra 118 a 146 MB.
+  - `tests/debug/memory-compare.js`: abre o Chrome e o Edge instalados e mede o Kona com o mesmo método. Leva uns 6 minutos.
 - [ ] **O5. Publicar e manter atualizado** (junta o L7). Primeira Release no GitHub com a atualização automática; script de manutenção para a rotina mensal de subir o Electron/Chromium (castLabs), rodar os testes e gerar a Release. Decidir sobre a assinatura: grátis para open-source pela SignPath Foundation (pedido e aprovação) ou explicar no README como passar pelo aviso do SmartScreen.
 - [x] **O7. Um perfil por janela (como o Chrome).** Pedido em 2026-11-27. Antes havia um "perfil atual" único para o Kona inteiro, e trocar de perfil pedia fechar as outras janelas.
   - Escolher outro perfil (menu de perfis ou Configurações › Perfis › Open): traz para a frente a janela dele, se houver; senão abre uma janela nova dele. Só troca na própria janela quando ela está sozinha e vazia (só a nova aba), ou ao apagar o perfil dela.
