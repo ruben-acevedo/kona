@@ -718,4 +718,6 @@
   "“{name}” downloaded": "“{name}” descargado",
   "“{name}” installed": "“{name}” instalada",
   "“{name}” may be dangerous. Keep it?": "“{name}” puede ser peligroso. ¿Conservarlo?",
+  "tab": "pestaña",
+  "Tabs": "Pestañas",
 });

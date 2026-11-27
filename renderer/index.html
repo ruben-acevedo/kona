@@ -20,7 +20,7 @@
       <button class="tb" id="fwd" data-icon="forward" title="Forward"></button>
     </div>
 
-    <div id="tabs"></div>
+    <div id="tabs" role="group" aria-label="Tabs"></div>
 
     <div class="glass group">
       <div id="ext-pinned" class="ext-pinned"></div>
@@ -172,7 +172,7 @@
     <div class="toggles" id="toggles"></div>
 
     <div class="pp-label">Sounds</div>
-    <div class="toggles"><button class="toggle" id="tg-sounds"><span>Interface sounds</span><span class="switch"></span></button></div>
+    <div class="toggles"><button class="toggle" role="switch" id="tg-sounds"><span>Interface sounds</span><span class="switch"></span></button></div>
   </div>
 
   <!-- Pasta de favoritos aberta na nova aba -->
@@ -453,7 +453,7 @@
     </footer>
   </section>
 
-  <div id="toast" class="glass"></div>
+  <div id="toast" class="glass" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Enquanto compartilha a tela -->
   <div id="share-bar" class="glass" role="status"></div>
@@ -512,5 +512,6 @@
   <script src="autofill-ui.js"></script>
   <script src="default-browser.js"></script>
   <script src="session-ui.js"></script>
+  <script src="a11y.js"></script>
 </body>
 </html>

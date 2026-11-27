@@ -20,7 +20,7 @@ function showMenu(items, x, y, restore = null) {
   ctx.restore = restore;
   menuEl.innerHTML = list.map((it, i) => (it === '-'
     ? '<div class="ctx-sep" role="separator"></div>'
-    : `<div class="ctx-item${it.disabled ? ' disabled' : ''}${it.bold ? ' bold' : ''}" role="menuitem" data-i="${i}"${it.disabled ? ' aria-disabled="true"' : ''}>
+    : `<div class="ctx-item${it.disabled ? ' disabled' : ''}${it.bold ? ' bold' : ''}" role="menuitem" id="ctx-i${i}" data-i="${i}"${it.disabled ? ' aria-disabled="true"' : ''}>
         <span class="ctx-check">${it.checked ? icon('check') : ''}</span>
         <span class="ctx-label">${escapeHtml(it.label)}</span>
         ${it.key ? `<span class="ctx-key">${escapeHtml(it.key)}</span>` : ''}
@@ -62,12 +62,14 @@ function moveSel(dir) {
   for (let k = 1; k <= n; k++) {
     const i = (ctx.sel + dir * k + n * 2) % n;
     const it = ctx.items[i];
-    if (it !== '-' && !it.disabled) { setSel(i); return; }
+    if (it !== '-' && !it.disabled) { if (i !== ctx.sel) sfx.play('tick'); setSel(i); return; }
   }
 }
 function setSel(i) {
   ctx.sel = i;
   $$('.ctx-item', menuEl).forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
+  // leitor de tela: o item escolhido pelas setas é anunciado (o foco fica no menu)
+  if (i >= 0) menuEl.setAttribute('aria-activedescendant', `ctx-i${i}`); else menuEl.removeAttribute('aria-activedescendant');
 }
 
 menuEl.addEventListener('mousemove', (e) => {

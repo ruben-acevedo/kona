@@ -276,7 +276,7 @@ function applyTheme(animate = false) {
     api?.setTheme(pref);
     isDark = pref === 'system' ? darkMq.matches : pref === 'dark';
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-    $$('#seg-theme button').forEach((b) => b.classList.toggle('on', b.dataset.theme === settings.theme));
+    $$('#seg-theme button').forEach((b) => b.setAttribute('aria-pressed', String(b.classList.toggle('on', b.dataset.theme === settings.theme))));
     applyWallpaper();
   };
   // Troca animada com View Transitions: o Chromium faz um fade entre uma "foto" da interface
@@ -318,13 +318,13 @@ function applyWallpaper() {
   $('#start').classList.toggle('tone-dark', tone === 'dark');
   $('#start').classList.toggle('tone-light', tone === 'light');
   syncToolbarTone();
-  $$('.wp-swatch[data-wp]').forEach((b) => b.classList.toggle('on', b.dataset.wp === settings.wallpaper));
+  $$('.wp-swatch[data-wp]').forEach((b) => b.setAttribute('aria-pressed', String(b.classList.toggle('on', b.dataset.wp === settings.wallpaper))));
 }
 
 function applySections() {
   SECTIONS.forEach((s) => { $(`#sec-${s.id}`).hidden = !settings.sections[s.id]; });
-  $$('#toggles .toggle').forEach((t) => t.classList.toggle('on', !!settings.sections[t.dataset.sec]));
-  $('#tg-sounds').classList.toggle('on', settings.sounds !== false);
+  $$('#toggles .toggle').forEach((t) => t.setAttribute('aria-checked', String(t.classList.toggle('on', !!settings.sections[t.dataset.sec]))));
+  $('#tg-sounds').setAttribute('aria-checked', String($('#tg-sounds').classList.toggle('on', settings.sounds !== false)));
 }
 
 /* ───────────── Painel Personalizar ───────────── */
@@ -339,7 +339,7 @@ function buildCustomize() {
     `<button class="wp-swatch add" id="wp-upload" title="Choose an image…">${icon('image')}</button>`;
 
   $('#toggles').innerHTML = SECTIONS.map((s) =>
-    `<button class="toggle" data-sec="${s.id}"><span>${tl(s.name)}</span><span class="switch"></span></button>`).join('');
+    `<button class="toggle" role="switch" data-sec="${s.id}"><span>${tl(s.name)}</span><span class="switch"></span></button>`).join('');
   applyWallpaper();
   applySections();
 }
@@ -613,11 +613,15 @@ function createTabEl(t) {
   const el = document.createElement('div');
   el.className = 'tab';
   el.dataset.id = t.id;
+  // leitores de tela: "Título, aba, atual"; o teclado anda entre as abas pelas setas (a11y.js)
+  el.setAttribute('role', 'group');
+  el.setAttribute('aria-roledescription', tl('tab'));
+  el.tabIndex = -1;
   el.innerHTML = `
-    <span class="slot"><span class="tfav"></span><button class="x" title="${tl('Close tab')}">${icon('x')}</button></span>
+    <span class="slot"><span class="tfav"></span><button class="x" title="${tl('Close tab')}" tabindex="-1">${icon('x')}</button></span>
     <span class="title"></span>
     <button class="snd" title="${tl('Mute tab')}" hidden></button>
-    <form class="addr"><button type="button" class="lock" title="${tl('View site information')}">${icon('lock')}</button><input spellcheck="false" autocomplete="off" placeholder="${tl('Search or enter address')}" /></form>
+    <form class="addr"><button type="button" class="lock" title="${tl('View site information')}">${icon('lock')}</button><input spellcheck="false" autocomplete="off" placeholder="${tl('Search or enter address')}" role="combobox" aria-autocomplete="list" aria-controls="omnibox" aria-expanded="false" /></form>
     <button class="popupind" title="${tl('Pop-ups blocked')}" hidden></button>
     <button class="jsind" title="${tl('JavaScript blocked on this site')}" hidden></button>
     <button class="appbtn" hidden></button>
@@ -781,6 +785,8 @@ function paintTab(t, el) {
   const bm = $('.bm', el);
   if (bm) bm.title = el.classList.contains('bookmarked') ? tl('Remove from Favorites (Ctrl+D)') : tl('Add to Favorites (Ctrl+D)');
   el.title = isActive ? '' : tabTitle(t);
+  el.setAttribute('aria-label', tabTitle(t));
+  if (isActive) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
   $('.title', el).textContent = tabTitle(t);
   // janela de app (N11): fora do site do app, o endereço aparece antes do título (como no Chrome)
   if (APP_MODE) {
@@ -1457,10 +1463,12 @@ $('#ext-list').addEventListener('click', async (e) => {
 const sheets = () => $$('.sheet.show');
 function openSheet(id) {
   toggleCustomize(false);
+  if (!$(id).classList.contains('show')) sfx.play('open');
   $('#scrim').classList.add('show');
   $(id).classList.add('show');
 }
 function closeSheet(id) {
+  if ($(id).classList.contains('show')) sfx.play('close');
   $(id).classList.remove('show');
   if (!sheets().length) $('#scrim').classList.remove('show');
 }

@@ -11,6 +11,7 @@ const sfx = (() => {
   let lastKey = 0;
   let lastSelect = 0;
   let lastBig = 0; // último som de abrir/fechar: a "seleção" logo em seguida seria um som duplicado
+  let lastBigName = '';
 
   function ensure() {
     if (ctx) return ctx;
@@ -105,7 +106,11 @@ const sfx = (() => {
       if (name === 'select' && now - lastBig < 150) return;
       // um clique que já toca o próprio som não toca dois "select" seguidos
       if (name === 'select') { if (now - lastSelect < 90) return; lastSelect = now; }
-      if (name !== 'tick' && name !== 'key' && name !== 'select') lastBig = now;
+      // o mesmo som "grande" pedido duas vezes no mesmo instante (ex.: closeSheet + quem chamou) toca uma vez
+      if (name !== 'tick' && name !== 'key' && name !== 'select') {
+        if (name === lastBigName && now - lastBig < 120) return;
+        lastBig = now; lastBigName = name;
+      }
       SOUNDS[name]?.(ctx.currentTime + 0.002);
       window.__sfxLog?.push(name); // só nos testes
     } catch { /* sem áudio: segue em silêncio */ }
@@ -154,6 +159,20 @@ const sfx = (() => {
     if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') play('key');
     else if (e.key === 'Enter') play('select');
   }, true);
+
+  /* Teclado (N20): andar pelo Tab ou pelas setas toca o mesmo tique do mouse passando por cima.
+     Enter/Espaço num botão viram "click" e tocam o som dele (lista CLICK). Se o foco veio de uma
+     janela que acabou de abrir (som "open"), o tique não toca por cima. */
+  let viaKeyboard = false;
+  document.addEventListener('keydown', () => { viaKeyboard = true; }, true);
+  document.addEventListener('pointerdown', () => { viaKeyboard = false; }, true);
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    // contêineres (menu, menu lateral, janela sem botões) recebem foco com tabindex -1: o som é o "open" deles
+    if (!viaKeyboard || el === document.body || el.tagName === 'WEBVIEW' || el.tabIndex < 0 || el.matches?.(ADDR)) return;
+    if (performance.now() - lastBig < 150) return;
+    play('tick');
+  });
 
   return { play };
 })();

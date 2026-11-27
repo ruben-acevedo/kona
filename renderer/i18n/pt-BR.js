@@ -718,4 +718,6 @@
   "“{name}” downloaded": "“{name}” baixado",
   "“{name}” installed": "“{name}” instalado",
   "“{name}” may be dangerous. Keep it?": "“{name}” pode ser perigoso. Manter?",
+  "tab": "aba",
+  "Tabs": "Abas",
 });

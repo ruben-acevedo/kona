@@ -78,7 +78,7 @@ async function renderReaderPop() {
       <span class="rp-ic">${icon(sp.speaking && !sp.paused ? 'pause' : 'play')}</span>${sp.speaking ? (sp.paused ? tl('Resume Listening') : tl('Pause Listening')) : tl('Listen to Page')}
     </button>
     ${sp.speaking ? `<button class="rp-row" data-speech="stop"><span class="rp-ic">${icon('x')}</span>${tl('Stop Listening')}</button>` : ''}
-    <button class="rp-row rp-auto" data-auto="1"${host ? '' : ' disabled'}>
+    <button class="rp-row rp-auto" data-auto="1" role="switch" aria-checked="${!!settings.readerAuto?.[host]}"${host ? '' : ' disabled'}>
       <span class="rp-ic">${icon('reader')}</span><span class="rp-auto-text">${tl('Use Reader automatically on {host}', { host: escapeHtml(host.replace(/^www\./, '')) })}</span>
       <span class="sw${settings.readerAuto?.[host] ? ' on' : ''}"><span></span></span>
     </button>`;

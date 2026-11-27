@@ -26,10 +26,13 @@ const ST_SECTIONS = [
 ];
 
 /* ───────────── Controles ───────────── */
+/** Leitores de tela: o controle da linha (interruptor, lista, campo) leva o título da linha como nome. */
+const named = (control, label) => control.replace(/<(select|input)\b(?![^>]*aria-label)|role="switch"(?![^>]*aria-label)/,
+  (m) => `${m} aria-label="${String(label).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}"`);
 const stRow = (label, desc, control, extra = '') => `
   <div class="st-row${extra}">
     <div class="st-text"><b>${label}</b>${desc ? `<p>${desc}</p>` : ''}</div>
-    <div class="st-ctrl">${control}</div>
+    <div class="st-ctrl">${named(control, label)}</div>
   </div>`;
 const stSelect = (key, options, value = settings[key], attr = `data-set="${key}"`) => `
   <select class="st-select" ${attr}>${options.map(([v, l]) => `<option value="${v}"${String(v) === String(value) ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
@@ -71,7 +74,15 @@ const settingsPage = {
   refresh() {
     if (!this.built) return;
     const scroll = $('#st-scroll').scrollTop;
-    $('#st-main').innerHTML = [
+    // o teclado não perde o lugar: o mesmo controle volta a ter o foco depois de redesenhar
+    const main = $('#st-main'), had = main.contains(document.activeElement) ? document.activeElement : null;
+    const sig = (el) => el.tagName + [...el.attributes].filter((a) => a.name === 'id' || a.name === 'name' || a.name.startsWith('data-')).map((a) => `${a.name}=${a.value}`).join('|');
+    const focusSig = had && sig(had), focusIdx = had ? $$('button, input, select, textarea, [tabindex]', main).indexOf(had) : -1;
+    if (had) queueMicrotask(() => {
+      const list = $$('button, input, select, textarea, [tabindex]', main);
+      (list.find((el) => sig(el) === focusSig) || list[focusIdx])?.focus({ preventScroll: true });
+    });
+    main.innerHTML = [
       this.general(), this.appearance(), this.passwords(), typeof afSettingsSection === 'function' ? afSettingsSection() : '', this.privacy(), this.permissions(),
       this.downloads(), this.profiles(), this.extensions(), typeof appsSettingsSection === 'function' ? appsSettingsSection() : '', this.about(),
     ].join('');

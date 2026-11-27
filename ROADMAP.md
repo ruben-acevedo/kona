@@ -263,7 +263,12 @@ Criado em 2026-11-26. Só funcionalidade: o Kona fazendo o que as pessoas espera
   - Corrigido no caminho: dicas (title) das abas que apareciam como `tl("…")` em vez do texto traduzido.
 
 ### Grande, para depois
-- [ ] **N20. Acessibilidade completa.**
+- [x] **N20. Acessibilidade completa.**
+  - Teclado: anel de foco na cor de destaque (só pelo teclado); janelas e menus fechados saem do Tab e dos leitores de tela (antes só ficavam transparentes); janelas prendem o Tab e, ao fechar, o foco volta para quem as abriu; abas pelas setas (←/→, Home/End, Enter ativa ou edita o endereço, Delete fecha).
+  - Leitores de tela: abas com nome e "atual"; avisos (toast) anunciados; sugestões da barra de endereço e item do menu de contexto anunciados ao andar pelas setas; interruptores com nome e estado (ligado/desligado); listas das Configurações com nome; as Configurações mantêm o foco ao se redesenhar.
+  - Contraste (WCAG AA): azul dos botões com texto branco (`--accent-fill`) e azul de texto (`--accent-text`) separados; vidro do tema escuro mais opaco (texto legível sobre página branca). Alto contraste do Windows: bordas reais, seleção na cor do sistema, interruptores visíveis.
+  - Sons também pelo teclado: andar pelo Tab/setas toca o tique; toda janela (sheet) toca abrir/fechar.
+  - `renderer/a11y.js`. Testado: `tests/debug/a11y.js` (auditoria axe-core sem problemas em 5 telas) + sounds, tab-sounds, context-menu, omnibox-smart, settings, sidebar, passwords. Falta: teste com NVDA/Narrador de verdade.
 
 ### Por último
 - [ ] **N21. Reescrever o README** com tudo o que há de novo, seguindo a filosofia do navegador: **design, funcionalidade e performance**. Pedido em 2026-11-26. Atualizar capturas de tela, recursos (pastas, importação, downloads, menu de contexto, Ctrl+F/zoom, Netflix/Spotify, PDF, extensões completas, senhas, tela cheia/som, modo leitura, compartilhar a tela, pop-ups, autocompletar…) e atalhos; sem passos de desenvolvimento nem menção à ajuda de IA.
