@@ -291,6 +291,11 @@ Objetivo combinado: não é produto comercial, é um projeto aberto no GitHub. M
   - Configurações › Privacidade e segurança: liga/desliga com a data das listas e quantos sites; chave própria do Google Safe Browsing opcional (aí o Google também confere, sem segurar a página).
   - `safe-browsing.js` (processo principal, no interceptador único de navegações junto com o HTTPS primeiro, só páginas e frames), `renderer/safe-ui.js`. Testado: `tests/debug/safe-browsing.js` + download-danger, downloads, site-settings. (O teste https-fallback antigo já falhava igual antes: depende de um site real.)
 - [ ] **O3. Terminar o que está pela metade:** J1 (verificação do Google na 1ª busca), L4 (senhas), N16 (controle de mídia).
+  - Parado em 2026-11-27 (retomar daqui). O código dos três está feito; o que falta em cada um é verificação real, que depende do usuário:
+    - J1: comparação limpa com o IP "frio": 1 busca no Chrome com perfil novo e 1 no Kona com perfil novo (não repetir buscas automáticas seguidas do mesmo IP).
+    - L4: Windows Hello (mostrar/copiar/exportar senha), importar o CSV do Chrome e logins reais.
+    - N16: teclas de mídia do teclado, painel de mídia do Windows e YouTube/Spotify de verdade.
+  - Próximo passo combinado: montar um roteiro curto de teste manual para os três, e corrigir o que aparecer.
 - [ ] **O4. "Relatar um problema".** Em "Sobre o Kona": abre uma issue no GitHub já preenchida com versão, Windows e detalhes (sem servidor e sem coleta automática). Junto, o link para as licenças de terceiros (o electron-builder já inclui as do Chromium).
 - [ ] **N21. Reescrever o README** (abaixo).
 - [ ] **O6. Comparar o consumo de memória com Chrome e Edge** (deixado para o final, pedido em 2026-11-27): mesmas 10 páginas reais, perfis temporários, memória somada de todos os processos depois de 40 s; com 1 aba e com 10. Precisa da tela ligada e do PC sem uso pesado durante a medição.
