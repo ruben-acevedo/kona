@@ -12,6 +12,8 @@ const sfx = (() => {
   let lastSelect = 0;
   let lastBig = 0; // último som de abrir/fechar: a "seleção" logo em seguida seria um som duplicado
   let lastBigName = '';
+  let lastAny = 0; // último som de qualquer tipo
+  let lastStrong = 0; // último som que não é tique nem tecla (o "som próprio" de quem tratou um clique)
 
   function ensure() {
     if (ctx) return ctx;
@@ -111,68 +113,76 @@ const sfx = (() => {
         if (name === lastBigName && now - lastBig < 120) return;
         lastBig = now; lastBigName = name;
       }
+      lastAny = now;
+      if (name !== 'tick' && name !== 'key') lastStrong = now;
       SOUNDS[name]?.(ctx.currentTime + 0.002);
       window.__sfxLog?.push(name); // só nos testes
     } catch { /* sem áudio: segue em silêncio */ }
   }
 
-  /* Passar o mouse: um tique ao entrar em cada item (não ao mexer dentro dele). */
-  const HOVER = [
-    '#toolbar .tb', '#toolbar .addr', '#omnibox .om-row',
-    '#sidebar .sb-item', '#sidebar .sb-tab', '.fav-item', '#btn-customize',
-    '#custom-pop .wp-swatch', '#custom-pop .toggle', '#custom-pop .seg button', '#profile-pop .pf-row',
-    // botões e listas que vieram depois: pastas e downloads no menu, botões da barra de endereço,
-    // busca na página, extensões, senhas, modo leitura, compartilhar a tela, avisos e janelas (sheets)
-    '#sb-list .sb-row', '#sb-list .sb-act', '#sb-tools button', '#sb-subfoot button', '#folder-pop .tb',
-    '.tab :is(.zoomind, .readerbtn, .aabtn, .snd, .popupind, .bm, .reload)',
-    '#find-bar .tb', '#ext-pop .ext-pop-row', '#ext-pop .pop-item', '#ext-pop .ext-pin',
-    '#pw-suggest .pw-opt', '#pw-bubble button', '#pw-list .sb-act', '#pw-list .btn-link',
-    '#reader-pop button', '#share-tabs button', '#share-grid .share-item', '#share-bar button',
-    '#infobar button', '#imp-body label',
-    '.sheet :is(.btn-primary, .btn-secondary, .btn-danger, .btn-link)', '.sheet-head .tb',
-    '#st-nav .st-nav-item', '#st-main :is(.btn-primary, .btn-secondary, .btn-link, .sw)',
+  /* Tudo o que é do Kona (não é página web) tem som. Em vez de uma lista de botões (que esquecia
+     os novos), vale para qualquer controle da interface: botões, itens de menu e de lista, abas,
+     cartões, listas de seleção e caixas de marcar. Campos de texto não fazem tique ao passar
+     (passar por cima não escolhe nada): fazem "seleção" ao entrar e "tecla" ao digitar. */
+  const CONTROL = [
+    'button:not(:disabled)', 'select:not(:disabled)', '[role="menuitem"]:not([aria-disabled="true"])', '[role="option"]', '[role="switch"]',
+    '.tab:not(.active)', '#toolbar .addr', '.sb-item', '.sb-tab', '.sb-row', '.fav-item', '.ov-card', '.pf-row',
+    '.share-item', '.pop-item', '.ext-pop-row', '.om-row', '.pw-opt',
+    'label:has(> input:is([type="checkbox"], [type="radio"]))', 'label:has(> :is(select, input:is([type="checkbox"], [type="radio"])):not(:disabled))',
   ].join(', ');
-  const CLICK = [
-    '#sidebar .sb-item', '#sidebar .sb-tab', '#custom-pop .wp-swatch', '#custom-pop .toggle',
-    '#custom-pop .seg button', '#profile-pop .pf-row',
-    // da barra, só os que não abrem painel nem focam a pesquisa (esses já têm o próprio som)
-    '#back', '#fwd',
-    // os que vieram depois (os que já tocam um som próprio não tocam dois: ver lastSelect)
-    '#sb-list .sb-act', '#sb-tools button', '.tab :is(.zoomind, .bm, .reload)', '#find-bar .tb',
-    '#ext-pop .pop-item', '#pw-bubble button', '#pw-list .sb-act', '#pw-list .btn-link', '#infobar button',
-    '#imp-body label', '.sheet:not(#share-sheet) :is(.btn-primary, .btn-secondary, .btn-danger, .btn-link)',
-    '#st-nav .st-nav-item', '#st-main :is(.btn-primary, .btn-secondary, .btn-link, .sw)', '#share-grid .share-item',
-  ].join(', ');
+  // clicar: o que já toca o próprio som (abre painel, abre/fecha aba…) não ganha um "select" por cima
+  const CLICK = CONTROL;
+  const FIELD = 'input:not([type]), input:is([type="text"], [type="search"], [type="url"], [type="email"], [type="tel"], [type="number"], [type="password"]), textarea';
+
   let hovered = null;
   document.addEventListener('pointerover', (e) => {
-    const el = e.target.closest?.(HOVER) || null;
-    if (el && el !== hovered) play('tick');
+    const el = e.target.closest?.(CONTROL) || null;
+    if (el && el !== hovered && !el.matches(FIELD)) play('tick');
     hovered = el;
   });
-  document.addEventListener('click', (e) => { if (e.target.closest?.(CLICK)) play('select'); }, true);
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest?.(CLICK);
+    // o campo de texto de um rótulo ou a lista de seleção tocam pelo foco/"change"; o clique na lista só abre as opções
+    if (!el || el.matches('select, #toolbar .addr') || e.target.matches?.(FIELD)) return;
+    // o rótulo de uma caixa de marcar gera um segundo "click" na própria caixa: conta uma vez
+    if (e.target.matches?.('input:is([type="checkbox"], [type="radio"])') && e.target.closest('label')) return;
+    const t0 = performance.now();
+    // depois de quem trata o clique: se ele já tocou um som (abrir, fechar, aba nova…), não repete
+    // (um tique não conta: ao redesenhar, o item novo sob o mouse toca o tique de "passar")
+    setTimeout(() => { if (lastStrong < t0) play('select'); }, 30);
+  }, true);
+  // listas de seleção e caixas de marcar mudadas pelo teclado (ou pela lista de opções)
+  document.addEventListener('change', (e) => {
+    if (!e.target.matches?.('select, input:is([type="checkbox"], [type="radio"])')) return;
+    if (performance.now() - lastStrong < 60) return; // o clique acabou de tocar
+    play('select');
+  }, true);
 
-  /* Barra de pesquisa: seleção ao entrar no campo e ao abrir o que foi digitado; tecla ao digitar */
+  /* Campos de texto (a barra de pesquisa e todos os outros): seleção ao entrar, tecla ao digitar */
   const ADDR = '#toolbar .addr input';
-  document.addEventListener('focusin', (e) => { if (e.target.matches?.(ADDR)) play('select'); });
+  document.addEventListener('focusin', (e) => { if (e.target.matches?.(FIELD)) play('select'); });
   document.addEventListener('keydown', (e) => {
-    if (!e.target.matches?.(ADDR) || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!e.target.matches?.(FIELD) || e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') play('key');
-    else if (e.key === 'Enter') play('select');
+    else if (e.key === 'Enter' && e.target.matches(ADDR)) play('select');
   }, true);
 
   /* Teclado (N20): andar pelo Tab ou pelas setas toca o mesmo tique do mouse passando por cima.
-     Enter/Espaço num botão viram "click" e tocam o som dele (lista CLICK). Se o foco veio de uma
-     janela que acabou de abrir (som "open"), o tique não toca por cima. */
+     Enter/Espaço num botão viram "click" e tocam o som dele. Se o foco veio de uma janela que
+     acabou de abrir (som "open"), o tique não toca por cima. */
   let viaKeyboard = false;
   document.addEventListener('keydown', () => { viaKeyboard = true; }, true);
   document.addEventListener('pointerdown', () => { viaKeyboard = false; }, true);
   document.addEventListener('focusin', (e) => {
     const el = e.target;
     // contêineres (menu, menu lateral, janela sem botões) recebem foco com tabindex -1: o som é o "open" deles
-    if (!viaKeyboard || el === document.body || el.tagName === 'WEBVIEW' || el.tabIndex < 0 || el.matches?.(ADDR)) return;
+    if (!viaKeyboard || el === document.body || el.tagName === 'WEBVIEW' || el.tabIndex < 0 || el.matches?.(FIELD)) return;
     if (performance.now() - lastBig < 150) return;
     play('tick');
   });
 
-  return { play };
+  /** Nada tocou nos últimos `ms`? (ex.: um aviso que aparece sozinho ganha um tique) */
+  const quietFor = (ms) => performance.now() - lastAny > ms;
+
+  return { play, quietFor };
 })();

@@ -183,6 +183,8 @@ function toast(msg, action) {
   }
   t.classList.toggle('actionable', !!action);
   t.classList.add('show');
+  // o aviso costuma vir junto do som da ação; se apareceu sozinho, ganha um tique
+  setTimeout(() => { if (sfx.quietFor(350)) sfx.play('tick'); }, 40);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), action ? 5000 : 1800);
 }

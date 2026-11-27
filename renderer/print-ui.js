@@ -146,6 +146,7 @@ $('#pr-more').addEventListener('click', () => {
   const open = $('#pr-extra').hidden;
   $('#pr-extra').hidden = !open;
   $('#pr-more').classList.toggle('open', open);
+  sfx.play(open ? 'open' : 'close');
 });
 $('#pr-system').addEventListener('click', () => { const id = pr.wcId; closePrint(); api?.print.system(id); });
 $('#pr-cancel').addEventListener('click', closePrint);
